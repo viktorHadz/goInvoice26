@@ -1,0 +1,158 @@
+@import 'tailwindcss';
+@import './scrollbar.css';
+@layer base {
+  :root {
+    /* font-family: 'Manrope Variable', sans-serif; */
+    /* Chrome, Safari, Edge, Opera */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    /* Firefox */
+    input[type='number'] {
+      -moz-appearance: textfield;
+    }
+  }
+}
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+@custom-variant light (&:where([data-theme=light], [data-theme=light] *));
+[data-theme='light'] {
+  --color-primary: oklch(100% 0 0);
+  /* --color-sec: oklch(0.69 0.1179 150.16); */
+  /* --color-acc: oklch(0.84 0.146 85.9); */
+  --color-sec: oklch(0.86 0.0196 204.83);
+  /* --color-acc: oklch(0.36 0.0389 248.94); */
+  --color-acc: oklch(0.69 0.1179 150.16);
+
+  --color-body-el: oklch(100% 0 0);
+  --color-brdr: oklch(0.708 0 0);
+  --color-font: oklch(0.27 0.0055 286.03);
+  --color-font2: oklch(100% 0 0);
+
+  --color-danger: oklch(0.737 0.237 25.331);
+  --color-warning: oklch(75.22% 0.1235 62.47);
+  --color-success: oklch(68.1% 0.1708 151.16);
+}
+[data-theme='dark'] {
+  --color-primary: oklch(23.93% 0 0);
+  --color-sec: oklch(0.205 0 0);
+  --color-acc: oklch(70.25% 0.132 160.37);
+
+  --color-body-el: oklch(0.27 0.0055 286.03);
+  --color-brdr: oklch(0.439 0 0);
+  --color-font: oklch(0.708 0 0);
+  --color-font2: oklch(0.808 0 0);
+
+  --color-danger: oklch(0.637 0.237 25.331);
+  --color-warning: oklch(75.22% 0.1235 62.47);
+  --color-success: oklch(68.1% 0.1708 151.16);
+}
+
+@theme {
+  --font-sans: 'Manrope Variable', sans-serif;
+  --text-mini: 0.725rem;
+  --text-tiny: 0.625rem;
+
+  --color-primary: var(--color-primary);
+  --color-sec: var(--color-sec);
+  --color-sec-mute: var(--color-sec-mute);
+  --color-acc: var(--color-acc);
+  --color-ter: var(--color-ter);
+
+  --color-nav: var(--color-navigation);
+  --color-brdr: var(--color-brdr);
+  --color-fg: var(--color-font);
+  --color-fg2: var(--color-font2);
+
+  --color-success: var(--color-success);
+  --color-danger: var(--color-danger);
+  --color-warn: var(--color-warning);
+}
+
+@layer components {
+  .input-label {
+    @apply absolute -top-2 left-2 inline-block rounded-lg px-1 text-xs font-medium text-neutral-700;
+    @variant dark {
+      @apply text-neutral-300;
+    }
+  }
+  .input {
+    @apply user-invalid:ring-danger;
+    @apply disabled:hover:ring-warn focus:ring-acc hover:ring-acc focus:ring-2 disabled:cursor-not-allowed;
+    @apply block w-full rounded-md bg-neutral-100 px-2 py-1 text-base font-normal text-neutral-900 ring-1 ring-neutral-400 transition-all duration-150 outline-none placeholder:text-neutral-700 hover:bg-neutral-50 focus:bg-neutral-50 sm:text-sm/6;
+
+    @variant dark {
+      @apply bg-neutral-800 text-neutral-300 ring-neutral-600 placeholder:text-neutral-400 hover:bg-neutral-800 focus:bg-neutral-800 disabled:placeholder:text-neutral-600;
+    }
+  }
+  .input-dropdown {
+    @apply disabled:hover:ring-warn;
+    @apply bg-neutral-100 text-neutral-900 ring-1 ring-neutral-400 transition-all duration-150 outline-none hover:bg-neutral-50;
+    @variant dark {
+      @apply bg-neutral-800 text-neutral-300 ring-neutral-600 placeholder:text-neutral-400 hover:bg-neutral-800 focus:bg-neutral-800 disabled:placeholder:text-neutral-600;
+    }
+  }
+}
+
+@layer components {
+  .navigation {
+    @apply border-brdr bg-sec sticky top-0 flex h-[100vh] shrink-0 flex-col gap-4 overflow-y-auto border-r p-4 transition duration-500;
+  }
+}
+@layer components {
+  .link {
+    @apply hover:text-primary text-fg cursor-pointer decoration-2 underline-offset-2 hover:underline;
+    @variant dark {
+      @apply hover:text-acc;
+    }
+  }
+}
+
+.router-active {
+  @apply text-primary dark:text-acc;
+}
+@layer components {
+  .main-content {
+    flex-grow: 1;
+    min-width: 0;
+  }
+}
+
+.container {
+  max-width: clamp(16rem, 80rem, 50%);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.container-lg {
+  max-width: clamp(16rem, 70%, 100%);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.backdrop {
+  z-index: 990;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+.modal-outer {
+  z-index: 991;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(15rem, 32vw, 20rem);
+  height: clamp(10rem, 16vh, 20vh);
+  background-color: white;
+}

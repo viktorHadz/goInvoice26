@@ -1,0 +1,12 @@
+/* --- Scrollbar Base Styles --- */
+
+/* Firefox - color order is: thumb-color track-color */
+html {
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+/* --- Dark Mode using [data-theme=dark] --- */
+[data-theme='dark'] {
+  /* Firefox */
+  scrollbar-color: #313131 #161616;
+}
