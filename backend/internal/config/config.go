@@ -15,7 +15,7 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	// Dev convenience only | In prod, env vars come from systemd/docker.
+	// Dev convenience | In prod, env vars come from systemd/docker.
 	_ = godotenv.Load()
 
 	cfg := Config{
@@ -35,7 +35,7 @@ func Load() (Config, error) {
 func must(key string) string {
 	v := os.Getenv(key)
 	if v == "" {
-		// return error via validate path; but we need a value here
+		// return error via validate path, but we need a value here
 		return ""
 	}
 	return v

@@ -27,7 +27,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			name TEXT,
 			email TEXT NOT NULL UNIQUE,
 			password_hash TEXT NOT NULL,
-			created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 		);`,
 
 		// -----------------------
@@ -39,7 +39,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			company_name TEXT,
 			address TEXT,
 			email TEXT,
-			created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 			updated_at TEXT
 		);`,
 
@@ -60,7 +60,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			client_id INTEGER,
 			is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
 
-			created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 			updated_at TEXT,
 
 			FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
@@ -85,7 +85,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			status TEXT NOT NULL DEFAULT 'draft'
 				CHECK (status IN ('draft','issued','paid','void')),
 
-			created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 			updated_at TEXT,
 
 			FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT
@@ -108,7 +108,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 
 			discount_value INTEGER NOT NULL DEFAULT 0 CHECK (discount_value >= 0),
 
-			created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 
 			FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
 			UNIQUE (invoice_id, revision_no),
@@ -172,7 +172,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 
 			label TEXT,
 
-			created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 
 			FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
 		);`,

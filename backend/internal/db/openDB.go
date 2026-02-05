@@ -7,7 +7,9 @@ import (
 )
 
 func OpenDB(dbPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	dsn := dbPath + "?_loc=UTC&parseTime=true"
+
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
 	}
