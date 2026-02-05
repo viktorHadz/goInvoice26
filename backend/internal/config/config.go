@@ -15,7 +15,7 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	// Dev convenience only: in prod, env vars come from systemd/docker.
+	// Dev convenience only | In prod, env vars come from systemd/docker.
 	_ = godotenv.Load()
 
 	cfg := Config{

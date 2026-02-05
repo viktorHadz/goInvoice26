@@ -12,7 +12,7 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
+	if err := db.Ping(); err != nil { // Ping() creates the DB if it doesnt exist
 		db.Close()
 		return nil, err
 	}
