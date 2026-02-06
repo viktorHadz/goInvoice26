@@ -13,6 +13,7 @@ import {
   UserPlusIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
+import type { Client } from '@/utils/clients/fetch'
 
 const clientStore = useClientStore()
 
@@ -43,7 +44,7 @@ async function addClient() {
   resetInputs(clientForm)
 }
 
-function editTrue(client: any) {
+function editTrue(client: Client) {
   editedRowId.value = client.id
   editForm.id = client.id
   editForm.name = client.name ?? ''
@@ -56,18 +57,20 @@ function editTrue(client: any) {
 async function editSave() {
   if (editForm.id == null) return
 
-  // Only send editable fields (PATCH)
-  await clientStore.edit(editForm.id, {
-    name: editForm.name,
-    company_name: editForm.company_name,
-    email: editForm.email,
-    address: editForm.address,
-  })
-
-  editing.value = false
-  editedRowId.value = null
-  editForm.id = null
-  resetInputs(editForm)
+  try {
+    await clientStore.edit(editForm.id, {
+      name: editForm.name,
+      company_name: editForm.company_name,
+      email: editForm.email,
+      address: editForm.address,
+    })
+    editing.value = false
+    editedRowId.value = null
+    editForm.id = null
+    resetInputs(editForm)
+  } catch {
+    // keep editing open so user can retry
+  }
 }
 
 function cancelEdit() {
@@ -87,7 +90,7 @@ const searchQuery = ref('')
 const filteredClients = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return clientStore.clients
-  return clientStore.clients.filter((c: any) => (c.name ?? '').toLowerCase().includes(q))
+  return clientStore.clients.filter((c: Client) => (c.name ?? '').toLowerCase().includes(q))
 })
 </script>
 <template>

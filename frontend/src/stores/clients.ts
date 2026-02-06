@@ -53,22 +53,25 @@ export const useClientStore = defineStore('clients', () => {
     }
   }
   async function remove(id: number) {
-    if (typeof id !== 'number') {
-      throw new Error(`remove() expected number id, got ${typeof id}`)
-    }
-
     error.value = null
-    await deleteClient(id)
-    clients.value = clients.value.filter((c) => c.id !== id)
+    try {
+      await deleteClient(id)
+      clients.value = clients.value.filter((c) => c.id !== id)
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to delete client'
+      throw e
+    }
   }
 
-  async function edit(
-    id: number,
-    patch: { name: string; company_name: string; email: string; address: string },
-  ) {
+  async function edit(id: number, patch: UpdateClientInput) {
     error.value = null
-    const updated = await updateClient(id, patch)
-    clients.value = clients.value.map((c) => (c.id === id ? updated : c))
+    try {
+      const updated = await updateClient(id, patch)
+      clients.value = clients.value.map((c) => (c.id === id ? updated : c))
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to update client'
+      throw e
+    }
   }
 
   const hasClients = computed(() => clients.value.length > 0)
