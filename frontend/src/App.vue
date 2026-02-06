@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { RouterView } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import NoSelectedClientModal from './components/clients/NoSelectedClient.vue'

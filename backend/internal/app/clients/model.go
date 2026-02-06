@@ -1,21 +1,23 @@
 package clients
 
-import (
-	"time"
-)
-
 type Client struct {
-	ID          int64      `json:"id"`
-	Name        string     `json:"name"`
-	CompanyName string     `json:"company_name"`
-	Address     string     `json:"address"`
-	Email       string     `json:"email"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	CompanyName string  `json:"company_name"`
+	Address     string  `json:"address"`
+	Email       string  `json:"email"`
+	CreatedAt   string  `json:"created_at"`
+	UpdatedAt   *string `json:"updated_at,omitempty"`
 }
-type CreateClientInput struct {
+type ClientInput struct {
 	Name        string `json:"name" binding:"required"`
 	CompanyName string `json:"company_name"`
 	Address     string `json:"address"`
 	Email       string `json:"email"`
+}
+type UpdateClientInput struct {
+	Name        *string `json:"name"`
+	CompanyName *string `json:"company_name"`
+	Address     *string `json:"address"`
+	Email       *string `json:"email"`
 }

@@ -15,52 +15,79 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const clientStore = useClientStore()
-const editing = ref(false)
-// resets client inputs
-const resetInputs = (formName) => {
-  formName.name = ''
-  formName.company = ''
-  formName.email = ''
-  formName.address = ''
-}
-const clientForm = reactive({ name: '', company: '', email: '', address: '' })
-const editForm = reactive({ id: null, name: '', company: '', email: '', address: '' })
 
-function addNewClient() {
-  clientStore.createNew(clientForm)
+const editing = ref(false)
+const editedRowId = ref<number | null>(null)
+
+// resets client inputs
+const resetInputs = (form: { name: string; company_name: string; email: string; address: string }) => {
+  form.name = ''
+  form.company_name = ''
+  form.email = ''
+  form.address = ''
+}
+
+const clientForm = reactive({ name: '', company_name: '', email: '', address: '' })
+
+// Keep editForm only with editable fields + id
+const editForm = reactive<{ id: number | null; name: string; company_name: string; email: string; address: string }>({
+  id: null,
+  name: '',
+  company_name: '',
+  email: '',
+  address: '',
+})
+
+async function addClient() {
+  await clientStore.createNew(clientForm)
   resetInputs(clientForm)
 }
 
-const editedRowId = ref(null)
-// Used to restore initial values on cancel
-// const editCache = ref({})
-function editTrue(client) {
+function editTrue(client: any) {
   editedRowId.value = client.id
-  Object.assign(editForm, client)
+  editForm.id = client.id
+  editForm.name = client.name ?? ''
+  editForm.company_name = client.company_name ?? ''
+  editForm.email = client.email ?? ''
+  editForm.address = client.address ?? ''
   editing.value = true
 }
-function editSave() {
-  clientStore.update(editForm)
-  // validation
-  editing.value = false
-  resetInputs(editForm)
-}
-function cancelEdit() {
-  // Reset edit state
+
+async function editSave() {
+  if (editForm.id == null) return
+
+  // Only send editable fields (PATCH)
+  await clientStore.edit(editForm.id, {
+    name: editForm.name,
+    company_name: editForm.company_name,
+    email: editForm.email,
+    address: editForm.address,
+  })
+
   editing.value = false
   editedRowId.value = null
+  editForm.id = null
   resetInputs(editForm)
 }
-function removeClient(client) {
-  clientStore.del(client)
+
+function cancelEdit() {
+  editing.value = false
+  editedRowId.value = null
+  editForm.id = null
+  resetInputs(editForm)
 }
+
+async function removeClient(id: number) {
+  await clientStore.remove(id)
+}
+
 // Search
 const searchQuery = ref('')
 
 const filteredClients = computed(() => {
-  return clientStore.clients.filter((c) => {
-    return c.name.trim().toLowerCase().includes(searchQuery.value.toLowerCase())
-  })
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return clientStore.clients
+  return clientStore.clients.filter((c: any) => (c.name ?? '').toLowerCase().includes(q))
 })
 </script>
 <template>
@@ -99,7 +126,7 @@ const filteredClients = computed(() => {
                 </LeTh>
                 <LeTh>
                   <LeInput label="" id="new-client-company-1" name="client-company" type="text"
-                    placeholder="Company name" autocomplete="organization" required v-model="clientForm.company" />
+                    placeholder="Company name" autocomplete="organization" required v-model="clientForm.company_name" />
                 </LeTh>
                 <LeTh>
                   <LeInput label="" id="new-client-email-1" name="client-email" type="text" placeholder="Email"
@@ -109,11 +136,9 @@ const filteredClients = computed(() => {
                   <LeInput label="" id="new-client-address-1" name="client-address" type="text" placeholder="Address"
                     autocomplete="address" required v-model="clientForm.address" />
                 </LeTh>
-                <LeTh class="">
+                <LeTh>
                   <div class="mx-1 flex w-full justify-center">
-                    <LeBtn @click="
-                      (addNewClient(clientForm), console.log('add new in template clicked '))
-                      " buttonText="">
+                    <LeBtn @click="addClient()">
                       <div class="flex items-center gap-2">
                         <UserPlusIcon class="size-5"></UserPlusIcon>
                         Add New
@@ -124,15 +149,15 @@ const filteredClients = computed(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(client, index) in filteredClients" :key="index">
+              <tr v-for="client in filteredClients" :key="client.id">
                 <!-- Editable Row -->
                 <template v-if="editing && editedRowId === client.id">
                   <LeTd>
                     <LeInput :id="`edit-client-name-${client.id}`" :placeholder="client.name" v-model="editForm.name" />
                   </LeTd>
                   <LeTd>
-                    <LeInput :id="`edit-client-company-${client.id}`" :placeholder="client.company"
-                      v-model="editForm.company" />
+                    <LeInput :id="`edit-client-company-${client.id}`" :placeholder="client.company_name"
+                      v-model="editForm.company_name" />
                   </LeTd>
                   <LeTd>
                     <LeInput :id="`edit-client-email-${client.id}`" :placeholder="client.email"
@@ -156,7 +181,7 @@ const filteredClients = computed(() => {
                 <!-- Read-Only Row -->
                 <template v-else>
                   <LeTd>{{ client.name }}</LeTd>
-                  <LeTd>{{ client.company }}</LeTd>
+                  <LeTd>{{ client.company_name }}</LeTd>
                   <LeTd>{{ client.email }}</LeTd>
                   <LeTd class="text-xs"> {{ client.address }}</LeTd>
                   <LeTd>
@@ -165,7 +190,7 @@ const filteredClients = computed(() => {
                       <a href="#" @click="editTrue(client)">
                         <PencilIcon class="hover:text-success size-5"></PencilIcon>
                       </a>
-                      <a href="#" class="hover:text-danger" @click="removeClient(client)">
+                      <a href="#" class="hover:text-danger" @click="removeClient(client.id)">
                         <TrashIcon class="size-5"></TrashIcon>
                       </a>
                     </div>
