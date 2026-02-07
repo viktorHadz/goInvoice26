@@ -12,9 +12,6 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/db"
 )
 
-// This is what allows the custom function to pretend being a handler
-type Handler func(w http.ResponseWriter, r *http.Request) error
-
 func main() {
 	// Config
 	cfg, err := config.Load()
@@ -48,9 +45,8 @@ func main() {
 	port := ":" + cfg.Port
 	router := chi.NewRouter()
 
-	// Methods before server
-	router.Method("/clients", Handler(clientsHandler))
-
+	// Register routes
+	clientsRouter(router)
 	http.ListenAndServe(port, router)
 
 	log.Printf("env=%s db=%s", cfg.Env, cfg.DBPath)
@@ -58,6 +54,28 @@ func main() {
 	log.Fatal(r.Run(":" + cfg.Port))
 }
 
-func clientsHandler() {
+// Registers a clients router with POST, GET, PATCH, DELETE functionality
+func clientsRouter(r chi.Router) {
+	r.Route("/clients", func(r chi.Router) {
+		r.Post("/", createClient) // CREATE  POST /clients
+		r.Get("/", listClients)   // READ    GET  /clients
 
+		r.Route("/{id}", func(r chi.Router) {
+			r.Patch("/", updateClient)  // UPDATE  PATCH /clients/{id}
+			r.Delete("/", deleteClient) // DELETE DELETE /clients/{id}
+		})
+	})
+}
+
+func createClient(w http.ResponseWriter, r *http.Request) {
+	// DB call here
+}
+func listClients(w http.ResponseWriter, r *http.Request) {
+	// DB call here
+}
+func updateClient(w http.ResponseWriter, r *http.Request) {
+	// DB call here
+}
+func deleteClient(w http.ResponseWriter, r *http.Request) {
+	// DB call here
 }
