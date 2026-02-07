@@ -3,12 +3,17 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 	"github.com/viktorHadz/goInvoice26/internal/app/clients"
 	"github.com/viktorHadz/goInvoice26/internal/config"
 	"github.com/viktorHadz/goInvoice26/internal/db"
 )
+
+// This is what allows the custom function to pretend being a handler
+type Handler func(w http.ResponseWriter, r *http.Request) error
 
 func main() {
 	// Config
@@ -39,7 +44,20 @@ func main() {
 	r := gin.Default()
 	clientAPI.Register(r)
 
+	// Create a server and mux
+	port := ":" + cfg.Port
+	router := chi.NewRouter()
+
+	// Methods before server
+	router.Method("/clients", Handler(clientsHandler))
+
+	http.ListenAndServe(port, router)
+
 	log.Printf("env=%s db=%s", cfg.Env, cfg.DBPath)
 	log.Printf("API listening on :%s", cfg.Port)
 	log.Fatal(r.Run(":" + cfg.Port))
+}
+
+func clientsHandler() {
+
 }
