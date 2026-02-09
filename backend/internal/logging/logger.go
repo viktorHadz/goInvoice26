@@ -75,19 +75,17 @@ func InitLogger(cfg config.Config) (*slog.Logger, *httplog.Options) {
 
 func logHandler(isLocalhost bool, handlerOpts *slog.HandlerOptions) slog.Handler {
 	if isLocalhost {
-		// Pretty logs for localhost development.
-		return devslog.NewHandler(os.Stdout, &devslog.Options{
+		base := devslog.NewHandler(os.Stdout, &devslog.Options{
 			SortKeys:           true,
 			MaxErrorStackTrace: 5,
 			MaxSlicePrintSize:  20,
 			HandlerOptions:     handlerOpts,
 		})
+		return traceid.LogHandler(base)
 	}
 
-	// JSON logs for production with "traceId".
-	return traceid.LogHandler(
-		slog.NewJSONHandler(os.Stdout, handlerOpts),
-	)
+	base := slog.NewJSONHandler(os.Stdout, handlerOpts)
+	return traceid.LogHandler(base)
 }
 
 func isDebugHeaderSet(r *http.Request) bool {

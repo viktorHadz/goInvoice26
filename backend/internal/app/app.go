@@ -8,3 +8,7 @@ import (
 type App struct {
 	DB *sql.DB
 }
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}

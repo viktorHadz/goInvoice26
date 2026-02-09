@@ -9,10 +9,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v3"
+	"github.com/go-chi/traceid"
 	"github.com/viktorHadz/goInvoice26/internal/app"
-	apphttp "github.com/viktorHadz/goInvoice26/internal/appHttp"
 	"github.com/viktorHadz/goInvoice26/internal/config"
 	"github.com/viktorHadz/goInvoice26/internal/db"
+	"github.com/viktorHadz/goInvoice26/internal/httpx"
 	"github.com/viktorHadz/goInvoice26/internal/logging"
 )
 
@@ -48,13 +49,13 @@ func main() {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+	r.Use(traceid.Middleware)
+	// logger.Log(ctx, slog.LevelInfo, "Testing logger") |-> usecase example in main
+	// slog.InfoContext(r.Context(), "All clients requested") |-> usecase globaly
 	r.Use(httplog.RequestLogger(logger, opts))
-	logger.Log(ctx, slog.LevelInfo, "Testing logger")
 
 	// Register routes
-	apphttp.RegisterAllRouters(r, &app.App{DB: dbConn})
-
-	log.Printf("env=%s db=%s", cfg.Env, cfg.DBPath)
-	log.Printf("API listening on %s", cfg.Port)
+	httpx.RegisterAllRouters(r, &app.App{DB: dbConn})
+	logger.Log(ctx, slog.LevelInfo, "Init:", "ENV:", cfg.Env, "DB:", cfg.DBPath, "API Listening on:", cfg.Port)
 	http.ListenAndServe(cfg.Port, r)
 }

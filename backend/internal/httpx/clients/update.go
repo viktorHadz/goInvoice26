@@ -6,9 +6,9 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/app"
 )
 
-func deleteClient(a *app.App) http.HandlerFunc {
+func updateClient(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// DB call here db available via app
+		// DB call here
 
 	}
 }

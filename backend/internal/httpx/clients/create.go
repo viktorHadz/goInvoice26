@@ -2,6 +2,7 @@ package clients
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/viktorHadz/goInvoice26/internal/app"
@@ -9,8 +10,6 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/transaction/clients"
 )
 
-// Create is a handler func satisfiying the http.Handler interface
-//
 // Create establishes context | validates reqest body | calls the clients service layer
 func create(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -28,9 +27,13 @@ func create(a *app.App) http.HandlerFunc {
 		// Perform write transaction
 		id, err := clients.Insert(r.Context(), a, &client)
 		if err != nil {
+			slog.ErrorContext(r.Context(), "insert client failed", "err", err)
 			http.Error(w, "Server error", http.StatusInternalServerError)
 			return
 		}
+
+		slog.InfoContext(r.Context(), "client created", "id", id)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]any{"id": id})
