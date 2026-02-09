@@ -1,9 +1,9 @@
-package http
+package apphttp
 
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/viktorHadz/goInvoice26/internal/app"
-	"github.com/viktorHadz/goInvoice26/internal/http/clients"
+	"github.com/viktorHadz/goInvoice26/internal/appHttp/clients"
 )
 
 // Registers all service specific routers

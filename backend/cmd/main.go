@@ -3,25 +3,31 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httplog/v3"
 	"github.com/viktorHadz/goInvoice26/internal/app"
+	apphttp "github.com/viktorHadz/goInvoice26/internal/appHttp"
 	"github.com/viktorHadz/goInvoice26/internal/config"
 	"github.com/viktorHadz/goInvoice26/internal/db"
-	apphttp "github.com/viktorHadz/goInvoice26/internal/http"
+	"github.com/viktorHadz/goInvoice26/internal/logging"
 )
 
 func main() {
-	// Config
+	// Config init
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("CONFIIG INIT")
 
-	// DB
+	// Ctx init
 	ctx := context.Background()
 
+	// DB init
 	dbConn, err := db.OpenDB(cfg.DBPath)
 	if err != nil {
 		log.Fatal(err)
@@ -32,24 +38,23 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Build deps
-	// q := clients.ClientQueries{DB: dbConn}
-	// svc := clients.ClientService{Q: q}
-	// clientAPI := clients.ClientAPI{Svc: svc}
-
-	// Server
-	// r := gin.Default()
-	// clientAPI.Register(r)
-
 	// Create a server and mux
-	port := ":" + cfg.Port
-	router := chi.NewRouter()
+	r := chi.NewRouter()
+
+	// Logger init
+	logger, opts := logging.InitLogger(cfg)
+
+	// Register middlewares
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Recoverer)
+	r.Use(httplog.RequestLogger(logger, opts))
+	logger.Log(ctx, slog.LevelInfo, "Testing logger")
 
 	// Register routes
-	apphttp.RegisterAllRouters(router, &app.App{DB: dbConn})
-	http.ListenAndServe(port, router)
+	apphttp.RegisterAllRouters(r, &app.App{DB: dbConn})
 
 	log.Printf("env=%s db=%s", cfg.Env, cfg.DBPath)
-	log.Printf("API listening on :%s", cfg.Port)
-	// log.Fatal(r.Run(":" + cfg.Port))
+	log.Printf("API listening on %s", cfg.Port)
+	http.ListenAndServe(cfg.Port, r)
 }
