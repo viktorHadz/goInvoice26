@@ -14,6 +14,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/config"
 	"github.com/viktorHadz/goInvoice26/internal/db"
 	"github.com/viktorHadz/goInvoice26/internal/httpx"
+	"github.com/viktorHadz/goInvoice26/internal/httpx/midware"
 	"github.com/viktorHadz/goInvoice26/internal/logging"
 )
 
@@ -53,6 +54,7 @@ func main() {
 	// logger.Log(ctx, slog.LevelInfo, "Testing logger") |-> usecase example in main
 	// slog.InfoContext(r.Context(), "All clients requested") |-> usecase globaly
 	r.Use(httplog.RequestLogger(logger, opts))
+	r.Use(midware.PanicRecoveryMiddleware())
 
 	// Register routes
 	httpx.RegisterAllRouters(r, &app.App{DB: dbConn})

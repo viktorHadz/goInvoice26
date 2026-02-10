@@ -3,7 +3,7 @@ package models
 type Client struct {
 	ID          int64   `json:"id"`
 	Name        string  `json:"name"`
-	CompanyName string  `json:"company_name"`
+	CompanyName string  `json:"companyName"`
 	Address     string  `json:"address"`
 	Email       string  `json:"email"`
 	CreatedAt   string  `json:"created_at"`
@@ -11,13 +11,14 @@ type Client struct {
 }
 type CreateClient struct {
 	Name        string `json:"name" binding:"required"`
-	CompanyName string `json:"company_name"`
+	CompanyName string `json:"companyName"`
 	Address     string `json:"address"`
 	Email       string `json:"email"`
 }
-type UpdateClientInput struct {
+
+type UpdateClient struct {
 	Name        *string `json:"name"`
-	CompanyName *string `json:"company_name"`
+	CompanyName *string `json:"companyName"`
 	Address     *string `json:"address"`
 	Email       *string `json:"email"`
 }

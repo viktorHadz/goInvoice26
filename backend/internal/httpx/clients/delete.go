@@ -17,18 +17,18 @@ func deleteClient(a *app.App) http.HandlerFunc {
 
 		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil || id <= 0 {
-			res.WriteError(w, http.StatusBadRequest, "invalid_id")
+			res.Error(w, res.Validation(res.Invalid("id", "invalid id")))
 			return
 		}
 
 		affected, err := clients.DeleteClient(a, r.Context(), id)
 		if err != nil {
-			res.WriteError(w, http.StatusInternalServerError, "delete_failed")
+			res.Error(w, res.Database())
 			return
 		}
 
 		if affected == 0 {
-			res.WriteError(w, http.StatusNotFound, "client_not_found")
+			res.Error(w, res.Database())
 			return
 		}
 

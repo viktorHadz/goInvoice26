@@ -21,20 +21,20 @@ const editing = ref(false)
 const editedRowId = ref<number | null>(null)
 
 // resets client inputs
-const resetInputs = (form: { name: string; company_name: string; email: string; address: string }) => {
+const resetInputs = (form: { name: string; companyName: string; email: string; address: string }) => {
   form.name = ''
-  form.company_name = ''
+  form.companyName = ''
   form.email = ''
   form.address = ''
 }
 
-const clientForm = reactive({ name: '', company_name: '', email: '', address: '' })
+const clientForm = reactive({ name: '', companyName: '', email: '', address: '' })
 
 // Keep editForm only with editable fields + id
-const editForm = reactive<{ id: number | null; name: string; company_name: string; email: string; address: string }>({
+const editForm = reactive<{ id: number | null; name: string; companyName: string; email: string; address: string }>({
   id: null,
   name: '',
-  company_name: '',
+  companyName: '',
   email: '',
   address: '',
 })
@@ -48,7 +48,7 @@ function editTrue(client: Client) {
   editedRowId.value = client.id
   editForm.id = client.id
   editForm.name = client.name ?? ''
-  editForm.company_name = client.company_name ?? ''
+  editForm.companyName = client.companyName ?? ''
   editForm.email = client.email ?? ''
   editForm.address = client.address ?? ''
   editing.value = true
@@ -60,7 +60,7 @@ async function editSave() {
   try {
     await clientStore.edit(editForm.id, {
       name: editForm.name,
-      company_name: editForm.company_name,
+      companyName: editForm.companyName,
       email: editForm.email,
       address: editForm.address,
     })
@@ -129,7 +129,7 @@ const filteredClients = computed(() => {
                 </LeTh>
                 <LeTh>
                   <LeInput label="" id="new-client-company-1" name="client-company" type="text"
-                    placeholder="Company name" autocomplete="organization" required v-model="clientForm.company_name" />
+                    placeholder="Company name" autocomplete="organization" required v-model="clientForm.companyName" />
                 </LeTh>
                 <LeTh>
                   <LeInput label="" id="new-client-email-1" name="client-email" type="text" placeholder="Email"
@@ -159,8 +159,8 @@ const filteredClients = computed(() => {
                     <LeInput :id="`edit-client-name-${client.id}`" :placeholder="client.name" v-model="editForm.name" />
                   </LeTd>
                   <LeTd>
-                    <LeInput :id="`edit-client-company-${client.id}`" :placeholder="client.company_name"
-                      v-model="editForm.company_name" />
+                    <LeInput :id="`edit-client-company-${client.id}`" :placeholder="client.companyName"
+                      v-model="editForm.companyName" />
                   </LeTd>
                   <LeTd>
                     <LeInput :id="`edit-client-email-${client.id}`" :placeholder="client.email"
@@ -184,7 +184,7 @@ const filteredClients = computed(() => {
                 <!-- Read-Only Row -->
                 <template v-else>
                   <LeTd>{{ client.name }}</LeTd>
-                  <LeTd>{{ client.company_name }}</LeTd>
+                  <LeTd>{{ client.companyName }}</LeTd>
                   <LeTd>{{ client.email }}</LeTd>
                   <LeTd class="text-xs"> {{ client.address }}</LeTd>
                   <LeTd>

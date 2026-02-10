@@ -1,7 +1,7 @@
 export type Client = {
   id: number
   name: string
-  company_name: string
+  companyName: string
   address: string
   email: string
   created_at?: string

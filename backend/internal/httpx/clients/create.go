@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/viktorHadz/goInvoice26/internal/app"
+	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/clients"
 )
@@ -13,30 +14,38 @@ import (
 // Create establishes context | validates reqest body | calls the clients service layer
 func create(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Decode request payload
+
 		var client models.CreateClient
-		err := json.NewDecoder(r.Body).Decode(&client)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if err := json.NewDecoder(r.Body).Decode(&client); err != nil {
+			res.Error(w, res.Validation(
+				res.Invalid("body", "invalid JSON"),
+			))
 			return
 		}
-		if client.Name == "" || len(client.Name) > 50 {
-			http.Error(w, "Name must be less than 50 characters and cannot be empty", http.StatusBadRequest)
+
+		errs := []res.FieldError{}
+		if client.Name == "" {
+			errs = append(errs, res.Required("name"))
+		} else if len(client.Name) > 50 {
+			errs = append(errs, res.MaxLen("name", 50))
+		}
+
+		if len(errs) > 0 {
+			res.Error(w, res.Validation(errs...))
 			return
 		}
-		// Perform write transaction
+
 		id, err := clients.Insert(r.Context(), a, &client)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "insert client failed", "err", err)
-			http.Error(w, "Server error", http.StatusInternalServerError)
+			res.Error(w, res.Internal())
 			return
 		}
 
 		slog.InfoContext(r.Context(), "client created", "id", id)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]any{"id": id})
-
+		res.JSON(w, http.StatusCreated, map[string]any{
+			"message": "client created",
+			"id":      id,
+		})
 	}
 }
