@@ -16,7 +16,7 @@ func Router(r chi.Router, a *app.App) {
 
 		r.Route("/{id}", func(r chi.Router) {
 			r.Patch("/", updateClient(a))  // UPDATE  PATCH /api/clients/{id}
-			r.Delete("/", deleteClient(a)) // DELETE DELETE /api/clients/{id}
+			r.Delete("/", deleteClient(a)) // DELETE  DELETE /api/clients/{id}
 		})
 	})
 }

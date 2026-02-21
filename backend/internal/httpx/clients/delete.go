@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -12,26 +13,25 @@ import (
 
 func deleteClient(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		idStr := chi.URLParam(r, "id")
-
 		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil || id <= 0 {
-			res.Error(w, res.Validation(res.Invalid("id", "invalid id")))
+			res.Error(w, res.Validation(res.Invalid("id", "invalid route param")))
 			return
 		}
 
 		affected, err := clients.DeleteClient(a, r.Context(), id)
 		if err != nil {
-			res.Error(w, res.Database())
+			slog.ErrorContext(r.Context(), "delete client failed", "id", id, "err", err)
+			res.Error(w, res.Database(err))
 			return
 		}
 
 		if affected == 0 {
-			res.Error(w, res.Database())
+			res.Error(w, res.NotFound("client not found"))
 			return
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		res.NoContent(w)
 	}
 }

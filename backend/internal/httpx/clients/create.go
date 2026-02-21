@@ -14,22 +14,17 @@ import (
 // Create establishes context | validates reqest body | calls the clients service layer
 func create(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		var client models.CreateClient
-		if err := json.NewDecoder(r.Body).Decode(&client); err != nil {
-			res.Error(w, res.Validation(
-				res.Invalid("body", "invalid JSON"),
-			))
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+
+		if err := decoder.Decode(&client); err != nil {
+			res.Error(w, res.BadJSON())
 			return
 		}
 
-		errs := []res.FieldError{}
-		if client.Name == "" {
-			errs = append(errs, res.Required("name"))
-		} else if len(client.Name) > 50 {
-			errs = append(errs, res.MaxLen("name", 50))
-		}
-
+		var errs []res.FieldError
+		client, errs = ValidateCreate(client)
 		if len(errs) > 0 {
 			res.Error(w, res.Validation(errs...))
 			return
@@ -38,7 +33,7 @@ func create(a *app.App) http.HandlerFunc {
 		id, err := clients.Insert(r.Context(), a, &client)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "insert client failed", "err", err)
-			res.Error(w, res.Internal())
+			res.Error(w, res.Database(err))
 			return
 		}
 

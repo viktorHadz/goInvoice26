@@ -1,50 +1,3 @@
-// Package response provides a single, consistent way to write API errors as responses
-//
-//	Usage:
-//		response.Error(w, response.Validation(
-//		    response.Required("name"),
-//		    response.MaxLen("email", 320),
-//		))
-//
-//		response.Error(w, response.NotFound("client"))
-//		response.Error(w, response.Unauthorized())
-//		response.Error(w, response.Forbidden())
-//		response.Error(w, response.Conflict("email already exists"))
-//		response.Error(w, err) // unknown err -> INTERNAL_ERROR
-//
-//	Success helpers:
-//		response.JSON(w, http.StatusOK, payload)
-//		response.NoContent(w)
-//
-//
-//
-//	Validation Pattern:
-//		errs := []res.FieldError{}
-//
-//		if client.Name == "" {
-//			errs = append(errs, res.Required("name"))
-//		} else if len(client.Name) > 50 {
-//			errs = append(errs, res.MaxLen("name", 50))
-//		}
-//
-//		if len(errs) > 0 {
-//			res.Error(w, res.Validation(errs...))
-//			return
-//		}
-//
-//	Error response JSON shape:
-//
-//		{
-//		  "error": {
-//		    "id": "a1b2c3d4e5f6a7b8",
-//		    "code": "VALIDATION_FAILED",
-//		    "message": "Validation failed",
-//		    "fields": [
-//		      { "field": "name", "code": "REQUIRED", "message": "is required" },
-//		      { "field": "email", "code": "MAX_LENGTH", "message": "too long", "meta": { "max": 320 } }
-//		    ]
-//		  }
-//		}
 package res
 
 import (
@@ -55,99 +8,9 @@ import (
 	"net/http"
 )
 
-// --------------------------
-// Success writers (optional)
-// --------------------------
-
-// JSON writes a JSON success payload.
-func JSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-// NoContent writes a 204 with no body.
-func NoContent(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusNoContent)
-}
-
-// --------------------------
-// Single error writer
-// --------------------------
-
-// Error is the ONLY error writer that should be used in the app
+// FieldError represents a single validation problem for one specific input field.
 //
-// Pass:
-//
-// - one of the builders (Validation, NotFound,..)
-//
-// - a random error (it will be treated as a safe default -  INTERNAL_ERROR)
-//
-//	func Error(w http.ResponseWriter, err error) {
-//		var api *APIError
-//		if errors.As(err, &api) {
-//			writeAPIError(w, api)
-//			return
-//		}
-//		// Unknown/untyped errors are INTERNAL_ERROR (safe default)
-//		writeAPIError(w, Internal())
-//	}
-func Error(w http.ResponseWriter, err error) {
-	var api *APIError
-	if errors.As(err, &api) {
-		writeAPIError(w, api)
-		return
-	}
-	// Unknown/untyped errors are INTERNAL_ERROR (safe default)
-	writeAPIError(w, Internal())
-}
-
-func writeAPIError(w http.ResponseWriter, e *APIError) {
-	if e.ID == "" {
-		e.ID = newErrorID()
-	}
-	if e.Status == 0 {
-		e.Status = http.StatusInternalServerError
-	}
-	if e.Code == "" {
-		e.Code = CodeInternalError
-	}
-	if e.Message == "" {
-		e.Message = defaultMessage(e.Code)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(e.Status)
-	_ = json.NewEncoder(w).Encode(ErrorEnvelope{Error: *e})
-}
-
-// --------------------------
-// Error response model
-// --------------------------
-
-type ErrorEnvelope struct {
-	Error APIError `json:"error"`
-}
-
-type APIError struct {
-	// Correlation id for logs and potential tickets support tickets.
-	ID string `json:"id,omitempty"`
-
-	// HTTP status is NOT included in JSON (transport detail).
-	Status int `json:"-"`
-
-	// Stable error code
-	Code string `json:"code"`
-
-	// Human readable summary (use for toasts, frontend, status messages etc).
-	Message string `json:"message,omitempty"`
-
-	// Per-field validation errors (if any).
-	Fields []FieldError `json:"fields,omitempty"`
-}
-
-func (e *APIError) Error() string { return e.Code }
-
+// Usage: build a FieldError slice during validation and return via Validation(...)
 type FieldError struct {
 	Field   string         `json:"field"`
 	Code    string         `json:"code"`
@@ -155,321 +18,281 @@ type FieldError struct {
 	Meta    map[string]any `json:"meta,omitempty"`
 }
 
-// --------------------------
-// Grouped error codes (top-level)
-// --------------------------
+/*
+It is both:
+- a Go error (implements error interface via Error())
+- a structured payload to send client
 
-// Validation (400)
-const (
-	CodeValidationFailed = "VALIDATION_FAILED"
-)
+Usage:
+- Whenever returning a non-2xx response in a consistent JSON shape
 
-// Auth (401)
-const (
-	CodeAuthRequired     = "AUTH_REQUIRED"
-	CodeAuthMissingToken = "AUTH_MISSING_TOKEN"
-	CodeAuthInvalidToken = "AUTH_INVALID_TOKEN"
-	CodeAuthExpiredToken = "AUTH_EXPIRED_TOKEN"
-)
+Notes:
+- ID - for users to report errors to then find in logs - sent to client .
+- Code - error code - sent to the client.
+- Message - for displaying errors on the client.
+- Fields - used in multiple field validation - sent to client.
+- Status is HTTP transport detail - not sent in JSON.
+- Cause is an internal error for logging - not sent in JSON.
+*/
+type APIError struct {
+	ID      string       `json:"id,omitempty"`     // Generated if missing
+	Code    string       `json:"code"`             // Stable code for frontend logic
+	Message string       `json:"message"`          // Safe summary to show user
+	Fields  []FieldError `json:"fields,omitempty"` // Used only with validation
 
-// Permission (403)
-const (
-	CodePermissionDenied = "PERMISSION_DENIED"
-)
+	Status int   `json:"-"` // HTTP status code
+	Cause  error `json:"-"` // Underlying error - for logs only never returned to client
+}
 
-// Not found (404)
-const (
-	CodeNotFound = "NOT_FOUND"
-)
+// Error makes APIError implement the built-in error interface.
+// In logs, this will show the error Code only unless logged via Message separately.
+func (e *APIError) Error() string { return e.Code }
 
-// Conflict (409)
-const (
-	CodeConflict = "CONFLICT"
-)
+// envelope is the JSON shape the API returns for errors.
+// Clients can always expect: { "error": { ... } }
+type envelope struct {
+	Error *APIError `json:"error"`
+}
 
-// Rate limit (429)
-const (
-	CodeRateLimitExceeded = "RATE_LIMIT_EXCEEDED"
-)
+/*
+JSON writes a successful JSON response.
 
-// Server (500)
-const (
-	CodeInternalError = "INTERNAL_ERROR"
-	CodeDatabaseError = "DATABASE_ERROR"
-)
+Usage:
+- request succeeded (2xx / 3xx)
+- need to return a JSON body
 
-// --------------------------
-// Validation field codes
-// --------------------------
+Examples:
 
-const (
-	FieldRequired     = "REQUIRED"
-	FieldMaxLength    = "MAX_LENGTH"
-	FieldMinLength    = "MIN_LENGTH"
-	FieldInvalid      = "INVALID"
-	FieldInvalidFmt   = "INVALID_FORMAT"
-	FieldInvalidEmail = "INVALID_EMAIL"
-	FieldOutOfRange   = "OUT_OF_RANGE"
-)
+- res.JSON(w, http.StatusOK, client)
 
-// --------------------------
-// Error builders
-// --------------------------
+- res.JSON(w, http.StatusCreated, map[string]any{"id": id})
+*/
+func JSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
 
-// Error builder:
-//
-// Returns a 400 VALIDATION_FAILED with a field error array.
+/*
+NoContent writes a 204 No Content response.
+
+Usage:
+- operation succeeded but there is no body to return (common for DELETE/PATCH)
+
+Examples:
+- PATCH updated successfully, nothing else to return
+- DELETE successful
+*/
+func NoContent(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
+/*
+Error writes an error response in the standard JSON envelope and returns the error ID.
+
+Usage:
+- exiting a handler early with an error response
+
+Important behavior:
+- If `err` is an *APIError, it writes it.
+- If `err` is a normal error, it is converted into an INTERNAL 500 error.
+- It fills missing defaults (ID/status/code/message)
+
+Return value:
+- the correlation id used for the response - for logging/support tickets
+
+Example:
+
+- res.Error(w, res.NotFound("client not found"))
+
+- res.Error(w, res.Validation(errs...))
+
+- res.Error(w, res.Database(err))
+*/
+func Error(w http.ResponseWriter, err error) string {
+	ae := AsAPIError(err)
+
+	if ae.ID == "" {
+		ae.ID = newID()
+	}
+	if ae.Status == 0 {
+		ae.Status = http.StatusInternalServerError
+	}
+	if ae.Code == "" {
+		ae.Code = "INTERNAL"
+	}
+	if ae.Message == "" {
+		ae.Message = "Internal server error"
+	}
+
+	JSON(w, ae.Status, envelope{Error: ae})
+	return ae.ID
+}
+
+/*
+AsAPIError converts any error into an *APIError.
+
+Usage:
+- to normalize error into the API error type
+- to inspect status/code before writing/logging
+
+Behavior:
+- If err already wraps/is an *APIError, it returns a safe to modify COPY of it.
+- Otherwise it wraps it as Internal(err).
+
+Example:
+- ae := res.AsAPIError(err)
+- if ae.Status >= 500 { slog.ErrorContext(ctx, "server error", "cause", ae.Cause) }
+*/
+func AsAPIError(err error) *APIError {
+	var ae *APIError
+	if errors.As(err, &ae) {
+		// copy to avoid mutating shared pointers
+		out := *ae
+		return &out
+	}
+	return Internal(err)
+}
+
+// ---- constructors
+
+/*
+BadJSON creates a 400 error for invalid JSON payloads.
+
+Usage:
+- json decoding fails
+- request body is not valid JSON
+- request contains unknown fields (if DisallowUnknownFields() is enabled)
+
+Example:
+- dec := json.NewDecoder(r.Body) dec.DisallowUnknownFields()
+- if err := dec.Decode(&dst); err != nil { res.Error(w, res.BadJSON()); return }
+*/
+func BadJSON() *APIError {
+	return &APIError{
+		Status:  http.StatusBadRequest,
+		Code:    "BAD_JSON",
+		Message: "Invalid JSON payload",
+	}
+}
+
+/*
+Validation creates a 400 error for field validation problems.
+
+Usage:
+- the request was syntactically valid JSON
+- but values fail the rules (required, max length, invalid email, etc.)
+
+Example:
+- if len(errs) > 0 { res.Error(w, res.Validation(errs...)); return }
+*/
 func Validation(fields ...FieldError) *APIError {
 	return &APIError{
 		Status:  http.StatusBadRequest,
-		Code:    CodeValidationFailed,
+		Code:    "VALIDATION_FAILED",
 		Message: "Validation failed",
 		Fields:  fields,
 	}
 }
 
-// Error builder:
-//
-// Returns a 404 NOT_FOUND.
-func NotFound(resource string) *APIError {
-	msg := "Not found"
-	if resource != "" {
-		msg = resource + " not found"
+/*
+NotFound creates a 404 error.
+
+Usage:
+- the requested resource doesn't exist
+- an update/delete affected 0 rows for an id that should exist
+
+Example:
+- if affected == 0 { res.Error(w, res.NotFound("client not found")); return }
+*/
+func NotFound(msg string) *APIError {
+	if msg == "" {
+		msg = "Not found"
 	}
 	return &APIError{
 		Status:  http.StatusNotFound,
-		Code:    CodeNotFound,
+		Code:    "NOT_FOUND",
 		Message: msg,
 	}
 }
 
-// Error builder:
-//
-// Returns a 409 CONFLICT.
-func Conflict(msg string) *APIError {
-	if msg == "" {
-		msg = "Conflict"
-	}
-	return &APIError{
-		Status:  http.StatusConflict,
-		Code:    CodeConflict,
-		Message: msg,
-	}
-}
+/*
+Database creates a 500 error representing a DB failure.
 
-// Error builder:
-//
-// Returns a 401 AUTH_REQUIRED.
-func Unauthorized() *APIError {
-	return &APIError{
-		Status:  http.StatusUnauthorized,
-		Code:    CodeAuthRequired,
-		Message: "Authentication required",
-	}
-}
+Usage:
+- the DB call returned an error - query failed, connection issue...
+- Hides details from the client but keeps the cause for logs
 
-// Error builder:
-//
-// Returns a 401 AUTH_MISSING_TOKEN.
-func MissingToken() *APIError {
-	return &APIError{
-		Status:  http.StatusUnauthorized,
-		Code:    CodeAuthMissingToken,
-		Message: "Missing authentication token",
-	}
-}
+Important:
+- This is for unexpected DB errors (500).
 
-// Error builder:
-//
-// Returns a 401 AUTH_INVALID_TOKEN.
-func InvalidToken() *APIError {
-	return &APIError{
-		Status:  http.StatusUnauthorized,
-		Code:    CodeAuthInvalidToken,
-		Message: "Invalid authentication token",
-	}
-}
-
-// Error builder:
-//
-// Returns a 401 AUTH_EXPIRED_TOKEN.
-func ExpiredToken() *APIError {
-	return &APIError{
-		Status:  http.StatusUnauthorized,
-		Code:    CodeAuthExpiredToken,
-		Message: "Authentication token expired",
-	}
-}
-
-// Error builder:
-//
-// Returns a 403 PERMISSION_DENIED.
-func Forbidden() *APIError {
-	return &APIError{
-		Status:  http.StatusForbidden,
-		Code:    CodePermissionDenied,
-		Message: "Permission denied",
-	}
-}
-
-// Error builder:
-//
-// Returns a 429 RATE_LIMIT_EXCEEDED.
-func RateLimitExceeded() *APIError {
-	return &APIError{
-		Status:  http.StatusTooManyRequests,
-		Code:    CodeRateLimitExceeded,
-		Message: "Rate limit exceeded",
-	}
-}
-
-// Error builder:
-//
-// Returns a 500 DATABASE_ERROR use when it's DB-related
-//
-//   - Client receives http.StatusInternalServerError
-func Database() *APIError {
+Example:
+- if err != nil { slog.ErrorContext(ctx, "db failed", "err", err); res.Error(w, res.Database(err)); return }
+*/
+func Database(err error) *APIError {
 	return &APIError{
 		Status:  http.StatusInternalServerError,
-		Code:    CodeDatabaseError,
+		Code:    "DATABASE_ERROR",
 		Message: "Database error",
+		Cause:   err,
 	}
 }
 
-// Error builder:
-//
-// Returns a 500 INTERNAL_ERROR (safe default).
-func Internal() *APIError {
+/*
+Internal creates a 500 INTERNAL error.
+
+Usage
+- something unexpected happened
+- there is a raw error and it need a safe response for client
+
+Example:
+- return res.Internal(err)
+*/
+func Internal(err error) *APIError {
 	return &APIError{
 		Status:  http.StatusInternalServerError,
-		Code:    CodeInternalError,
+		Code:    "INTERNAL",
 		Message: "Internal server error",
+		Cause:   err,
 	}
 }
 
-// --------------------------
-// FieldError builders (use inside Validation())
-// --------------------------
-
-// Validation FieldError Builder: field is required
+// ---- field error helpers
+// Invalid builds a validation FieldError for "this value is invalid".
+// Examples:
 //
-// Example:
+// - res.Invalid("email", "email format is invalid")
 //
-//	res.Error(res.Validation(res.Required("name")))
-//
-// Error => "name is required"
-func Required(field string) FieldError {
-	return FieldError{
-		Field:   field,
-		Code:    FieldRequired,
-		Message: "is required",
-	}
-}
-
-// Validation FieldError Builder: string too long
-//
-// Example:
-//
-//	res.Error(res.Validation(res.MaxLen("email", 50)))
-//
-// Error => "email too long max length 50"
-func MaxLen(field string, max int) FieldError {
-	return FieldError{
-		Field:   field,
-		Code:    FieldMaxLength,
-		Message: "too long",
-		Meta: map[string]any{
-			"max": max,
-		},
-	}
-}
-
-// Validation FieldError Builder: string too short
-//
-// Example:
-//
-//	res.Error(res.Validation(res.MinLen("name", 50)))
-//
-// Error => "name too short max length 2"
-func MinLen(field string, min int) FieldError {
-	return FieldError{
-		Field:   field,
-		Code:    FieldMinLength,
-		Message: "too short",
-		Meta: map[string]any{
-			"min": min,
-		},
-	}
-}
-
-// Validation FieldError Builder: invalid value with custom message
-//
-// Example:
-//
-//	res.Error(res.Validation(res.Invalid("id", "id is invalid")))
-//
-// Error => "invalid id"
-func Invalid(field string, msg string) FieldError {
+// - res.Invalid("id", "invalid route param")
+func Invalid(field, msg string) FieldError {
 	if msg == "" {
 		msg = "invalid"
 	}
-	return FieldError{
-		Field:   field,
-		Code:    FieldInvalid,
-		Message: msg,
-	}
+	return FieldError{Field: field, Code: "INVALID", Message: msg}
 }
 
-// Validation FieldError Builder: numeric range issue
-//
-// Example:
-//
-//	res.Error(res.Validation(res.OutOfRange("discount percentage", 0, 100)))
-//
-// Error => "discount percentage out of range min 0 max 100"
-func OutOfRange(field string, min, max any) FieldError {
-	return FieldError{
-		Field:   field,
-		Code:    FieldOutOfRange,
-		Message: "out of range",
-		Meta: map[string]any{
-			"min": min,
-			"max": max,
-		},
-	}
+func Required(field string) FieldError {
+	return FieldError{Field: field, Code: "REQUIRED", Message: "is required"}
 }
 
-func newErrorID() string {
+func MaxLen(field string, max int) FieldError {
+	return FieldError{
+		Field:   field,
+		Code:    "MAX_LENGTH",
+		Message: "too long",
+		Meta:    map[string]any{"max": max},
+	}
+}
+func MinLen(field string, min int) FieldError {
+	return FieldError{
+		Field:   field,
+		Code:    "MIN_LENGTH",
+		Message: "too short",
+		Meta:    map[string]any{"min": min},
+	}
+}
+func newID() string {
 	var b [8]byte
 	_, _ = rand.Read(b[:])
 	return hex.EncodeToString(b[:])
-}
-
-func defaultMessage(code string) string {
-	switch code {
-	case CodeValidationFailed:
-		return "Validation failed"
-	case CodeAuthRequired:
-		return "Authentication required"
-	case CodeAuthMissingToken:
-		return "Missing authentication token"
-	case CodeAuthInvalidToken:
-		return "Invalid authentication token"
-	case CodeAuthExpiredToken:
-		return "Authentication token expired"
-	case CodePermissionDenied:
-		return "Permission denied"
-	case CodeNotFound:
-		return "Not found"
-	case CodeConflict:
-		return "Conflict"
-	case CodeRateLimitExceeded:
-		return "Rate limit exceeded"
-	case CodeDatabaseError:
-		return "Database error"
-	case CodeInternalError:
-		return "Internal server error"
-	default:
-		return "Error"
-	}
 }

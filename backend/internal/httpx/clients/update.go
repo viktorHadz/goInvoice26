@@ -2,6 +2,7 @@ package clients
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -14,7 +15,6 @@ import (
 
 func updateClient(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Parse id
 		idStr := chi.URLParam(r, "id")
 		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil || id <= 0 {
@@ -22,34 +22,31 @@ func updateClient(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		// Decode PATCH payload
-		var patch models.UpdateClient
-		if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
-			res.Error(w, res.Validation(res.Invalid("body", "invalid JSON payload")))
+		var client models.UpdateClient
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&client); err != nil {
+			res.Error(w, res.BadJSON())
 			return
 		}
 
-		// Validate and sanitize
-		patch, err = ValidateUpdate(patch)
-		if err != nil {
-			res.Error(w, err)
+		client, errs := ValidateUpdate(client)
+		if len(errs) > 0 {
+			res.Error(w, res.Validation(errs...))
 			return
 		}
 
-		// Update
-		affected, err := clients.UpdateClient(r.Context(), a, id, patch)
+		affected, err := clients.UpdateClient(r.Context(), a, id, client)
 		if err != nil {
-			res.Error(w, res.Database())
+			slog.ErrorContext(r.Context(), "update client failed", "id", id, "err", err)
+			res.Error(w, res.Database(err))
 			return
 		}
 		if affected == 0 {
-			res.Error(w, res.NotFound("client"))
+			res.Error(w, res.NotFound("client not found"))
 			return
 		}
 
-		// Respond
-		// Needs to be refetched via res.JSON()
-		// if multiple users access the same record concurently
 		res.NoContent(w)
 	}
 }

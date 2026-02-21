@@ -6,91 +6,81 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/validate"
 )
 
-//---------------------------------
-// Validation Wrappers  => Validate and append to errors
-//---------------------------------
+func ValidateCreate(client models.CreateClient) (models.CreateClient, []res.FieldError) {
+	var errs []res.FieldError
 
-// validates a concrete string field, returns sanitized value and appends errors.
-func validateString(value string, rules validate.TextRules, errs *[]res.FieldError) string {
-	v, e := validate.Text(value, rules)
-	*errs = append(*errs, e...)
-	return v
-}
-
-// validates a *string only if present (PATCH semantics), writes back sanitized value.
-func validateStringPtr(ptr **string, rules validate.TextRules, errs *[]res.FieldError) {
-	if *ptr == nil {
-		return
-	}
-	v, e := validate.Text(**ptr, rules)
-	*errs = append(*errs, e...)
-	**ptr = v
-}
-
-// validates email only if present (PATCH semantics), writes back sanitized value.
-func validateEmailPtr(ptr **string, field string, maxRunes int, errs *[]res.FieldError) {
-	if *ptr == nil {
-		return
-	}
-	v, e := validate.Email(field, **ptr, maxRunes)
-	*errs = append(*errs, e...)
-	**ptr = v
-}
-
-// ---------------------------------
-// Validation Wrappers  => CREATE and POST
-// ---------------------------------
-// Sanitizes input received from client when creating a new client
-func ValidateCreate(in models.CreateClient) (models.CreateClient, error) {
-	errs := []res.FieldError{}
-
-	in.Name = validateString(in.Name, validate.TextRules{
+	client.Name, errs = text(client.Name, validate.TextRules{
 		Field: "name", Required: true, Min: 2, Max: 50, SingleLine: true, Trim: true,
-	}, &errs)
+	}, errs)
 
-	in.CompanyName = validateString(in.CompanyName, validate.TextRules{
+	client.CompanyName, errs = text(client.CompanyName, validate.TextRules{
 		Field: "companyName", Max: 70, SingleLine: true, Trim: true,
-	}, &errs)
+	}, errs)
 
-	in.Address = validateString(in.Address, validate.TextRules{
+	client.Address, errs = text(client.Address, validate.TextRules{
 		Field: "address", Max: 70, SingleLine: true, Trim: true,
-	}, &errs)
+	}, errs)
 
-	in.Email, _ = validate.Email("email", in.Email, 50)
-	_, emailErrs := validate.Email("email", in.Email, 50)
-	errs = append(errs, emailErrs...)
+	client.Email, errs = email(client.Email, "email", 50, errs)
 
-	if len(errs) > 0 {
-		return in, res.Validation(errs...)
-	}
-	return in, nil
+	return client, errs
 }
 
-// Sanitizes input received from client when updating a new client
-func ValidateUpdate(in models.UpdateClient) (models.UpdateClient, error) {
-	errs := []res.FieldError{}
+func ValidateUpdate(client models.UpdateClient) (models.UpdateClient, []res.FieldError) {
+	var errs []res.FieldError
 
-	validateStringPtr(&in.Name, validate.TextRules{
-		Field: "name", Required: true, Min: 2, Max: 50, SingleLine: true, Trim: true,
-	}, &errs)
+	client.Name, errs = textPtr(client.Name, validate.TextRules{
+		Field: "name", Min: 2, Max: 50, SingleLine: true, Trim: true,
+	}, errs)
 
-	validateStringPtr(&in.CompanyName, validate.TextRules{
+	client.CompanyName, errs = textPtr(client.CompanyName, validate.TextRules{
 		Field: "companyName", Max: 70, SingleLine: true, Trim: true,
-	}, &errs)
+	}, errs)
 
-	validateStringPtr(&in.Address, validate.TextRules{
+	client.Address, errs = textPtr(client.Address, validate.TextRules{
 		Field: "address", Max: 70, SingleLine: true, Trim: true,
-	}, &errs)
+	}, errs)
 
-	validateEmailPtr(&in.Email, "email", 50, &errs)
+	client.Email, errs = emailPtr(client.Email, "email", 50, errs)
 
-	// Reject empty PATCH!
-	if in.Name == nil && in.CompanyName == nil && in.Address == nil && in.Email == nil {
+	// Reject empty PATCH payload
+	if client.Name == nil && client.CompanyName == nil && client.Address == nil && client.Email == nil {
 		errs = append(errs, res.Invalid("request", "no fields to update"))
 	}
 
-	if len(errs) > 0 {
-		return in, res.Validation(errs...)
+	return client, errs
+}
+
+// --------------------
+// helpers
+// --------------------
+
+func text(value string, rules validate.TextRules, errs []res.FieldError) (string, []res.FieldError) {
+	v, e := validate.Text(value, rules)
+	return v, append(errs, e...)
+}
+
+func email(value string, field string, maxRunes int, errs []res.FieldError) (string, []res.FieldError) {
+	v, e := validate.Email(field, value, maxRunes)
+	return v, append(errs, e...)
+}
+
+func textPtr(ptr *string, rules validate.TextRules, errs []res.FieldError) (*string, []res.FieldError) {
+	if ptr == nil {
+		return nil, errs
 	}
-	return in, nil
+	v, e := validate.Text(*ptr, rules)
+	errs = append(errs, e...)
+	out := v
+	return &out, errs
+}
+
+func emailPtr(ptr *string, field string, maxRunes int, errs []res.FieldError) (*string, []res.FieldError) {
+	if ptr == nil {
+		return nil, errs
+	}
+	v, e := validate.Email(field, *ptr, maxRunes)
+	errs = append(errs, e...)
+	out := v
+	return &out, errs
 }

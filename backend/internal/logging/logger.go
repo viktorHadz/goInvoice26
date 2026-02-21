@@ -11,7 +11,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/config"
 )
 
-// Returns logger, set options inside here
+// Returns logger, set options inside InitLogger function
 func InitLogger(cfg config.Config) (*slog.Logger, *httplog.Options) {
 	isLocalhost := cfg.Env == "localhost" || cfg.Env == "dev"
 	logFormat := httplog.SchemaECS.Concise(isLocalhost)
