@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
 import { useColorMode } from '@vueuse/core'
 

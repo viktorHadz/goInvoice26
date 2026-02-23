@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useClientStore } from '@/stores/clients'
-import { reactive, ref, computed } from 'vue'
-import LeBtn from '@/components/UI/LeBtn.vue'
+import { reactive, ref, computed, watch } from 'vue'
+import TheButton from '../UI/TheButton.vue'
 import LeTd from '../UI/table/LeTd.vue'
 import LeInput from '../UI/LeInput.vue'
 import LeTh from '../UI/table/LeTh.vue'
@@ -21,7 +21,12 @@ const editing = ref(false)
 const editedRowId = ref<number | null>(null)
 
 // resets client inputs
-const resetInputs = (form: { name: string; companyName: string; email: string; address: string }) => {
+const resetInputs = (form: {
+  name: string
+  companyName: string
+  email: string
+  address: string
+}) => {
   form.name = ''
   form.companyName = ''
   form.email = ''
@@ -31,7 +36,13 @@ const resetInputs = (form: { name: string; companyName: string; email: string; a
 const clientForm = reactive({ name: '', companyName: '', email: '', address: '' })
 
 // Keep editForm only with editable fields + id
-const editForm = reactive<{ id: number | null; name: string; companyName: string; email: string; address: string }>({
+const editForm = reactive<{
+  id: number | null
+  name: string
+  companyName: string
+  email: string
+  address: string
+}>({
   id: null,
   name: '',
   companyName: '',
@@ -39,7 +50,17 @@ const editForm = reactive<{ id: number | null; name: string; companyName: string
   address: '',
 })
 
+const addNewEnabled = ref(false)
+watch(clientForm, (value) => {
+  if (value.name.length > 0) {
+    addNewEnabled.value = true
+  } else {
+    addNewEnabled.value = false
+  }
+})
 async function addClient() {
+  if (!addNewEnabled.value) return
+
   await clientStore.createNew(clientForm)
   resetInputs(clientForm)
 }
@@ -141,12 +162,13 @@ const filteredClients = computed(() => {
                 </LeTh>
                 <LeTh>
                   <div class="mx-1 flex w-full justify-center">
-                    <LeBtn @click="addClient()">
+                    <TheButton :disabled="!addNewEnabled" @click="addClient()"
+                      :class="addNewEnabled ? 'cursor-pointer!' : 'cursor-not-allowed!'">
                       <div class="flex items-center gap-2">
                         <UserPlusIcon class="size-5"></UserPlusIcon>
                         Add New
                       </div>
-                    </LeBtn>
+                    </TheButton>
                   </div>
                 </LeTh>
               </tr>

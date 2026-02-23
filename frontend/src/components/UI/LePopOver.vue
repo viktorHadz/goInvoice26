@@ -5,14 +5,14 @@
         :class="open ? 'text-white' : 'text-white/90'"
         class="group inline-flex items-center rounded-md px-3 py-2 text-base font-medium hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/75"
       >
-        <LeBtn class="flex items-center gap-2">
+        <TheButton class="flex items-center gap-2">
           Add
           <ChevronDownIcon
             :class="open ? 'text-acc' : 'text-acc/70'"
             class="group-hover:acc/80 size-4 transition duration-150 ease-in-out"
             aria-hidden="true"
           />
-        </LeBtn>
+        </TheButton>
       </PopoverButton>
 
       <transition
@@ -40,9 +40,9 @@
                   class="my-2 grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-2"
                 >
                   <div class="">{{ item.name }}</div>
-                  <LeBtn class="text-xs" title="Select to edit item">select</LeBtn>
+                  <TheButton class="text-xs" title="Select to edit item">select</TheButton>
                   <input class="input h-6.5 max-w-8" v-model="itemForm.qty" />
-                  <LeBtn class="text-xs">add</LeBtn>
+                  <TheButton class="text-xs">add</TheButton>
                 </div>
               </div>
             </div>

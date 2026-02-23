@@ -1,12 +1,13 @@
 export type Client = {
   id: number
   name: string
-  companyName: string
-  address: string
-  email: string
+  companyName?: string
+  address?: string
+  email?: string
   created_at?: string
   updated_at?: string
 }
+
 export type UpdateClientInput = Partial<Omit<Client, 'id' | 'created_at' | 'updated_at'>>
 
 // API request helper
@@ -14,8 +15,15 @@ async function request<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const res = await fetch(input, init)
 
   if (!res.ok) {
-    const msg = await res.text().catch(() => '')
-    throw new Error(msg || `Response status: ${res.status}`)
+    const text = await res.text().catch(() => '')
+    try {
+      const data = text ? JSON.parse(text) : null
+      const apiMsg = data?.error?.message
+      if (apiMsg) throw new Error(apiMsg)
+    } catch {
+      // fall through
+    }
+    throw new Error(text || `Response status: ${res.status}`)
   }
 
   // Handle 204 No Content
@@ -33,11 +41,14 @@ async function request<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
 }
 
 // Handlers - consumed by frontend
-export function getClients(): Promise<Client[]> {
-  return request<Client[]>('/api/clients')
+export async function getClients(): Promise<Client[]> {
+  const data = await request<Client[] | null>('/api/clients')
+  return Array.isArray(data) ? data : []
 }
 
 export function createNewClient(client: Omit<Client, 'id'>): Promise<Client> {
+  console.log('Preparing to send client to backend', client)
+
   return request<Client>('/api/clients', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

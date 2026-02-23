@@ -12,6 +12,7 @@
 
     /* Firefox */
     input[type='number'] {
+      appearance: textfield;
       -moz-appearance: textfield;
     }
   }
@@ -20,12 +21,13 @@
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 @custom-variant light (&:where([data-theme=light], [data-theme=light] *));
 [data-theme='light'] {
-  --color-primary: oklch(100% 0 0);
+  --color-primary: oklch(95.514% 0.00011 271.152);
+  --color-sec: oklch(0.69 0.1179 150.16);
   /* --color-sec: oklch(0.69 0.1179 150.16); */
   /* --color-acc: oklch(0.84 0.146 85.9); */
-  --color-sec: oklch(0.86 0.0196 204.83);
+  /* --color-sec: oklch(0.86 0.0196 204.83); */
   /* --color-acc: oklch(0.36 0.0389 248.94); */
-  --color-acc: oklch(0.69 0.1179 150.16);
+  --color-acc: oklch(63.842% 0.06606 200.879);
 
   --color-body-el: oklch(100% 0 0);
   --color-brdr: oklch(0.708 0 0);
@@ -43,7 +45,7 @@
 
   --color-body-el: oklch(0.27 0.0055 286.03);
   --color-brdr: oklch(0.439 0 0);
-  --color-font: oklch(0.708 0 0);
+  --color-font: oklch(88.837% 0.0001 271.152);
   --color-font2: oklch(0.808 0 0);
 
   --color-danger: oklch(0.637 0.237 25.331);
@@ -99,7 +101,7 @@
 
 @layer components {
   .navigation {
-    @apply border-brdr bg-sec sticky top-0 flex h-[100vh] shrink-0 flex-col gap-4 overflow-y-auto border-r p-4 transition duration-500;
+    @apply border-brdr bg-sec sticky top-0 flex h-screen shrink-0 flex-col gap-4 overflow-y-auto border-r p-4 transition duration-500;
   }
 }
 @layer components {
@@ -121,7 +123,7 @@
   }
 }
 
-.container {
+.container-menu {
   max-width: clamp(16rem, 80rem, 50%);
   margin-left: auto;
   margin-right: auto;

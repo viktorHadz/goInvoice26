@@ -37,10 +37,17 @@ const datePickerMode = computed(() => {
 })
 </script>
 <template>
-  <VueDatePicker v-model="date" :format="format" @update:model-value="handleDate(date)" :enable-time-picker="false"
-    :dark="datePickerMode">
+  <VueDatePicker
+    v-model="date"
+    :format="format"
+    @update:model-value="handleDate(date)"
+    :enable-time-picker="false"
+    :dark="datePickerMode"
+  >
     <template #trigger>
-      <div class="text-fg hover:text-acc border-fg/40 input flex cursor-pointer items-center gap-2 p-1.5">
+      <div
+        class="text-fg hover:text-acc border-fg/40 input flex cursor-pointer items-center gap-2 p-1.5"
+      >
         <CalendarIcon class="size-4.5"></CalendarIcon>
         <p class="max-w-28 truncate text-sm">
           {{ format(date) }}
