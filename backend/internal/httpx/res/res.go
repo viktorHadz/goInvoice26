@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 )
 
@@ -177,6 +178,35 @@ func BadJSON() *APIError {
 }
 
 /*
+Checks JSON received via frontend (FE) is a single JSON object
+
+Throws error if receiving multiple JSON objects
+USAGE:
+
+	var client models.CreateClient
+	if ok := res.DecodeJSON(w, r, &client); !ok {
+	  return
+	}
+*/
+func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+
+	if err := dec.Decode(dst); err != nil {
+		Error(w, BadJSON())
+		return false
+	}
+
+	// Must be exactly one JSON value
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		Error(w, BadJSON())
+		return false
+	}
+
+	return true
+}
+
+/*
 Validation creates a 400 error for field validation problems.
 
 Usage:
@@ -258,6 +288,7 @@ func Internal(err error) *APIError {
 }
 
 // ---- field error helpers
+
 // Invalid builds a validation FieldError for "this value is invalid".
 // Examples:
 //

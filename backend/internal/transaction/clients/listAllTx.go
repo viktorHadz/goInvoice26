@@ -9,7 +9,14 @@ import (
 
 func ListClients(a *app.App, ctx context.Context) ([]models.Client, error) {
 	rows, err := a.DB.QueryContext(ctx, `
-		SELECT id, name, company_name, address, email, created_at, updated_at
+		SELECT
+			id,
+			name,
+			COALESCE(company_name, '') AS companyName,
+			COALESCE(address, '')      AS address,
+			COALESCE(email, '')        AS email,
+			created_at,
+			updated_at
 		FROM clients
 		ORDER BY id DESC
 	`)

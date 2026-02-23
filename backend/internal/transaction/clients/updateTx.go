@@ -20,15 +20,15 @@ func UpdateClient(ctx context.Context, a *app.App, id int64, input models.Update
 		args = append(args, *input.Name)
 	}
 	if input.CompanyName != nil {
-		setParts = append(setParts, "company_name = ?")
+		setParts = append(setParts, "company_name = NULLIF(?, '')")
 		args = append(args, *input.CompanyName)
 	}
 	if input.Address != nil {
-		setParts = append(setParts, "address = ?")
+		setParts = append(setParts, "address = NULLIF(?, '')")
 		args = append(args, *input.Address)
 	}
 	if input.Email != nil {
-		setParts = append(setParts, "email = ?")
+		setParts = append(setParts, "email = NULLIF(?, '')")
 		args = append(args, *input.Email)
 	}
 
@@ -36,7 +36,7 @@ func UpdateClient(ctx context.Context, a *app.App, id int64, input models.Update
 		return 0, errors.New("no fields to update")
 	}
 
-	// always update timestamp
+	// update timestamp
 	setParts = append(setParts, "updated_at = CURRENT_TIMESTAMP")
 
 	// WHERE id = ? goes at the end

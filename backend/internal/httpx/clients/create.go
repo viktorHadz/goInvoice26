@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -15,11 +14,7 @@ import (
 func create(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var client models.CreateClient
-		decoder := json.NewDecoder(r.Body)
-		decoder.DisallowUnknownFields()
-
-		if err := decoder.Decode(&client); err != nil {
-			res.Error(w, res.BadJSON())
+		if ok := res.DecodeJSON(w, r, &client); !ok {
 			return
 		}
 
@@ -38,9 +33,13 @@ func create(a *app.App) http.HandlerFunc {
 		}
 
 		slog.InfoContext(r.Context(), "client created", "id", id)
-		res.JSON(w, http.StatusCreated, map[string]any{
-			"message": "client created",
-			"id":      id,
-		})
+		created, err := clients.GetByID(r.Context(), a, id)
+		if err != nil {
+			slog.ErrorContext(r.Context(), "fetch created client failed", "id", id, "err", err)
+			res.Error(w, res.Database(err))
+			return
+		}
+
+		res.JSON(w, http.StatusCreated, created)
 	}
 }

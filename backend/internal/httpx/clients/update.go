@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -23,10 +22,7 @@ func updateClient(a *app.App) http.HandlerFunc {
 		}
 
 		var client models.UpdateClient
-		dec := json.NewDecoder(r.Body)
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&client); err != nil {
-			res.Error(w, res.BadJSON())
+		if ok := res.DecodeJSON(w, r, &client); !ok {
 			return
 		}
 
@@ -47,6 +43,12 @@ func updateClient(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		res.NoContent(w)
+		updated, err := clients.GetByID(r.Context(), a, id)
+		if err != nil {
+			slog.ErrorContext(r.Context(), "fetch updated client failed", "id", id, "err", err)
+			res.Error(w, res.Database(err))
+			return
+		}
+		res.JSON(w, http.StatusOK, updated)
 	}
 }
