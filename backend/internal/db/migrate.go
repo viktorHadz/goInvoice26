@@ -7,6 +7,11 @@ import (
 	"fmt"
 )
 
+// ---------------------
+// CLIENTS: cannot be deleted if they have any invoices
+// PRODUCT TYPES:
+// Style - flat price rate | Sample - Hourly Price * Hours Worked | Sample - Flat Price
+// ---------------------
 // Populates tables in an sqlite DB if they don't exist
 func Migrate(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, `PRAGMA foreign_keys = ON;`); err != nil {
@@ -57,20 +62,32 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			flat_price_minor INTEGER CHECK (flat_price_minor IS NULL OR flat_price_minor >= 0),
 			hourly_rate_minor INTEGER CHECK (hourly_rate_minor IS NULL OR hourly_rate_minor >= 0),
 
+			default_minutes_worked INTEGER
+				CHECK (default_minutes_worked IS NULL OR default_minutes_worked >= 0),
+
 			client_id INTEGER,
-			is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
 
 			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 			updated_at TEXT,
 
-			FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
+			FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
 
+			-- style must be flat
 			CHECK (NOT (product_type = 'style' AND pricing_mode <> 'flat')),
 
+			-- chosen pricing_mode must have its required price
 			CHECK (
-				(pricing_mode = 'flat'  AND flat_price_minor IS NOT NULL) OR
+				(pricing_mode = 'flat'   AND flat_price_minor IS NOT NULL) OR
 				(pricing_mode = 'hourly' AND hourly_rate_minor IS NOT NULL)
+			),
+
+			-- default minutes required only for hourly samples
+			CHECK (
+				(product_type = 'sample' AND pricing_mode = 'hourly' AND default_minutes_worked IS NOT NULL)
+				OR
+				(NOT (product_type = 'sample' AND pricing_mode = 'hourly') AND default_minutes_worked IS NULL)
 			)
+				
 		);`,
 
 		// -----------------------
@@ -98,7 +115,13 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 
 			issue_date TEXT NOT NULL,
 			due_by_date TEXT NOT NULL,
-
+			
+			-- Client snapshot (frozen at time of this revision)
+			client_name TEXT NOT NULL,
+			client_company_name TEXT NOT NULL DEFAULT '',
+			client_address TEXT NOT NULL DEFAULT '',
+			client_email TEXT NOT NULL DEFAULT '',
+			
 			note TEXT,
 
 			vat_rate_bps INTEGER NOT NULL DEFAULT 2000 CHECK (vat_rate_bps >= 0),
@@ -183,6 +206,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_invoices_client_id ON invoices(client_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_revisions_invoice_id ON invoice_revisions(invoice_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_items_revision_id ON invoice_items(invoice_revision_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_revisions_invoice_id_revno ON invoice_revisions(invoice_id, revision_no);`,
 		`CREATE INDEX IF NOT EXISTS idx_items_product_id ON invoice_items(product_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_products_client_id ON products(client_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);`,

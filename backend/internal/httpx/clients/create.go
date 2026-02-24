@@ -10,7 +10,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/transaction/clients"
 )
 
-// Create establishes context | validates reqest body | calls the clients service layer
+// Create - establishes context | validates reqest body | calls DB Transaction
 func create(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var client models.CreateClient

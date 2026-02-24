@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
 import { BriefcaseIcon } from '@heroicons/vue/24/outline'
 import { useItemsStore } from '@/stores/items'
@@ -89,31 +89,55 @@ const resetInputs = (formName) => {
 }
 </script>
 <template>
-  <div class="flex flex-col items-center" title="client items">
+  <div
+    class="flex flex-col items-center"
+    title="client items"
+  >
     <!-- Text that always stays gray-900 -->
 
-    <BriefcaseIcon @click="isOpen = true" class="hover:text-acc size-8 cursor-pointer stroke-1"></BriefcaseIcon>
+    <BriefcaseIcon
+      @click="isOpen = true"
+      class="hover:text-acc size-8 cursor-pointer stroke-1"
+    ></BriefcaseIcon>
   </div>
 
   <Teleport to="body">
     <transition name="fadeItIn">
-      <div v-if="isOpen" class="fixed inset-0 top-0 right-0 z-[900] h-[100vh] w-[100vw] bg-black/50 select-none"></div>
+      <div
+        v-if="isOpen"
+        class="fixed inset-0 top-0 right-0 z-900 h-screen w-screen bg-black/50 select-none"
+      ></div>
     </transition>
 
-    <transition mode="out-in" name="slideItIn">
-      <div class="bg-primary fixed top-0 right-0 z-[901] h-[100vh] w-[50vw] 2xl:w-1/3 dark:bg-neutral-800"
-        v-if="isOpen">
+    <transition
+      mode="out-in"
+      name="slideItIn"
+    >
+      <div
+        class="bg-primary fixed top-0 right-0 z-901 h-screen w-[50vw] 2xl:w-1/3 dark:bg-neutral-800"
+        v-if="isOpen"
+      >
         <div class="">
           <div class="relative top-2 flex w-full">
             <!-- Search -->
             <div class="ml-2 w-1/3">
               <div class="flex items-center">
                 <MagnifyingGlassIcon class="text-fg fixed ml-1.5 size-4.5"></MagnifyingGlassIcon>
-                <input v-model="searchQueries[selectedEl]" :id="`${selectedEl}-search-1`"
-                  :placeholder="`Search ${selectedEl}s...`" type="text" class="input pl-7.5" />
+                <input
+                  v-model="searchQueries[selectedEl]"
+                  :id="`${selectedEl}-search-1`"
+                  :placeholder="`Search ${selectedEl}s...`"
+                  type="text"
+                  class="input pl-7.5"
+                />
               </div>
             </div>
-            <TheButton @click="isOpen = false" class="absolute right-4">Close</TheButton>
+            <TheButton
+              @click="isOpen = false"
+              class="absolute right-4"
+            >
+              Close
+            </TheButton>
           </div>
           <div class="w-full px-2 py-12 sm:px-0">
             <TabGroup>
@@ -121,63 +145,143 @@ const resetInputs = (formName) => {
                 <!-- Slider-->
                 <span
                   class="dark:bg-sec bg-sec absolute -bottom-1 z-10 h-[130%] w-[48%] transform rounded-md transition-transform duration-300 ease-in-out"
-                  :class="sliderTransform" />
+                  :class="sliderTransform"
+                />
                 <!-- Tabs -->
-                <Tab class="z-20 w-1/2 cursor-pointer focus:outline-none" @click="moveSlider('style')" :class="selectedEl === 'style'
-                    ? 'text-fg dark:text-acc transition duration-500 ease-out'
-                    : 'text-fg hover:text-acc hover:cursor-pointer'
-                  ">
+                <Tab
+                  class="z-20 w-1/2 cursor-pointer focus:outline-none"
+                  @click="moveSlider('style')"
+                  :class="
+                    selectedEl === 'style'
+                      ? 'text-fg dark:text-acc transition duration-500 ease-out'
+                      : 'text-fg hover:text-acc hover:cursor-pointer'
+                  "
+                >
                   Styles
                 </Tab>
-                <Tab class="z-20 w-1/2 cursor-pointer focus:outline-none" @click="moveSlider('sample')" :class="selectedEl === 'sample'
-                    ? 'text-fg dark:text-acc transition duration-500 ease-out'
-                    : 'text-fg hover:text-acc hover:cursor-pointer'
-                  ">
+                <Tab
+                  class="z-20 w-1/2 cursor-pointer focus:outline-none"
+                  @click="moveSlider('sample')"
+                  :class="
+                    selectedEl === 'sample'
+                      ? 'text-fg dark:text-acc transition duration-500 ease-out'
+                      : 'text-fg hover:text-acc hover:cursor-pointer'
+                  "
+                >
                   Samples
                 </Tab>
               </TabList>
               <TabPanels class="p-2">
                 <LeFlexTh class="rounded-t-md">
-                  <div scope="col" class="text-fg w-[50%] py-3 pl-2">Name</div>
-                  <div scope="col" class="text-fg w-[20%] py-3">Price</div>
-                  <div scope="col" class="text-fg w-[10%] py-3">Time</div>
-                  <div scope="col" class="text-fg w-[20%] py-3 text-center">Action</div>
+                  <div
+                    scope="col"
+                    class="text-fg w-[50%] py-3 pl-2"
+                  >
+                    Name
+                  </div>
+                  <div
+                    scope="col"
+                    class="text-fg w-[20%] py-3"
+                  >
+                    Price
+                  </div>
+                  <div
+                    scope="col"
+                    class="text-fg w-[10%] py-3"
+                  >
+                    Time
+                  </div>
+                  <div
+                    scope="col"
+                    class="text-fg w-[20%] py-3 text-center"
+                  >
+                    Action
+                  </div>
                 </LeFlexTh>
                 <div class="bg-sec disabled: flex w-full items-center gap-4 pt-1 pb-2 pl-2">
-                  <LeInput label="" :id="`new-${selectedEl}-name-1`" v-model="newItemForm.name"
-                    :placeholder="selectedEl + ' name'" class-names="w-[50%]"></LeInput>
-                  <LeInput label="" :id="`new-${selectedEl}-price-1`" v-model="newItemForm.price" class-names="w-[20%]"
-                    placeholder="price"></LeInput>
-                  <LeInput label="" :id="`new-${selectedEl}-time-1`" v-model="newItemForm.time" class-names="w-[15%]"
+                  <LeInput
+                    label=""
+                    :id="`new-${selectedEl}-name-1`"
+                    v-model="newItemForm.name"
+                    :placeholder="selectedEl + ' name'"
+                    class-names="w-[50%]"
+                  ></LeInput>
+                  <LeInput
+                    label=""
+                    :id="`new-${selectedEl}-price-1`"
+                    v-model="newItemForm.price"
+                    class-names="w-[20%]"
+                    placeholder="price"
+                  ></LeInput>
+                  <LeInput
+                    label=""
+                    :id="`new-${selectedEl}-time-1`"
+                    v-model="newItemForm.time"
+                    class-names="w-[15%]"
                     :placeholder="selectedEl === 'style' ? 'N/A' : 'minutes'"
                     :title="selectedEl === 'style' ? 'Styles do not contain time' : ''"
-                    :disabled="selectedEl === 'style'" :class="selectedEl === 'style'
+                    :disabled="selectedEl === 'style'"
+                    :class="
+                      selectedEl === 'style'
                         ? 'disabled:hover:border-warn disabled:cursor-not-allowed'
                         : ''
-                      "></LeInput>
+                    "
+                  ></LeInput>
                   <div class="flex w-[15%] justify-center pr-2">
-                    <TheButton @click="addNewItem(selectedEl, newItemForm)" buttonText="" class="flex"
-                      :title="`add new ${selectedEl}`">
+                    <TheButton
+                      @click="addNewItem(selectedEl, newItemForm)"
+                      buttonText=""
+                      class="flex"
+                      :title="`add new ${selectedEl}`"
+                    >
                       Add
                     </TheButton>
                   </div>
                 </div>
 
-                <TabPanel class="border-brdr max-h-[70vh] overflow-y-auto rounded-b border-x border-b">
-                  <LeFlexTd v-for="(item, index) in filteredItems" :key="index" class="flex w-full items-center">
+                <TabPanel
+                  class="border-brdr max-h-[70vh] overflow-y-auto rounded-b border-x border-b"
+                >
+                  <LeFlexTd
+                    v-for="(item, index) in filteredItems"
+                    :key="index"
+                    class="flex w-full items-center"
+                  >
                     <!-- Editable Row -->
                     <template v-if="editing && editedRowId === item.id">
-                      <LeInput :id="`edit-sample-name-${item.id}`" :placeholder="item.name" v-model="editForm.name"
-                        class-names="w-[50%] px-1" />
-                      <LeInput :id="`edit-sample-company-${item.id}`" :placeholder="item.price" v-model="editForm.price"
-                        class-names="w-[20%] px-1" />
-                      <LeInput :id="`edit-sample-email-${item.id}`" :placeholder="item.time" v-model="editForm.time"
-                        class-names="w-[10%] px-1" />
-                      <div class="flex w-[20%] items-center justify-center gap-5 py-4 pl-4 text-center">
-                        <a href="#" class="text-success hover:brightness-110" @click="editSave()">
+                      <LeInput
+                        :id="`edit-sample-name-${item.id}`"
+                        :placeholder="item.name"
+                        v-model="editForm.name"
+                        class-names="w-[50%] px-1"
+                      />
+                      <LeInput
+                        :id="`edit-sample-company-${item.id}`"
+                        :placeholder="item.price"
+                        v-model="editForm.price"
+                        class-names="w-[20%] px-1"
+                      />
+                      <LeInput
+                        :id="`edit-sample-email-${item.id}`"
+                        :placeholder="item.time"
+                        v-model="editForm.time"
+                        class-names="w-[10%] px-1"
+                      />
+                      <div
+                        class="flex w-[20%] items-center justify-center gap-5 py-4 pl-4 text-center"
+                      >
+                        <a
+                          href="#"
+                          class="text-success hover:brightness-110"
+                          @click="editSave()"
+                        >
                           <CheckCircleIcon class="size-5"></CheckCircleIcon>
                         </a>
-                        <a href="#" class="text-danger hover:brightness-110" @click="cancelEdit()">
+                        <a
+                          href="#"
+                          class="text-danger hover:brightness-110"
+                          @click="cancelEdit()"
+                        >
                           <XCircleIcon class="size-5"></XCircleIcon>
                         </a>
                       </div>
@@ -193,11 +297,20 @@ const resetInputs = (formName) => {
                       <!-- action -->
                       <div class="w-[20%]">
                         <!-- Controls pading for entire read only row -->
-                        <div class="flex w-full items-center justify-center gap-5 py-3 pl-4 text-center">
-                          <a href="#" @click="editTrue(item)">
+                        <div
+                          class="flex w-full items-center justify-center gap-5 py-3 pl-4 text-center"
+                        >
+                          <a
+                            href="#"
+                            @click="editTrue(item)"
+                          >
                             <PencilIcon class="hover:text-success size-5"></PencilIcon>
                           </a>
-                          <a href="#" class="hover:text-danger" @click="removeItem(item)">
+                          <a
+                            href="#"
+                            class="hover:text-danger"
+                            @click="removeItem(item)"
+                          >
                             <TrashIcon class="size-5"></TrashIcon>
                           </a>
                         </div>
@@ -205,21 +318,49 @@ const resetInputs = (formName) => {
                     </template>
                   </LeFlexTd>
                 </TabPanel>
-                <TabPanel class="border-brdr max-h-[70vh] overflow-y-auto rounded-b border-x border-b">
-                  <LeFlexTd v-for="(item, index) in filteredItems" :key="index" class="flex w-full items-center">
+                <TabPanel
+                  class="border-brdr max-h-[70vh] overflow-y-auto rounded-b border-x border-b"
+                >
+                  <LeFlexTd
+                    v-for="(item, index) in filteredItems"
+                    :key="index"
+                    class="flex w-full items-center"
+                  >
                     <!-- Editable Row -->
                     <template v-if="editing && editedRowId === item.id">
-                      <LeInput :id="`edit-sample-name-${item.id}`" :placeholder="item.name" v-model="editForm.name"
-                        class-names="w-[50%] px-1" />
-                      <LeInput :id="`edit-sample-company-${item.id}`" :placeholder="item.price" v-model="editForm.price"
-                        class-names="w-[20%] px-1" />
-                      <LeInput :id="`edit-sample-email-${item.id}`" :placeholder="item.time" v-model="editForm.time"
-                        class-names="w-[10%] px-1" />
-                      <div class="flex w-[20%] items-center justify-center gap-5 py-4 pl-4 text-center">
-                        <a href="#" class="text-success hover:brightness-110" @click="editSave()">
+                      <LeInput
+                        :id="`edit-sample-name-${item.id}`"
+                        :placeholder="item.name"
+                        v-model="editForm.name"
+                        class-names="w-[50%] px-1"
+                      />
+                      <LeInput
+                        :id="`edit-sample-company-${item.id}`"
+                        :placeholder="item.price"
+                        v-model="editForm.price"
+                        class-names="w-[20%] px-1"
+                      />
+                      <LeInput
+                        :id="`edit-sample-email-${item.id}`"
+                        :placeholder="item.time"
+                        v-model="editForm.time"
+                        class-names="w-[10%] px-1"
+                      />
+                      <div
+                        class="flex w-[20%] items-center justify-center gap-5 py-4 pl-4 text-center"
+                      >
+                        <a
+                          href="#"
+                          class="text-success hover:brightness-110"
+                          @click="editSave()"
+                        >
                           <CheckCircleIcon class="size-5"></CheckCircleIcon>
                         </a>
-                        <a href="#" class="text-danger hover:brightness-110" @click="cancelEdit()">
+                        <a
+                          href="#"
+                          class="text-danger hover:brightness-110"
+                          @click="cancelEdit()"
+                        >
                           <XCircleIcon class="size-5"></XCircleIcon>
                         </a>
                       </div>
@@ -235,11 +376,20 @@ const resetInputs = (formName) => {
                       <!-- action -->
                       <div class="w-[20%]">
                         <!-- Controls pading for entire read only row -->
-                        <div class="flex w-full items-center justify-center gap-5 py-3 pl-4 text-center">
-                          <a href="#" @click="editTrue(item)">
+                        <div
+                          class="flex w-full items-center justify-center gap-5 py-3 pl-4 text-center"
+                        >
+                          <a
+                            href="#"
+                            @click="editTrue(item)"
+                          >
                             <PencilIcon class="hover:text-success size-5"></PencilIcon>
                           </a>
-                          <a href="#" class="hover:text-danger" @click="removeItem(item)">
+                          <a
+                            href="#"
+                            class="hover:text-danger"
+                            @click="removeItem(item)"
+                          >
                             <TrashIcon class="size-5"></TrashIcon>
                           </a>
                         </div>

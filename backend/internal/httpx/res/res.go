@@ -56,7 +56,7 @@ type envelope struct {
 }
 
 /*
-JSON writes a successful JSON response.
+Writes a successful JSON response.
 
 Usage:
 - request succeeded (2xx / 3xx)
