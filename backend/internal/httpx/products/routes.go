@@ -6,9 +6,12 @@ import (
 )
 
 func Router(r chi.Router, a *app.App) {
-	r.Route("/api/products/{clientID}", func(r chi.Router) {
-		r.Get("/", listItems(a)) // READ    GET  /api/products/{clientID}
-		r.Post("/", createProduct(a))
+	r.Route("/products", func(r chi.Router) {
+		r.Get("/", listItems(a))      // READ    GET  /api/clients/{clientID}/products/...
+		r.Post("/", createProduct(a)) // CREATE POST /api/clients/{clientID}/products/...
+		r.Route("/{productID}", func(r chi.Router) {
+			r.Patch("/", updateProduct(a))
+			r.Delete("/", deleteProduct(a))
+		})
 	})
-
 }

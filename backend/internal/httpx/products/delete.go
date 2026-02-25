@@ -1,7 +1,8 @@
 package products
 
 import (
-	"log/slog"
+	"database/sql"
+	"errors"
 	"net/http"
 
 	"github.com/viktorHadz/goInvoice26/internal/app"
@@ -11,25 +12,33 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/transaction/productsTx"
 )
 
-func listItems(a *app.App) http.HandlerFunc {
+func deleteProduct(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := params.IDParam(w, r, "clientID")
+		clientID, ok := params.IDParam(w, r, "clientID")
 		if !ok {
 			return
 		}
 
-		if err := clientsTx.VerifyClientID(r.Context(), a, id, "client not found"); err != nil {
+		productID, ok := params.IDParam(w, r, "productID")
+		if !ok {
+			return
+		}
+
+		if err := clientsTx.VerifyClientID(r.Context(), a, clientID, "client not found"); err != nil {
 			res.Error(w, err)
 			return
 		}
 
-		products, err := productsTx.ListAll(a, r.Context(), id)
+		err := productsTx.DeleteTx(a, r.Context(), productID, clientID)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "DB ERRORED", "err", err)
+			if errors.Is(err, sql.ErrNoRows) {
+				res.Error(w, res.NotFound("product not found"))
+				return
+			}
 			res.Error(w, res.Database(err))
 			return
 		}
 
-		res.JSON(w, http.StatusOK, products)
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

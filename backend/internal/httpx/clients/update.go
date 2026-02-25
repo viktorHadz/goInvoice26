@@ -1,12 +1,10 @@
 package clients
 
 import (
-	"log/slog"
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/viktorHadz/goInvoice26/internal/app"
+	"github.com/viktorHadz/goInvoice26/internal/httpx/params"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/clientsTx"
@@ -14,10 +12,8 @@ import (
 
 func updateClient(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		idStr := chi.URLParam(r, "id")
-		id, err := strconv.ParseInt(idStr, 10, 64)
-		if err != nil || id <= 0 {
-			res.Error(w, res.Validation(res.Invalid("id", "invalid route param")))
+		clientID, ok := params.IDParam(w, r, "clientID")
+		if !ok {
 			return
 		}
 
@@ -32,9 +28,8 @@ func updateClient(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		affected, err := clientsTx.UpdateClient(r.Context(), a, id, client)
+		affected, err := clientsTx.UpdateClient(r.Context(), a, clientID, client)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "update client failed", "id", id, "err", err)
 			res.Error(w, res.Database(err))
 			return
 		}
@@ -43,9 +38,8 @@ func updateClient(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		updated, err := clientsTx.GetByID(r.Context(), a, id)
+		updated, err := clientsTx.GetByID(r.Context(), a, clientID)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "fetch updated client failed", "id", id, "err", err)
 			res.Error(w, res.Database(err))
 			return
 		}

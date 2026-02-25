@@ -7,7 +7,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/models"
-	clients "github.com/viktorHadz/goInvoice26/internal/transaction/clientsTx"
+	"github.com/viktorHadz/goInvoice26/internal/transaction/clientsTx"
 )
 
 // Create - establishes context | validates reqest body | calls DB Transaction
@@ -25,14 +25,14 @@ func create(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		id, err := clients.Insert(r.Context(), a, &client)
+		id, err := clientsTx.Insert(r.Context(), a, &client)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "Insert client failed", "err", err)
 			res.Error(w, res.Database(err))
 			return
 		}
 
-		created, err := clients.GetByID(r.Context(), a, id)
+		created, err := clientsTx.GetByID(r.Context(), a, id)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "Fetch created client failed", "id", id, "err", err)
 			res.Error(w, res.Database(err))

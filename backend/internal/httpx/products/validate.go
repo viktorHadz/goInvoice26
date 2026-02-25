@@ -12,9 +12,8 @@ func ValidateCreate(in models.ProductCreateIn, routeClientID int64) (models.Prod
 	out := models.ProductCreate{ClientID: routeClientID}
 	var errs []res.FieldError
 
-	// strings
-	// productType
-	var productType string
+	// ----- productType -----
+	productType := ""
 	if in.ProductType != nil {
 		productType = *in.ProductType
 	}
@@ -24,11 +23,15 @@ func ValidateCreate(in models.ProductCreateIn, routeClientID int64) (models.Prod
 	if len(fe) > 0 {
 		errs = append(errs, fe...)
 	} else {
-		out.ProductType = productType
+		if productType != "style" && productType != "sample" {
+			errs = append(errs, res.Invalid("productType", "invalid value"))
+		} else {
+			out.ProductType = productType
+		}
 	}
 
-	// pricingMode
-	var pricingMode string
+	// ----- pricingMode -----
+	pricingMode := ""
 	if in.PricingMode != nil {
 		pricingMode = *in.PricingMode
 	}
@@ -38,11 +41,15 @@ func ValidateCreate(in models.ProductCreateIn, routeClientID int64) (models.Prod
 	if len(fe) > 0 {
 		errs = append(errs, fe...)
 	} else {
-		out.PricingMode = pricingMode
+		if pricingMode != "flat" && pricingMode != "hourly" {
+			errs = append(errs, res.Invalid("pricingMode", "invalid value"))
+		} else {
+			out.PricingMode = pricingMode
+		}
 	}
 
-	// productName
-	var productName string
+	// ----- productName -----
+	productName := ""
 	if in.ProductName != nil {
 		productName = *in.ProductName
 	}
@@ -55,26 +62,12 @@ func ValidateCreate(in models.ProductCreateIn, routeClientID int64) (models.Prod
 		out.ProductName = productName
 	}
 
-	// productType / pricingMode
-	// style => flat only
-	// sampleFlat => flat only
-	// sampleHourly => hourly only
-	switch out.ProductType {
-	case "style", "sampleFlat":
-		if out.PricingMode != "" && out.PricingMode != "flat" {
-			errs = append(errs, res.Invalid("pricingMode", "must be 'flat' for this productType"))
-		}
-	case "sampleHourly":
-		if out.PricingMode != "" && out.PricingMode != "hourly" {
-			errs = append(errs, res.Invalid("pricingMode", "must be 'hourly' for this productType"))
-		}
-	default:
-		if out.ProductType != "" {
-			errs = append(errs, res.Invalid("productType", "invalid value"))
-		}
+	// ----- cross-field rule: style must be flat -----
+	if out.ProductType == "style" && out.PricingMode == "hourly" {
+		errs = append(errs, res.Invalid("pricingMode", "must be 'flat' for style"))
 	}
 
-	// numeric helpers
+	// ----- numeric helpers -----
 	min0 := int64(0)
 
 	parseMoneyRequired := func(field string, n *json.Number) *int64 {
@@ -107,12 +100,11 @@ func ValidateCreate(in models.ProductCreateIn, routeClientID int64) (models.Prod
 		return &v
 	}
 
-	// pricingMode decides required numeric fields/disallowed extras
+	// ----- pricingMode decides required numeric fields/disallowed extras -----
 	switch out.PricingMode {
 	case "flat":
 		out.FlatPriceMinor = parseMoneyRequired("flatPrice", in.FlatPrice)
 
-		// strict: reject extras
 		if in.HourlyRate != nil {
 			errs = append(errs, res.Invalid("hourlyRate", "not allowed for flat pricing"))
 		}
@@ -124,13 +116,9 @@ func ValidateCreate(in models.ProductCreateIn, routeClientID int64) (models.Prod
 		out.HourlyRateMinor = parseMoneyRequired("hourlyRate", in.HourlyRate)
 		out.MinutesWorked = parseIntRequired("minutesWorked", in.MinutesWorked)
 
-		// strictly reject extras
 		if in.FlatPrice != nil {
 			errs = append(errs, res.Invalid("flatPrice", "not allowed for hourly pricing"))
 		}
-
-	default:
-		// pricingMode invalid already flagged above nothing else to do
 	}
 
 	return out, errs
