@@ -12,6 +12,7 @@ import (
 // PRODUCT TYPES:
 // Style - flat price rate | Sample - Hourly Price * Hours Worked | Sample - Flat Price
 // ---------------------
+
 // Populates tables in an sqlite DB if they don't exist
 func Migrate(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, `PRAGMA foreign_keys = ON;`); err != nil {

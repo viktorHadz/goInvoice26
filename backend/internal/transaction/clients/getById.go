@@ -1,3 +1,4 @@
+// Package provides methods for retrieving clients and their details
 package clients
 
 import (
@@ -7,7 +8,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
-// Check if client with id exists in DB and return it
+// Checks if client with id exists in DB and returns it or an error
 func GetByID(ctx context.Context, a *app.App, id int64) (models.Client, error) {
 	var c models.Client
 	err := a.DB.QueryRowContext(ctx, `
@@ -24,4 +25,20 @@ func GetByID(ctx context.Context, a *app.App, id int64) (models.Client, error) {
 	`, id).Scan(&c.ID, &c.Name, &c.CompanyName, &c.Address, &c.Email, &c.CreatedAt, &c.UpdatedAt)
 
 	return c, err
+}
+
+// Checks the DB for a client and returns a boolean if it exists or an error if it doesnt
+func CheckClientExists(ctx context.Context, a *app.App, id int64) (bool, error) {
+	var exists bool
+
+	err := a.DB.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM clients WHERE id = ?)`,
+		id,
+	).Scan(&exists)
+
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
