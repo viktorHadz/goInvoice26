@@ -9,7 +9,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/models"
-	"github.com/viktorHadz/goInvoice26/internal/transaction/clients"
+	"github.com/viktorHadz/goInvoice26/internal/transaction/clientsTx"
 )
 
 func updateClient(a *app.App) http.HandlerFunc {
@@ -32,7 +32,7 @@ func updateClient(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		affected, err := clients.UpdateClient(r.Context(), a, id, client)
+		affected, err := clientsTx.UpdateClient(r.Context(), a, id, client)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "update client failed", "id", id, "err", err)
 			res.Error(w, res.Database(err))
@@ -43,7 +43,7 @@ func updateClient(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		updated, err := clients.GetByID(r.Context(), a, id)
+		updated, err := clientsTx.GetByID(r.Context(), a, id)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "fetch updated client failed", "id", id, "err", err)
 			res.Error(w, res.Database(err))

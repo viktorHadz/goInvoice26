@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
-	"github.com/viktorHadz/goInvoice26/internal/transaction/clients"
+	clients "github.com/viktorHadz/goInvoice26/internal/transaction/clientsTx"
 )
 
 func deleteClient(a *app.App) http.HandlerFunc {

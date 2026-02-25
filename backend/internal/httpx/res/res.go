@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 )
 
@@ -125,7 +126,15 @@ func Error(w http.ResponseWriter, err error) string {
 	if ae.Message == "" {
 		ae.Message = "Internal server error"
 	}
-
+	// Server side details for 5xx errros
+	if ae.Status >= 500 {
+		slog.Error("request failed",
+			"error_id", ae.ID,
+			"status", ae.Status,
+			"code", ae.Code,
+			"err", err,
+		)
+	}
 	JSON(w, ae.Status, envelope{Error: ae})
 	return ae.ID
 }
@@ -178,7 +187,7 @@ func BadJSON() *APIError {
 }
 
 /*
-Checks JSON received via frontend (FE) is a single JSON object
+Checks JSON received from frontend is a single JSON object
 
 Throws error if receiving multiple JSON objects
 USAGE:
@@ -190,6 +199,7 @@ USAGE:
 */
 func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	dec := json.NewDecoder(r.Body)
+	dec.UseNumber() // keeps numbers exact json.Number
 	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(dst); err != nil {

@@ -1,5 +1,5 @@
 // Package provides methods for retrieving clients and their details
-package clients
+package clientsTx
 
 import (
 	"context"
@@ -28,17 +28,14 @@ func GetByID(ctx context.Context, a *app.App, id int64) (models.Client, error) {
 }
 
 // Checks the DB for a client and returns a boolean if it exists or an error if it doesnt
-func CheckClientExists(ctx context.Context, a *app.App, id int64) (bool, error) {
+func Exists(ctx context.Context, a *app.App, id int64) (bool, error) {
 	var exists bool
-
 	err := a.DB.QueryRowContext(ctx,
 		`SELECT EXISTS(SELECT 1 FROM clients WHERE id = ?)`,
 		id,
 	).Scan(&exists)
-
 	if err != nil {
 		return false, err
 	}
-
 	return exists, nil
 }
