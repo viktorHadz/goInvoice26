@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { computed, reactive, ref } from 'vue'
 import { useClientStore } from '@/stores/clients'
-import { reactive, ref, computed, watch } from 'vue'
+import type { Client } from '@/utils/clientHttpHandler'
+
+import TheInput from '../UI/TheInput.vue'
 import TheButton from '../UI/TheButton.vue'
-import LeTd from '../UI/table/LeTd.vue'
-import LeInput from '../UI/LeInput.vue'
-import LeTh from '../UI/table/LeTh.vue'
+
 import {
   PencilIcon,
   TrashIcon,
@@ -12,220 +13,345 @@ import {
   XCircleIcon,
   UserPlusIcon,
   MagnifyingGlassIcon,
+  ChevronDownIcon,
+  ArrowPathIcon,
 } from '@heroicons/vue/24/outline'
-import type { Client } from '@/utils/clients/fetch'
 
 const clientStore = useClientStore()
 
-const editing = ref(false)
-const editedRowId = ref<number | null>(null)
+// Search and order
+const searchQuery = ref('')
 
-// resets client inputs
-const resetInputs = (form: {
-  name: string
-  companyName: string
-  email: string
-  address: string
-}) => {
-  form.name = ''
-  form.companyName = ''
-  form.email = ''
-  form.address = ''
-}
+const filteredClients = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
 
-const clientForm = reactive({ name: '', companyName: '', email: '', address: '' })
+  const list = !q
+    ? clientStore.clients
+    : clientStore.clients.filter((c: Client) => (c.name ?? '').toLowerCase().includes(q))
 
-// Keep editForm only with editable fields + id
-const editForm = reactive<{
-  id: number | null
-  name: string
-  companyName: string
-  email: string
-  address: string
-}>({
-  id: null,
+  // Newest first
+  return [...list].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
+})
+
+// Add new client
+const createForm = reactive({
   name: '',
   companyName: '',
   email: '',
   address: '',
 })
 
-const addNewEnabled = ref(false)
-watch(clientForm, (value) => {
-  if (value.name.length > 0) {
-    addNewEnabled.value = true
-  } else {
-    addNewEnabled.value = false
-  }
-})
+const canCreate = computed(() => (createForm.name ?? '').trim().length > 1)
+
+function resetCreate() {
+  createForm.name = ''
+  createForm.companyName = ''
+  createForm.email = ''
+  createForm.address = ''
+}
+
 async function addClient() {
-  if (!addNewEnabled.value) return
-
-  await clientStore.createNew(clientForm)
-  resetInputs(clientForm)
-}
-
-function editTrue(client: Client) {
-  editedRowId.value = client.id
-  editForm.id = client.id
-  editForm.name = client.name ?? ''
-  editForm.companyName = client.companyName ?? ''
-  editForm.email = client.email ?? ''
-  editForm.address = client.address ?? ''
-  editing.value = true
-}
-
-async function editSave() {
-  if (editForm.id == null) return
+  if (!canCreate.value) return
 
   try {
+    await clientStore.createNew(createForm)
+    resetCreate()
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+// Expand / Edit
+const openId = ref<number | null>(null)
+const editingId = ref<number | null>(null)
+
+const editForm = reactive({
+  id: null as number | null,
+  name: '',
+  companyName: '',
+  email: '',
+  address: '',
+})
+
+function toggleOpen(id: number) {
+  openId.value = openId.value === id ? null : id
+  // stop editing when collapsing
+  if (openId.value !== id) cancelEdit()
+}
+
+function startEdit(c: Client) {
+  openId.value = c.id // expanded when editing
+  editingId.value = c.id
+
+  editForm.id = c.id
+  editForm.name = c.name ?? ''
+  editForm.companyName = c.companyName ?? ''
+  editForm.email = c.email ?? ''
+  editForm.address = c.address ?? ''
+}
+
+function cancelEdit() {
+  editingId.value = null
+  editForm.id = null
+  editForm.name = ''
+  editForm.companyName = ''
+  editForm.email = ''
+  editForm.address = ''
+}
+
+async function saveEdit() {
+  if (editForm.id == null) return
+  try {
+    console.info('sending to server: ', editForm)
     await clientStore.edit(editForm.id, {
       name: editForm.name,
       companyName: editForm.companyName,
       email: editForm.email,
       address: editForm.address,
     })
-    editing.value = false
-    editedRowId.value = null
-    editForm.id = null
-    resetInputs(editForm)
-  } catch {
-    // keep editing open so user can retry
+    cancelEdit()
+  } catch (err) {
+    console.error(err)
   }
-}
-
-function cancelEdit() {
-  editing.value = false
-  editedRowId.value = null
-  editForm.id = null
-  resetInputs(editForm)
 }
 
 async function removeClient(id: number) {
   await clientStore.remove(id)
+  if (openId.value === id) openId.value = null
+  if (editingId.value === id) cancelEdit()
 }
 
-// Search
-const searchQuery = ref('')
+// -- Field Schema --
+type ClientFieldKey = keyof typeof createForm
 
-const filteredClients = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return clientStore.clients
-  return clientStore.clients.filter((c: Client) => (c.name ?? '').toLowerCase().includes(q))
-})
+type FieldDef = {
+  key: ClientFieldKey
+  label: string
+  placeholder?: string
+  autocomplete?: string
+}
+const clientFields: FieldDef[] = [
+  {
+    key: 'name',
+    label: 'Name',
+    placeholder: 'Client name',
+    autocomplete: 'name',
+  },
+  {
+    key: 'companyName',
+    label: 'Company',
+    placeholder: 'Company name',
+    autocomplete: 'organization',
+  },
+  {
+    key: 'email',
+    label: 'Email',
+    placeholder: 'Email',
+    autocomplete: 'email',
+  },
+  {
+    key: 'address',
+    label: 'Address',
+    placeholder: 'Address',
+    autocomplete: 'street-address',
+  },
+]
+
+const displayFields: ClientFieldKey[] = ['email', 'address']
 </script>
+
 <template>
-  <div class="flow-root">
-    <div class="align-middle">
-      <div class="inline-block min-w-full">
-        <!-- Search -->
-        <div class="mx-auto w-full max-w-[80%] 2xl:max-w-[70%]">
-          <div
-            class="ring-t ring-x bg-sec -mb-2 w-fit rounded-t-lg px-2 pt-2 pb-4 ring-1 ring-neutral-400 dark:ring-neutral-600">
-            <div class="flex items-center">
-              <MagnifyingGlassIcon class="fixed ml-2 size-4.5"></MagnifyingGlassIcon>
-              <input id="srchQry-clients-1" v-model="searchQuery" type="text" placeholder="Search by name..."
-                class="input pl-8" />
-            </div>
-          </div>
-        </div>
-        <div
-          class="mx-auto max-h-[80vh] max-w-[80%] overflow-y-auto shadow-lg ring-1 ring-neutral-400 sm:rounded-lg 2xl:max-w-[70%] dark:ring-neutral-600">
-          <table class="min-w-full">
-            <thead
-              class="bg-sec text-fg sticky top-0 z-10 border-b px-3 text-left text-sm font-semibold backdrop-blur-sm backdrop-filter">
-              <tr>
-                <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold sm:pl-4">
-                  Name
-                </th>
-                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold">Company</th>
-                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold">Email</th>
-                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold">Address</th>
-                <th scope="col" class="relative py-3.5 pr-4 pl-3 text-center sm:pr-6">Action</th>
-              </tr>
-              <tr class="bg-sec">
-                <LeTh>
-                  <LeInput label="" id="new-client-name-id-1" name="client-name" type="text" autocomplete="name"
-                    placeholder="Client name" required v-model="clientForm.name" />
-                </LeTh>
-                <LeTh>
-                  <LeInput label="" id="new-client-company-1" name="client-company" type="text"
-                    placeholder="Company name" autocomplete="organization" required v-model="clientForm.companyName" />
-                </LeTh>
-                <LeTh>
-                  <LeInput label="" id="new-client-email-1" name="client-email" type="text" placeholder="Email"
-                    autocomplete="email" required v-model="clientForm.email" />
-                </LeTh>
-                <LeTh>
-                  <LeInput label="" id="new-client-address-1" name="client-address" type="text" placeholder="Address"
-                    autocomplete="address" required v-model="clientForm.address" />
-                </LeTh>
-                <LeTh>
-                  <div class="mx-1 flex w-full justify-center">
-                    <TheButton :disabled="!addNewEnabled" @click="addClient()"
-                      :class="addNewEnabled ? 'cursor-pointer!' : 'cursor-not-allowed!'">
-                      <div class="flex items-center gap-2">
-                        <UserPlusIcon class="size-5"></UserPlusIcon>
-                        Add New
-                      </div>
-                    </TheButton>
-                  </div>
-                </LeTh>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="client in filteredClients" :key="client.id">
-                <!-- Editable Row -->
-                <template v-if="editing && editedRowId === client.id">
-                  <LeTd>
-                    <LeInput :id="`edit-client-name-${client.id}`" :placeholder="client.name" v-model="editForm.name" />
-                  </LeTd>
-                  <LeTd>
-                    <LeInput :id="`edit-client-company-${client.id}`" :placeholder="client.companyName"
-                      v-model="editForm.companyName" />
-                  </LeTd>
-                  <LeTd>
-                    <LeInput :id="`edit-client-email-${client.id}`" :placeholder="client.email"
-                      v-model="editForm.email" />
-                  </LeTd>
-                  <LeTd>
-                    <LeInput :id="`edit-client-address-${client.id}`" :placeholder="client.address"
-                      v-model="editForm.address" />
-                  </LeTd>
-                  <LeTd>
-                    <div class="flex w-full items-center justify-center gap-5 py-4 text-center">
-                      <a href="#" class="text-success hover:brightness-110" @click="editSave()">
-                        <CheckCircleIcon class="size-5"></CheckCircleIcon>
-                      </a>
-                      <a href="#" class="text-danger hover:brightness-110" @click="cancelEdit()">
-                        <XCircleIcon class="size-5"></XCircleIcon>
-                      </a>
-                    </div>
-                  </LeTd>
-                </template>
-                <!-- Read-Only Row -->
-                <template v-else>
-                  <LeTd>{{ client.name }}</LeTd>
-                  <LeTd>{{ client.companyName }}</LeTd>
-                  <LeTd>{{ client.email }}</LeTd>
-                  <LeTd class="text-xs"> {{ client.address }}</LeTd>
-                  <LeTd>
-                    <!-- Controls pading for entire read only row -->
-                    <div class="flex w-full items-center justify-center gap-5 py-3 text-center">
-                      <a href="#" @click="editTrue(client)">
-                        <PencilIcon class="hover:text-success size-5"></PencilIcon>
-                      </a>
-                      <a href="#" class="hover:text-danger" @click="removeClient(client.id)">
-                        <TrashIcon class="size-5"></TrashIcon>
-                      </a>
-                    </div>
-                  </LeTd>
-                </template>
-              </tr>
-            </tbody>
-          </table>
+  <section class="mx-auto w-full max-w-5xl px-2 sm:px-6 lg:px-0">
+    <!-- Header -->
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          Clients
+        </h2>
+        <p class="text-sm text-sky-600 dark:text-emerald-400">Add, search, and edit clients.</p>
+      </div>
+
+      <!-- Search -->
+      <div class="w-full sm:max-w-md">
+        <label
+          class="sr-only"
+          for="srchQry-clients-1"
+        >
+          Search clients
+        </label>
+        <div class="relative">
+          <MagnifyingGlassIcon
+            class="pointer-events-none absolute top-1/2 left-2 size-5 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+          />
+          <input
+            id="srchQry-clients-1"
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search by name…"
+            class="input input-accent pl-9"
+          />
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- Add panel -->
+    <div
+      class="mb-4 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-linear-to-bl dark:from-zinc-900 dark:via-[#181b1a] dark:to-[#161e1c]"
+    >
+      <div class="mb-2 flex items-center gap-2">
+        <UserPlusIcon class="size-6 text-zinc-900 dark:text-zinc-100" />
+        <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Add client</h3>
+      </div>
+
+      <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <TheInput
+          v-for="field in clientFields"
+          :key="field.key"
+          :id="`new-client-${field.key}`"
+          :label="field.label"
+          :placeholder="field.placeholder"
+          :autocomplete="field.autocomplete"
+          v-model="createForm[field.key]"
+        />
+      </div>
+
+      <div class="mt-2 flex items-center justify-end gap-2">
+        <TheButton
+          type="button"
+          variant="secondary"
+          @click="resetCreate"
+        >
+          <ArrowPathIcon class="size-4" />
+          Clear
+        </TheButton>
+
+        <TheButton
+          type="button"
+          :disabled="!canCreate"
+          variant="primary"
+          @click="addClient"
+        >
+          <UserPlusIcon class="size-5" />
+          Add
+        </TheButton>
+      </div>
+    </div>
+
+    <!-- List -->
+    <div class="space-y-2">
+      <div
+        v-if="filteredClients.length === 0"
+        class="rounded-xl border border-zinc-200 bg-white p-6 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      >
+        <p class="font-medium text-zinc-900 dark:text-zinc-100">No clients found</p>
+        <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Try a different search, or add a new client above.
+        </p>
+      </div>
+
+      <article
+        v-for="c in filteredClients"
+        :key="c.id"
+        class="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      >
+        <!-- compact row -->
+        <button
+          type="button"
+          class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+          @click="toggleOpen(c.id)"
+        >
+          <div class="min-w-0">
+            <p class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              {{ c.name || 'Unnamed client' }}
+            </p>
+            <p class="truncate text-xs text-zinc-600 dark:text-zinc-400">
+              {{ c.companyName || '—' }}
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <template v-if="editingId === c.id">
+              <button
+                type="button"
+                class="rounded-md p-1 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                @click.stop="saveEdit"
+                title="Save"
+              >
+                <CheckCircleIcon class="size-6" />
+              </button>
+              <button
+                type="button"
+                class="rounded-md p-1 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/20"
+                @click.stop="cancelEdit"
+                title="Cancel"
+              >
+                <XCircleIcon class="size-6" />
+              </button>
+            </template>
+
+            <template v-else>
+              <button
+                type="button"
+                class="cursor-pointer rounded-md p-1 text-zinc-600 hover:bg-sky-100 hover:text-sky-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+                @click.stop="startEdit(c)"
+                title="Edit"
+              >
+                <PencilIcon class="size-5" />
+              </button>
+
+              <button
+                type="button"
+                class="cursor-pointer rounded-md p-1 text-zinc-600 hover:bg-rose-50 hover:text-rose-600 dark:text-zinc-300 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
+                @click.stop="removeClient(c.id)"
+                title="Delete"
+              >
+                <TrashIcon class="size-5" />
+              </button>
+            </template>
+
+            <ChevronDownIcon
+              class="size-5 text-zinc-500 transition-transform dark:text-zinc-400"
+              :class="openId === c.id ? 'rotate-180' : ''"
+            />
+          </div>
+        </button>
+
+        <!-- expandable content -->
+        <div
+          v-if="openId === c.id"
+          class="border-t border-zinc-200 p-3 dark:border-zinc-800"
+        >
+          <template v-if="editingId === c.id">
+            <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+              <TheInput
+                v-for="field in clientFields"
+                :key="field.key"
+                :id="`edit-${field.key}`"
+                :label="field.label"
+                v-model="editForm[field.key]"
+              />
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div
+                v-for="key in displayFields"
+                :key="key"
+                class="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-800/40"
+              >
+                <p class="text-xs text-zinc-500 capitalize dark:text-zinc-400">
+                  {{ key === 'companyName' ? 'Company' : key }}
+                </p>
+
+                <p class="mt-1 wrap-break-word text-zinc-900 dark:text-zinc-100">
+                  {{ c[key] || '—' }}
+                </p>
+              </div>
+            </div>
+          </template>
+        </div>
+      </article>
+    </div>
+  </section>
 </template>

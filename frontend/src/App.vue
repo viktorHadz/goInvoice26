@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-import LeTopBar from './components/UI/LeTopBar.vue'
+import TopRightMenu from './components/UI/TopRightMenu.vue'
 import NavMain from './components/UI/NavMain.vue'
 </script>
 
@@ -13,7 +13,7 @@ import NavMain from './components/UI/NavMain.vue'
     </aside>
     <main class="main-content">
       <RouterView />
-      <LeTopBar />
+      <TopRightMenu />
     </main>
   </div>
 </template>

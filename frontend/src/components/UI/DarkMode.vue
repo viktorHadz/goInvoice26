@@ -18,7 +18,7 @@ const mode = useColorMode({
       class="flex cursor-pointer flex-col items-center"
       @click="((mode = 'dark'), console.log(mode))"
     >
-      <SunIcon class="size-8 stroke-1 transition-all duration-75 hover:text-[#F07B07]"></SunIcon>
+      <SunIcon class="hover:text-acc size-8 stroke-1 transition-all duration-75"></SunIcon>
     </button>
   </div>
   <div v-if="mode === 'dark'">
@@ -27,7 +27,7 @@ const mode = useColorMode({
       class="flex cursor-pointer flex-col items-center align-text-top"
       @click="((mode = 'light'), console.log(mode))"
     >
-      <MoonIcon class="size-8 stroke-1 hover:text-[#EFCA08]"></MoonIcon>
+      <MoonIcon class="hover:text-acc size-8 stroke-1"></MoonIcon>
     </button>
   </div>
 </template>

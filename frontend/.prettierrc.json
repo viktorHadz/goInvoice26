@@ -9,5 +9,28 @@
   "singleAttributePerLine": true,
   "plugins": [
     "prettier-plugin-tailwindcss"
+  ],
+  "tabWidth": 4,
+  "overrides": [
+    {
+      "files": [
+        "*.vue",
+        "*.html"
+      ],
+      "options": {
+        "tabWidth": 2
+      }
+    },
+    {
+      "files": [
+        "*.js",
+        "*.jsx",
+        "*.ts",
+        "*.tsx"
+      ],
+      "options": {
+        "tabWidth": 4
+      }
+    }
   ]
 }

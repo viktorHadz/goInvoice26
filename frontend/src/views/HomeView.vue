@@ -2,9 +2,10 @@
 import TheButton from '@/components/UI/TheButton.vue'
 import { RouterLink } from 'vue-router'
 import { useClientStore } from '@/stores/clients'
-import SelectClient from '@/components/clients/SelectClient.vue'
 import NoClients from '@/components/clients/NoClients.vue'
 import heroImg from '@/assets/images/vik_wave.svg'
+import TheDropdown from '@/components/UI/TheDropdown.vue'
+import { UserIcon } from '@heroicons/vue/24/outline'
 // The idea is to disable invoice and editor if no client is selected
 const clientStore = useClientStore()
 </script>
@@ -35,7 +36,14 @@ const clientStore = useClientStore()
       <NoClients v-if="!clientStore.hasClients"></NoClients>
       <div v-else-if="clientStore.hasClients && !clientStore.selectedClient">
         <p class="tracking-wide">Please select a client to continue:</p>
-        <SelectClient></SelectClient>
+        <TheDropdown
+          v-model="clientStore.selectedClient"
+          :options="clientStore.clients"
+          placeholder="No client selected"
+          :left-icon="UserIcon"
+          label-key="name"
+          value-key="id"
+        ></TheDropdown>
       </div>
       <div v-else>
         <p class="text-acc font-bold">Where to captain?</p>

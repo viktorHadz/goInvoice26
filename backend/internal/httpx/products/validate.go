@@ -48,7 +48,6 @@ func ValidateCreate(in models.ProductCreateIn, routeClientID int64) (models.Prod
 		}
 	}
 
-	// ----- productName -----
 	productName := ""
 	if in.ProductName != nil {
 		productName = *in.ProductName
@@ -62,12 +61,10 @@ func ValidateCreate(in models.ProductCreateIn, routeClientID int64) (models.Prod
 		out.ProductName = productName
 	}
 
-	// ----- cross-field rule: style must be flat -----
 	if out.ProductType == "style" && out.PricingMode == "hourly" {
 		errs = append(errs, res.Invalid("pricingMode", "must be 'flat' for style"))
 	}
 
-	// ----- numeric helpers -----
 	min0 := int64(0)
 
 	parseMoneyRequired := func(field string, n *json.Number) *int64 {
@@ -100,7 +97,7 @@ func ValidateCreate(in models.ProductCreateIn, routeClientID int64) (models.Prod
 		return &v
 	}
 
-	// ----- pricingMode decides required numeric fields/disallowed extras -----
+	// pricingMode decides required number fields and dissallowed combos
 	switch out.PricingMode {
 	case "flat":
 		out.FlatPriceMinor = parseMoneyRequired("flatPrice", in.FlatPrice)

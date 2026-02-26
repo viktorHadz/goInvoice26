@@ -30,7 +30,7 @@ func ValidateUpdate(client models.UpdateClient) (models.UpdateClient, []res.Fiel
 	var errs []res.FieldError
 
 	client.Name, errs = textPtr(client.Name, validate.TextRules{
-		Field: "name", Min: 2, Max: 50, SingleLine: true, Trim: true,
+		Field: "name", Min: 2, Max: 50, SingleLine: true, Trim: true, Required: true,
 	}, errs)
 
 	client.CompanyName, errs = textPtr(client.CompanyName, validate.TextRules{
@@ -43,7 +43,11 @@ func ValidateUpdate(client models.UpdateClient) (models.UpdateClient, []res.Fiel
 
 	client.Email, errs = emailPtr(client.Email, "email", 50, errs)
 
-	// Reject empty PATCH payload
+	// Reject empties:
+	// check if name is not nill pointer first (crashes program) then check if its empty
+	if client.Name != nil && *client.Name == "" {
+		errs = append(errs, res.Required("name"))
+	}
 	if client.Name == nil && client.CompanyName == nil && client.Address == nil && client.Email == nil {
 		errs = append(errs, res.Invalid("request", "no fields to update"))
 	}

@@ -1,3 +1,5 @@
+import { request } from './fetchHelper'
+
 export type Client = {
   id: number
   name: string
@@ -9,36 +11,6 @@ export type Client = {
 }
 
 export type UpdateClientInput = Partial<Omit<Client, 'id' | 'created_at' | 'updated_at'>>
-
-// API request helper
-async function request<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const res = await fetch(input, init)
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    try {
-      const data = text ? JSON.parse(text) : null
-      const apiMsg = data?.error?.message
-      if (apiMsg) throw new Error(apiMsg)
-    } catch {
-      // fall through
-    }
-    throw new Error(text || `Response status: ${res.status}`)
-  }
-
-  // Handle 204 No Content
-  if (res.status === 204) {
-    return undefined as unknown as T
-  }
-
-  // avoids JSON parse crash if server returns no body but not 204
-  const text = await res.text()
-  if (!text) {
-    return undefined as unknown as T
-  }
-
-  return JSON.parse(text) as T
-}
 
 // Handlers - consumed by frontend
 export async function getClients(): Promise<Client[]> {
