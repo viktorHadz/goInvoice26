@@ -5,15 +5,13 @@ import NavMain from './components/UI/NavMain.vue'
 </script>
 
 <template>
-  <div
-    class="text-fg bg-primary flex min-h-screen w-full transition duration-500 will-change-transform"
-  >
-    <aside>
-      <NavMain></NavMain>
-    </aside>
-    <main class="main-content">
-      <RouterView />
-      <TopRightMenu />
-    </main>
-  </div>
+    <div
+        class="flex min-h-screen w-full bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100"
+    >
+        <main class="relative min-h-screen w-full">
+            <RouterView />
+            <NavMain />
+            <TopRightMenu />
+        </main>
+    </div>
 </template>

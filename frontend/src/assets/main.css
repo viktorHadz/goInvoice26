@@ -2,7 +2,6 @@
 @import './scrollbar.css';
 @layer base {
     :root {
-        /* font-family: 'Manrope Variable', sans-serif; */
         /* Chrome, Safari, Edge, Opera */
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
@@ -53,8 +52,17 @@
     --color-success: oklch(68.1% 0.1708 151.16);
 }
 
+@font-face {
+    font-family: 'Manrope Variable';
+    font-style: normal;
+    font-weight: 200 800;
+    font-display: swap;
+    src: url('/fonts/Manrope-VariableFont_wght.woff2') format('woff2');
+}
+
 @theme {
     --font-sans: 'Manrope Variable', sans-serif;
+
     --text-mini: 0.725rem;
     --text-tiny: 0.625rem;
 
@@ -73,6 +81,7 @@
     --color-danger: var(--color-danger);
     --color-warn: var(--color-warning);
 }
+
 @layer components {
     .input-label {
         @apply inline-block rounded-lg px-1 text-sm font-medium text-zinc-900;
@@ -109,7 +118,7 @@
 
     /* Dropdown base */
     .input-dropdown {
-        @apply w-full rounded-md px-2 py-2 text-base font-normal transition-all duration-150 outline-none sm:text-sm/6;
+        @apply w-full rounded-md px-2 py-2 text-base font-normal transition-all duration-150 outline-none sm:text-sm;
         @apply bg-zinc-50 text-zinc-950;
         @apply ring-1 ring-zinc-400;
         @apply hover:bg-zinc-50;
@@ -120,7 +129,7 @@
 
     .input-dropdown-accent {
         @apply hover:ring-sky-500/40 focus:ring-sky-500/50;
-        @apply dark:hover:ring-emerald-400/25 dark:focus:ring-emerald-400/35;
+        @apply dark:hover:ring-emerald-400/30 dark:focus:ring-emerald-400/40;
     }
 
     .input-dropdown-error {
@@ -143,9 +152,9 @@
     }
 }
 
-.router-active {
+/* .router-active {
     @apply text-primary dark:text-acc;
-}
+} */
 @layer components {
     .main-content {
         flex-grow: 1;

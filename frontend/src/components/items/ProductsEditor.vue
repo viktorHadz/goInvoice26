@@ -16,6 +16,7 @@ import {
 import TheDropdown from '../UI/TheDropdown.vue'
 import TheButton from '../UI/TheButton.vue'
 import TheInput from '../UI/TheInput.vue'
+import { onKeyStroke } from '@vueuse/core'
 
 const store = useProductStore()
 const clientStore = useClientStore()
@@ -114,10 +115,22 @@ function money(minor?: number) {
   if (minor == null) return '—'
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(minor / 100)
 }
+
+// Keys
+// Close modal
+const escArr = ['esc', 'Escape', 'escape']
+function escKeyHandler(e: KeyboardEvent) {
+  if (!open.value) {
+    console.warn('Tried  to fire outside Products Editor')
+    return
+  }
+  open.value = false
+  console.log(e)
+}
+onKeyStroke(escArr, escKeyHandler, { dedupe: true })
 </script>
 
 <template>
-  <!-- opener -->
   <div
     class="flex flex-col items-center"
     title="products"
@@ -129,7 +142,6 @@ function money(minor?: number) {
   </div>
 
   <Teleport to="body">
-    <!-- overlay -->
     <transition name="fade">
       <div
         v-if="open"
@@ -138,7 +150,7 @@ function money(minor?: number) {
       />
     </transition>
 
-    <!-- drawer -->
+    <!-- Top most -->
     <transition name="slide">
       <aside
         v-if="open"
@@ -146,73 +158,120 @@ function money(minor?: number) {
       >
         <!-- header -->
         <header
-          class="flex items-center gap-3 border-b border-zinc-200 bg-zinc-50 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900/70"
+          class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70"
         >
-          <!-- Client Select -->
-          <div class="min-w-0 flex-1">
-            <TheDropdown
-              v-model="clientStore.selectedClient"
-              :options="clientStore.clients"
-              placeholder="Select Client"
-              :left-icon="UserIcon"
-              :right-icon="ChevronDownIcon"
-              label-key="name"
-              value-key="id"
+          <div class="relative overflow-hidden px-4 py-3">
+            <div
+              class="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_0%,rgba(56,189,248,0.10),transparent_55%)] opacity-100 dark:bg-[radial-gradient(900px_circle_at_15%_0%,rgba(16,185,129,0.18),transparent_55%)]"
             />
-          </div>
-
-          <!-- Tabs -->
-          <div
-            class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <button
-              class="rounded-full px-3 py-1.5 text-sm font-medium transition"
-              :class="
-                tab === 'style'
-                  ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
-                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-              "
-              @click="tab = 'style'"
-            >
-              Styles
-            </button>
-            <button
-              class="rounded-full px-3 py-1.5 text-sm font-medium transition"
-              :class="
-                tab === 'sample'
-                  ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
-                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-              "
-              @click="tab = 'sample'"
-            >
-              Samples
-            </button>
-          </div>
-
-          <!-- Search -->
-          <div class="hidden w-72 shrink-0 sm:block">
-            <input
-              v-model="q"
-              class="input input-accent"
-              id="product-search"
-              :placeholder="`Search ${tab}s…`"
+            <div
+              class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-size-[36px_36px] opacity-[0.55] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)]"
             />
+
+            <!-- CONTENT -->
+            <div class="relative z-10 flex items-center justify-between gap-4">
+              <div class="flex min-w-0 items-center gap-3">
+                <!-- icon tile -->
+                <div
+                  class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50"
+                >
+                  <BriefcaseIcon class="stroke-1.5 size-7 text-sky-700 dark:text-emerald-400" />
+                </div>
+
+                <!-- title -->
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <h2
+                      class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-200"
+                    >
+                      Products Editor
+                    </h2>
+
+                    <span
+                      class="rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+                    >
+                      {{ tab === 'style' ? 'Styles' : 'Samples' }}
+                    </span>
+                  </div>
+
+                  <div class="text-sm tracking-tight text-zinc-500 dark:text-zinc-400">
+                    Manage client services, pricing and work units
+                  </div>
+                </div>
+              </div>
+
+              <!-- Close -->
+              <button
+                class="shrink-0 cursor-pointer rounded-lg p-2 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-rose-400/15 dark:hover:text-rose-300"
+                @click="open = false"
+                title="close"
+              >
+                <XMarkIcon class="size-5" />
+              </button>
+            </div>
           </div>
 
-          <!-- Close -->
-          <button
-            class="cursor-pointer rounded-lg p-2 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-emerald-400/15 dark:hover:text-emerald-300"
-            @click="open = false"
-            title="close"
-          >
-            <XMarkIcon class="size-5" />
-          </button>
+          <div class="border-t border-zinc-200/70 dark:border-zinc-800/70"></div>
+
+          <div class="flex items-center gap-3 px-3 py-3">
+            <!-- Client Select -->
+            <div class="min-w-0 flex-1 pr-6">
+              <TheDropdown
+                v-model="clientStore.selectedClient"
+                :options="clientStore.clients"
+                placeholder="Select Client"
+                :left-icon="UserIcon"
+                :right-icon="ChevronDownIcon"
+                label-key="name"
+                value-key="id"
+              />
+            </div>
+
+            <!-- Tabs -->
+            <div
+              class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <button
+                class="rounded-full px-3 py-1.5 text-sm font-medium transition"
+                :class="
+                  tab === 'style'
+                    ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
+                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                "
+                @click="tab = 'style'"
+              >
+                Styles
+              </button>
+
+              <button
+                class="rounded-full px-3 py-1.5 text-sm font-medium transition"
+                :class="
+                  tab === 'sample'
+                    ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
+                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                "
+                @click="tab = 'sample'"
+              >
+                Samples
+              </button>
+            </div>
+
+            <!-- Search -->
+            <div class="hidden w-72 shrink-0 px-3 sm:block">
+              <input
+                v-model="q"
+                class="input input-accent"
+                id="product-search"
+                :placeholder="`Search ${tab}s…`"
+              />
+            </div>
+          </div>
         </header>
 
         <div class="grid h-[calc(100%-56px)] grid-cols-1 md:grid-cols-2">
           <!-- list -->
           <section
-            class="overflow-y-auto border-b border-zinc-200 [scrollbar-gutter:stable] md:border-r md:border-b-0 dark:border-zinc-800"
+            class="overflow-y-auto border-b border-zinc-200 px-2 [scrollbar-gutter:stable] md:border-r md:border-b-0 dark:border-zinc-800"
           >
             <div class="flex items-center justify-between gap-3 px-3 py-3">
               <div class="text-sm text-zinc-600 dark:text-zinc-400">
@@ -282,7 +341,7 @@ function money(minor?: number) {
           </section>
 
           <!-- form -->
-          <section class="overflow-y-auto p-4 [scrollbar-gutter:stable]">
+          <section class="overflow-y-auto px-6 py-4 [scrollbar-gutter:stable]">
             <div class="flex items-start justify-between gap-3">
               <div>
                 <div class="text-base font-semibold text-zinc-900 dark:text-zinc-100">

@@ -15,6 +15,7 @@ import {
   MagnifyingGlassIcon,
   ChevronDownIcon,
   ArrowPathIcon,
+  UsersIcon,
 } from '@heroicons/vue/24/outline'
 
 const clientStore = useClientStore()
@@ -52,7 +53,6 @@ function resetCreate() {
 
 async function addClient() {
   if (!canCreate.value) return
-
   try {
     await clientStore.createNew(createForm)
     resetCreate()
@@ -161,14 +161,23 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
 </script>
 
 <template>
-  <section class="mx-auto w-full max-w-5xl px-2 sm:px-6 lg:px-0">
+  <section class="mx-auto w-full max-w-4xl px-2 sm:px-6 lg:px-0 2xl:max-w-5xl">
     <!-- Header -->
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-          Clients
-        </h2>
-        <p class="text-sm text-sky-600 dark:text-emerald-400">Add, search, and edit clients.</p>
+      <div class="flex items-center gap-2">
+        <div
+          class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+        >
+          <UsersIcon class="stroke-1.5 size-7 text-sky-600 dark:text-emerald-400" />
+        </div>
+        <div>
+          <h2 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-200">
+            Clients
+          </h2>
+          <p class="text-sm tracking-wide text-zinc-500 dark:text-zinc-400">
+            Add, search, and edit clients.
+          </p>
+        </div>
       </div>
 
       <!-- Search -->
@@ -179,7 +188,7 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
         >
           Search clients
         </label>
-        <div class="relative">
+        <div class="relative shadow-md">
           <MagnifyingGlassIcon
             class="pointer-events-none absolute top-1/2 left-2 size-5 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
           />
@@ -196,44 +205,79 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
 
     <!-- Add panel -->
     <div
-      class="mb-4 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-linear-to-bl dark:from-zinc-900 dark:via-[#181b1a] dark:to-[#161e1c]"
+      class="relative mb-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
-      <div class="mb-2 flex items-center gap-2">
-        <UserPlusIcon class="size-6 text-zinc-900 dark:text-zinc-100" />
-        <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Add client</h3>
-      </div>
+      <!-- border glow/texture  -->
+      <div
+        class="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_0%,rgba(56,189,248,0.10),transparent_55%)] opacity-100 dark:bg-[radial-gradient(900px_circle_at_15%_0%,rgba(16,185,129,0.18),transparent_55%)]"
+      />
+      <div
+        class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-size-[36px_36px] opacity-[0.55] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)]"
+      />
 
-      <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <TheInput
-          v-for="field in clientFields"
-          :key="field.key"
-          :id="`new-client-${field.key}`"
-          :label="field.label"
-          :placeholder="field.placeholder"
-          :autocomplete="field.autocomplete"
-          v-model="createForm[field.key]"
-        />
-      </div>
+      <div class="relative p-4">
+        <!-- title row -->
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Add client</h3>
 
-      <div class="mt-2 flex items-center justify-end gap-2">
-        <TheButton
-          type="button"
-          variant="secondary"
-          @click="resetCreate"
+                <span
+                  class="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
+                >
+                  Name required
+                </span>
+              </div>
+
+              <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-300">
+                Create a client, then use it in invoices and items.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex shrink-0 items-center gap-2">
+            <TheButton
+              type="button"
+              variant="secondary"
+              @click="resetCreate"
+            >
+              <ArrowPathIcon class="size-4" />
+              Clear
+            </TheButton>
+
+            <TheButton
+              type="button"
+              :disabled="!canCreate"
+              variant="primary"
+              @click="addClient"
+            >
+              <UserPlusIcon class="size-5" />
+              Add
+            </TheButton>
+          </div>
+        </div>
+
+        <!-- fields -->
+        <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <TheInput
+            v-for="field in clientFields"
+            :key="field.key"
+            :id="`new-client-${field.key}`"
+            :label="field.label"
+            :placeholder="field.placeholder"
+            :autocomplete="field.autocomplete"
+            v-model="createForm[field.key]"
+          />
+        </div>
+
+        <div
+          class="mt-3 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-200"
         >
-          <ArrowPathIcon class="size-4" />
-          Clear
-        </TheButton>
-
-        <TheButton
-          type="button"
-          :disabled="!canCreate"
-          variant="primary"
-          @click="addClient"
-        >
-          <UserPlusIcon class="size-5" />
-          Add
-        </TheButton>
+          <div class="hidden sm:block">
+            Tip: Company,email and address are optional, but useful for your invoice
+          </div>
+        </div>
       </div>
     </div>
 
