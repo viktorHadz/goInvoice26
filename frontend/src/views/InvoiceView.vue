@@ -3,7 +3,6 @@ import { computed, watch } from 'vue'
 import { useClientStore } from '@/stores/clients'
 import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
 import InvoiceHeader from '@/components/invoice/InvoiceHeader.vue'
-import InvoiceItemPicker from '@/components/invoice/InvoiceItemPicker.vue'
 import InvoiceItemsTable from '@/components/invoice/InvoiceItemsTable.vue'
 import InvoiceAdjustments from '@/components/invoice/InvoiceAdjustments.vue'
 import InvoiceTotals from '@/components/invoice/InvoiceTotals.vue'
@@ -42,18 +41,16 @@ watch(
 </script>
 
 <template>
-  <main class="mx-auto w-full 2xl:max-w-6xl">
+  <main class="mx-auto w-full max-w-4xl 2xl:max-w-5xl">
     <section
-      class="relative rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      class="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
-      <div class="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
-        <div
-          class="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_0%,rgba(56,189,248,0.10),transparent_55%)] dark:bg-[radial-gradient(900px_circle_at_15%_0%,rgba(16,185,129,0.18),transparent_55%)]"
-        />
-        <div
-          class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-size-[36px_36px] opacity-[0.55] dark:opacity-[0.35]"
-        />
-      </div>
+      <div
+        class="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_0%,rgba(56,189,248,0.10),transparent_55%)] opacity-100 dark:bg-[radial-gradient(900px_circle_at_15%_0%,rgba(16,185,129,0.18),transparent_55%)]"
+      />
+      <div
+        class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-size-[36px_36px] opacity-[0.55] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)]"
+      />
 
       <div class="relative z-10 p-4 md:p-5">
         <InvoiceHeader />
@@ -61,9 +58,9 @@ watch(
     </section>
 
     <section
-      class="mt-6 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] xl:grid-cols-[minmax(0,1fr)_380px]"
+      class="mt-4 grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] xl:grid-cols-[minmax(0,1fr)_360px]"
     >
-      <div class="min-w-0 space-y-6">
+      <div class="min-w-0 space-y-4">
         <section
           class="min-w-0 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
         >
@@ -76,7 +73,7 @@ watch(
             </div>
           </div>
 
-          <div class="p-4">
+          <div class="p-3 md:p-4">
             <InvoAddItems />
           </div>
         </section>
@@ -102,13 +99,13 @@ watch(
             </span>
           </div>
 
-          <div class="min-w-0 p-2 md:p-3">
+          <div class="min-w-0 p-2">
             <InvoiceItemsTable />
           </div>
         </section>
       </div>
 
-      <div class="min-w-0 space-y-6">
+      <div class="min-w-0 space-y-4">
         <section
           class="min-w-0 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
         >

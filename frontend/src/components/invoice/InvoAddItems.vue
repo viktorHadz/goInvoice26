@@ -90,39 +90,36 @@ function addFromProduct(p: Product) {
       </div>
 
       <div
-        class="relative inline-flex h-8 w-44 rounded-xl border border-zinc-200 bg-white p-0.5 text-sm dark:border-zinc-800 dark:bg-zinc-950/40"
+        class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
       >
-        <span
-          class="absolute top-0 left-0 h-full w-1/2 rounded-lg bg-sky-50 transition-transform dark:bg-emerald-500/10"
-          :class="itemType === 'style' ? 'translate-x-0' : 'translate-x-full'"
-        />
         <button
-          class="relative z-10 w-1/2 rounded-lg px-2 py-1"
+          class="rounded-full px-3 py-1.5 text-sm font-medium transition"
           :class="
             itemType === 'style'
-              ? 'text-sky-700 dark:text-emerald-400'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
+              ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           "
           @click="itemType = 'style'"
         >
-          style
+          Styles
         </button>
+
         <button
-          class="relative z-10 w-1/2 rounded-lg px-2 py-1"
+          class="rounded-full px-3 py-1.5 text-sm font-medium transition"
           :class="
             itemType === 'sample'
-              ? 'text-sky-700 dark:text-emerald-400'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
+              ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           "
           @click="itemType = 'sample'"
         >
-          sample
+          Samples
         </button>
       </div>
     </div>
 
     <!-- Controls row -->
-    <div class="flex flex-col gap-3 md:flex-row md:items-center">
+    <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
       <!-- Search -->
       <div class="relative min-w-0 flex-1">
         <div class="relative">
@@ -183,7 +180,7 @@ function addFromProduct(p: Product) {
       </div>
 
       <!-- Qty -->
-      <div class="w-full md:w-12">
+      <div class="w-full sm:max-w-28 xl:w-24">
         <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Qty</div>
         <TheInput
           v-model="form.qty"
@@ -193,7 +190,7 @@ function addFromProduct(p: Product) {
       </div>
 
       <!-- Minutes -->
-      <div class="w-full md:w-13">
+      <div class="w-full sm:max-w-32 xl:w-28">
         <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Minutes</div>
         <TheInput
           v-model="form.minutes"
@@ -204,9 +201,9 @@ function addFromProduct(p: Product) {
       </div>
 
       <!-- Custom line -->
-      <div class="w-full md:w-auto md:shrink-0">
+      <div class="w-full xl:w-auto xl:shrink-0">
         <TheButton
-          class="w-full py-2.5 md:w-auto"
+          class="w-full py-2.5 xl:w-auto"
           @click="
             inv.addLine({
               productId: null,
