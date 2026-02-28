@@ -25,29 +25,27 @@ const emailProxy = computed<string>({
 </script>
 
 <template>
-  <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
     <!-- Left -->
     <div class="min-w-0">
       <div class="flex items-center gap-3">
         <div
-          class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50"
+          class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
         >
-          <DocumentTextIcon class="size-8 text-sky-700 dark:text-emerald-400" />
+          <DocumentTextIcon class="stroke-1.5 size-7 text-sky-600 dark:text-emerald-400" />
         </div>
 
         <div class="min-w-0">
-          <div
-            class="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-200"
-          >
+          <div class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-200">
             Invoice Builder
           </div>
-          <div class="text-base text-zinc-500 dark:text-zinc-400">
+          <div class="text-sm tracking-wide text-zinc-500 dark:text-zinc-400">
             Create an invoice for the selected client
           </div>
         </div>
       </div>
 
-      <div class="mt-4 grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+      <div class="mt-3 grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
         <div>
           <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Issue date</div>
           <DatePick @update-date="(v) => inv.draft && (inv.draft.issueDate = v)" />
@@ -61,7 +59,7 @@ const emailProxy = computed<string>({
     </div>
 
     <!-- Middle -->
-    <div class="flex items-start gap-2 lg:justify-center">
+    <div class="flex items-start gap-2 lg:justify-center lg:pt-1">
       <TheButton
         class="flex items-center gap-2"
         title="Generate PDF"
@@ -73,7 +71,7 @@ const emailProxy = computed<string>({
 
     <!-- Right -->
     <div
-      class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/60"
+      class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50 p-3.5 dark:border-zinc-800 dark:bg-zinc-900/60"
     >
       <div class="mb-3 flex items-center justify-between">
         <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">To</div>
