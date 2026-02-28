@@ -134,7 +134,7 @@ function onBlur() {
       :name="props.name"
       :type="props.type"
       v-model="valueProxy"
-      class="input"
+      class="input w-full min-w-0"
       :class="[props.inputClass, showError ? 'input-error' : 'input-accent']"
       :aria-invalid="showError ? 'true' : 'false'"
       :aria-describedby="showError ? errId : undefined"

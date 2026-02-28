@@ -17,6 +17,7 @@ import {
   ArrowPathIcon,
   UsersIcon,
 } from '@heroicons/vue/24/outline'
+import DecorGradient from '../UI/DecorGradient.vue'
 
 const clientStore = useClientStore()
 
@@ -213,12 +214,7 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
       class="relative mb-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
       <!-- border glow/texture  -->
-      <div
-        class="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_0%,rgba(56,189,248,0.10),transparent_55%)] opacity-100 dark:bg-[radial-gradient(900px_circle_at_15%_0%,rgba(16,185,129,0.18),transparent_55%)]"
-      />
-      <div
-        class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-size-[36px_36px] opacity-[0.55] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)]"
-      />
+      <DecorGradient />
 
       <div class="relative p-4">
         <!-- title row -->

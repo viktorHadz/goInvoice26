@@ -8,12 +8,6 @@
             -webkit-appearance: none;
             margin: 0;
         }
-
-        /* Firefox */
-        input[type='number'] {
-            appearance: textfield;
-            -moz-appearance: textfield;
-        }
     }
 }
 
@@ -83,6 +77,11 @@
 }
 
 @layer components {
+    /* Firefox */
+    input[type='number'] {
+        appearance: textfield;
+        -moz-appearance: textfield;
+    }
     .input-label {
         @apply inline-block rounded-lg px-1 text-sm font-medium text-zinc-900;
         @apply dark:text-zinc-300;
@@ -135,6 +134,23 @@
     .input-dropdown-error {
         @apply ring-rose-500/40 hover:ring-rose-500/55 focus:ring-rose-500/65;
         @apply dark:ring-rose-400/30 dark:hover:ring-rose-400/40 dark:focus:ring-rose-400/50;
+    }
+
+    .input-compact {
+        @apply px-1.5 py-1 text-sm leading-tight;
+        min-width: 0 !important;
+        width: 100%;
+    }
+
+    .input-compact[type='number'] {
+        appearance: textfield;
+        -moz-appearance: textfield;
+    }
+
+    .input-compact[type='number']::-webkit-outer-spin-button,
+    .input-compact[type='number']::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
     }
 }
 

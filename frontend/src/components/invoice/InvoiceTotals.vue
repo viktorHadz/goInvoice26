@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
 import { fmtGBPMinor } from '@/utils/money'
+import { DocumentArrowDownIcon } from '@heroicons/vue/24/outline'
+import TheButton from '../UI/TheButton.vue'
 
 const inv = useInvoiceDraftStore()
 const totals = computed(() => inv.totals)
@@ -89,5 +91,12 @@ const totals = computed(() => inv.totals)
         </div>
       </div>
     </div>
+    <TheButton
+      class="flex items-center gap-2"
+      title="Generate PDF"
+    >
+      <DocumentArrowDownIcon class="size-4" />
+      Print / PDF
+    </TheButton>
   </div>
 </template>

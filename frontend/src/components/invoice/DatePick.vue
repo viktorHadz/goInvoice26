@@ -55,7 +55,7 @@ const datePickerMode = computed(() => mode.value === 'dark')
     @update:model-value="handleModelValue"
   >
     <template #trigger>
-      <div class="input flex h-10.5 cursor-pointer items-center gap-2 px-3">
+      <div class="input flex cursor-pointer items-center gap-2 px-3">
         <CalendarIcon class="size-5 text-zinc-500 dark:text-zinc-400" />
         <p class="max-w-36 truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
           {{ format(date) }}

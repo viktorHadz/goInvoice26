@@ -41,38 +41,40 @@ function setUnitPounds(v: any) {
 </script>
 
 <template>
-  <div class="grid grid-cols-10 items-center gap-6 px-2 py-3">
+  <div
+    class="grid w-full grid-cols-[minmax(220px,1fr)_48px_64px_96px_110px_36px] items-start gap-2 px-2 py-3"
+  >
     <!-- name -->
-    <div class="col-span-5 min-w-0">
+    <div class="min-w-0">
       <TheInput
         type="text"
         :modelValue="line.name"
         @update:modelValue="setName"
-        inputClass="py-1"
+        inputClass="py-1 text-sm "
         placeholder="Product name"
       />
-      <div class="text-sm text-zinc-500 capitalize dark:text-zinc-400">
+      <div class="truncate text-sm text-zinc-500 capitalize dark:text-zinc-400">
         {{ line.lineType }} · {{ line.pricingMode }}
       </div>
     </div>
 
     <!-- qty -->
-    <div class="text-right">
+    <div class="min-w-0 text-right">
       <TheInput
         type="number"
         :modelValue="line.quantity"
         @update:modelValue="setQty"
-        inputClass="py-1"
+        inputClass="input-compact text-right tabular-nums"
       />
     </div>
 
     <!-- minutes -->
-    <div class="text-right">
+    <div class="min-w-0 text-right">
       <TheInput
         type="number"
         :modelValue="line.minutesWorked ?? 0"
         @update:modelValue="setMinutes"
-        inputClass="py-1"
+        inputClass="input-compact text-right tabular-nums"
         :disabled="minutesDisabled"
         :placeholder="minutesDisabled ? '—' : '60'"
         :title="minutesDisabled ? 'Only hourly lines use minutes' : 'Minutes worked'"
@@ -80,21 +82,23 @@ function setUnitPounds(v: any) {
     </div>
 
     <!-- unit -->
-    <div class="text-right">
+    <div class="min-w-0 text-right">
       <TheInput
         type="number"
         :modelValue="unitPounds"
-        inputClass="py-1"
         @update:modelValue="setUnitPounds"
+        inputClass="input-compact text-right tabular-nums"
         :title="line.pricingMode === 'hourly' ? 'Hourly rate (£)' : 'Unit price (£)'"
       />
-      <div class="text-sm text-zinc-500 dark:text-zinc-400">
+      <div class="truncate text-sm text-zinc-500 dark:text-zinc-400">
         {{ fmtGBPMinor(line.unitPriceMinor) }}{{ line.pricingMode === 'hourly' ? '/hr' : '' }}
       </div>
     </div>
 
     <!-- total -->
-    <div class="text-right text-base font-semibold text-zinc-900 dark:text-zinc-100">
+    <div
+      class="min-w-0 text-right text-base font-semibold text-zinc-900 tabular-nums dark:text-zinc-100"
+    >
       {{ fmtGBPMinor(totalMinor) }}
     </div>
 

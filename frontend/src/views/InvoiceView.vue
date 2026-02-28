@@ -7,7 +7,6 @@ import InvoiceItemPicker from '@/components/invoice/InvoiceItemPicker.vue'
 import InvoiceItemsTable from '@/components/invoice/InvoiceItemsTable.vue'
 import InvoiceAdjustments from '@/components/invoice/InvoiceAdjustments.vue'
 import InvoiceTotals from '@/components/invoice/InvoiceTotals.vue'
-import InvoAddItems from '@/components/invoice/InvoAddItems.vue'
 
 const clients = useClientStore()
 const invStore = useInvoiceDraftStore()
@@ -42,103 +41,85 @@ watch(
 </script>
 
 <template>
-  <main class="mx-auto w-full 2xl:max-w-6xl">
+  <main class="mx-auto w-full max-w-4xl px-4">
+    <!-- HEADER DOCUMENT -->
+    <InvoiceHeader />
+
+    <!-- PRODUCT PICKER -->
     <section
-      class="relative rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      class="mt-4 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
-      <div class="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
-        <div
-          class="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_0%,rgba(56,189,248,0.10),transparent_55%)] dark:bg-[radial-gradient(900px_circle_at_15%_0%,rgba(16,185,129,0.18),transparent_55%)]"
-        />
-        <div
-          class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-size-[36px_36px] opacity-[0.55] dark:opacity-[0.35]"
-        />
+      <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+        <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Insert products</div>
+        <div class="text-xs text-sky-600 dark:text-emerald-400">
+          Select an existing or insert a custom product
+        </div>
       </div>
 
-      <div class="relative z-10 p-4 md:p-5">
-        <InvoiceHeader />
+      <div class="p-3 md:p-4">
+        <InvoiceItemPicker />
       </div>
     </section>
 
+    <!-- INVOICE LINES  -->
     <section
-      class="mt-6 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] xl:grid-cols-[minmax(0,1fr)_380px]"
+      class="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
-      <div class="min-w-0 space-y-6">
-        <section
-          class="min-w-0 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      <div
+        class="flex items-start justify-between gap-3 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800"
+      >
+        <div class="min-w-0">
+          <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
+          <div class="text-xs text-sky-600 dark:text-emerald-400">
+            For #{{ invStore.draft?.baseNumber || '{invoice number}' }}
+          </div>
+        </div>
+
+        <span
+          class="hidden rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
         >
-          <div class="border-b border-zinc-200 px-4 py-3.5 dark:border-zinc-800">
-            <div class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">
-              Insert products
-            </div>
-            <div class="text-sm text-sky-600 dark:text-emerald-400">
-              Select an existing or insert a custom product
-            </div>
-          </div>
-
-          <div class="p-4">
-            <InvoAddItems />
-          </div>
-        </section>
-
-        <section
-          class="min-w-0 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-        >
-          <div
-            class="flex items-center justify-between border-b border-zinc-200 px-4 py-3.5 dark:border-zinc-800"
-          >
-            <div>
-              <div class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">
-                Invoice items
-              </div>
-              <div class="text-sm text-sky-600 dark:text-emerald-400">
-                For #{{ invStore.draft?.baseNumber || '{invoice number}' }}
-              </div>
-            </div>
-            <span
-              class="rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
-            >
-              Tip: Invoice items can be modified
-            </span>
-          </div>
-
-          <div class="min-w-0 p-2 md:p-3">
-            <InvoiceItemsTable />
-          </div>
-        </section>
+          Tip: items can be modified
+        </span>
       </div>
 
-      <div class="min-w-0 space-y-6">
-        <section
-          class="min-w-0 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-        >
-          <div class="border-b border-zinc-200 px-4 py-3.5 dark:border-zinc-800">
-            <div class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Adjustments</div>
-            <div class="text-sm text-sky-600 dark:text-emerald-400">
-              Paid, deposit, discount, VAT and note
-            </div>
-          </div>
-
-          <div class="p-4">
-            <InvoiceAdjustments />
-          </div>
-        </section>
-
-        <section
-          class="min-w-0 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-        >
-          <div class="border-b border-zinc-200 px-4 py-3.5 dark:border-zinc-800">
-            <div class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-            <div class="text-sm text-sky-600 dark:text-emerald-400">
-              Subtotal, discount, VAT, total, balance
-            </div>
-          </div>
-
-          <div class="p-4">
-            <InvoiceTotals />
-          </div>
-        </section>
+      <div class="p-2.5 md:p-3">
+        <InvoiceItemsTable />
       </div>
+    </section>
+
+    <!-- FINANCIALS -->
+    <section class="mt-4 grid gap-4 md:grid-cols-2">
+      <!-- Adjustments -->
+      <section
+        class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+      >
+        <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+          <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Adjustments</div>
+          <div class="text-xs text-sky-600 dark:text-emerald-400">
+            Paid, deposit, discount, VAT and note
+          </div>
+        </div>
+
+        <div class="p-3 md:p-4">
+          <InvoiceAdjustments />
+        </div>
+      </section>
+
+      <!-- Totals -->
+      <section
+        class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+      >
+        <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+          <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
+          <div class="text-xs text-sky-600 dark:text-emerald-400">
+            Subtotal, discount, VAT, total, balance
+          </div>
+        </div>
+
+        <div class="p-3 md:p-4">
+          <InvoiceTotals />
+        </div>
+      </section>
     </section>
   </main>
 </template>

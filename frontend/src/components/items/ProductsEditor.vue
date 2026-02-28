@@ -171,7 +171,6 @@ onKeyStroke(escArr, escKeyHandler, { dedupe: true })
             <!-- CONTENT -->
             <div class="relative z-10 flex items-center justify-between gap-4">
               <div class="flex min-w-0 items-center gap-3">
-                <!-- icon tile -->
                 <div
                   class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50"
                 >

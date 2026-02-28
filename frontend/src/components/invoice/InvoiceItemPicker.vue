@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
 import { ChevronUpDownIcon, PlusIcon, SquaresPlusIcon } from '@heroicons/vue/24/outline'
 import TheButton from '@/components/UI/TheButton.vue'
 import TheInput from '@/components/UI/TheInput.vue'
@@ -7,6 +7,7 @@ import { useProductStore } from '@/stores/products'
 import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
 import { fmtGBPMinor, toMinor } from '@/utils/money'
 import type { Product, ProductType } from '@/utils/productHttpHandler'
+import { onClickOutside } from '@vueuse/core'
 
 const prod = useProductStore()
 const inv = useInvoiceDraftStore()
@@ -24,6 +25,10 @@ watch(itemType, () => {
   q.value = ''
   open.value = false
 })
+
+const pickerCloseTarget = useTemplateRef('pickerClose')
+
+onClickOutside(pickerCloseTarget, (event) => (open.value = false))
 
 const list = computed<Product[]>(() => prod.byType[itemType.value] ?? [])
 const filtered = computed(() => {
@@ -80,54 +85,54 @@ function addFromProduct(p: Product) {
 
 <template>
   <div class="space-y-3">
-    <!-- Header row - Toggle -->
+    <!-- Header row -->
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+      <div class="text-zinc-700 dark:text-zinc-200">
         Product picker
         <span class="ml-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
           ({{ itemType }})
         </span>
       </div>
-
+      <!-- Toggle -->
       <div
-        class="relative inline-flex h-8 w-44 rounded-xl border border-zinc-200 bg-white p-0.5 text-sm dark:border-zinc-800 dark:bg-zinc-950/40"
+        class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
       >
-        <span
-          class="absolute top-0 left-0 h-full w-1/2 rounded-lg bg-sky-50 transition-transform dark:bg-emerald-500/10"
-          :class="itemType === 'style' ? 'translate-x-0' : 'translate-x-full'"
-        />
         <button
-          class="relative z-10 w-1/2 rounded-lg px-2 py-1"
+          class="rounded-full px-3 py-1.5 text-sm font-medium transition"
           :class="
             itemType === 'style'
-              ? 'text-sky-700 dark:text-emerald-400'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
+              ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           "
           @click="itemType = 'style'"
         >
-          style
+          Styles
         </button>
+
         <button
-          class="relative z-10 w-1/2 rounded-lg px-2 py-1"
+          class="rounded-full px-3 py-1.5 text-sm font-medium transition"
           :class="
             itemType === 'sample'
-              ? 'text-sky-700 dark:text-emerald-400'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
+              ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           "
           @click="itemType = 'sample'"
         >
-          sample
+          Samples
         </button>
       </div>
     </div>
 
-    <!-- Controls row -->
+    <!-- Product Picker  -->
     <div class="flex flex-col gap-3 md:flex-row md:items-center">
       <!-- Search -->
-      <div class="relative min-w-0 flex-1">
+      <div
+        class="relative min-w-0 flex-1"
+        ref="pickerClose"
+      >
         <div class="relative">
           <input
-            class="input h-10.5 w-full px-3 pr-10 text-base"
+            class="input w-full px-3 py-1.5 pr-10 text-base"
             v-model="q"
             :placeholder="`Search ${itemType}s…`"
             @focus="open = true"
@@ -144,11 +149,11 @@ function addFromProduct(p: Product) {
 
         <transition
           enter-active-class="transition duration-150 origin-top ease-out"
-          enter-from-class="opacity-0 scale-y-90"
+          enter-from-class="opacity-0 scale-y-50"
           enter-to-class="opacity-100 scale-y-100"
-          leave-active-class="transition duration-100 ease-in"
+          leave-active-class="transition duration-100 origin-top ease-in"
           leave-from-class="opacity-100 scale-y-100"
-          leave-to-class="opacity-0 scale-y-90"
+          leave-to-class="opacity-0 scale-y-50"
         >
           <div
             v-if="open && filtered.length"
@@ -173,7 +178,7 @@ function addFromProduct(p: Product) {
                   class="shrink-0"
                   @click="addFromProduct(p)"
                 >
-                  <PlusIcon class="size-4" />
+                  <SquaresPlusIcon class="size-4" />
                   Add
                 </TheButton>
               </div>
@@ -187,6 +192,7 @@ function addFromProduct(p: Product) {
         <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Qty</div>
         <TheInput
           v-model="form.qty"
+          input-class="text-right py-1.5"
           type="number"
           placeholder="1"
         />
@@ -194,10 +200,11 @@ function addFromProduct(p: Product) {
 
       <!-- Minutes -->
       <div class="w-full md:w-13">
-        <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Minutes</div>
+        <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Mins</div>
         <TheInput
           v-model="form.minutes"
           type="number"
+          input-class="text-right py-1.5"
           :disabled="itemType === 'style'"
           :title="itemType === 'style' ? 'Styles do not use minutes' : 'Used for hourly samples'"
         />
