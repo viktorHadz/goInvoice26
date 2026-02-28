@@ -161,7 +161,7 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
 </script>
 
 <template>
-  <section class="mx-auto w-full max-w-4xl px-2 sm:px-6 lg:px-0 2xl:max-w-5xl">
+  <section class="mx-auto w-full max-w-4xl 2xl:max-w-5xl">
     <!-- Header -->
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div class="flex items-center gap-2">

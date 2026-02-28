@@ -1,141 +1,243 @@
-<script setup lang="ts"></script>
-<template>
-    <div class="relative col-span-8 grid grid-cols-subgrid items-center gap-6 py-5">
-        <!-- Toggle Item Type -->
-        <div class="absolute -bottom-1 w-full max-w-36">
-            <span
-                class="absolute top-0 left-1.5 h-4 w-2 rounded-bl-sm border-b border-l mask-t-from-0"
-            ></span>
-            <div class="relative ml-4">
-                <span
-                    class="bg-acc/20 dark:bg-acc/20 absolute bottom-0 left-0 z-[1] h-5.5 w-1/2 rounded transition-transform duration-300"
-                    :class="itemType === 'style' ? 'translate-x-0' : 'translate-x-full'"
-                ></span>
-                <button
-                    @click="toggleItemType()"
-                    :class="
-                        itemType === 'style'
-                            ? 'text-acc dark:text-acc'
-                            : 'text-fg hover:text-acc cursor-pointer dark:hover:text-white'
-                    "
-                    class="z-10 w-1/2"
-                >
-                    style
-                </button>
-                <button
-                    @click="toggleItemType()"
-                    :class="
-                        itemType === 'sample'
-                            ? 'text-acc dark:text-acc'
-                            : 'text-fg hover:text-acc cursor-pointer dark:hover:text-white'
-                    "
-                    class="z-10 w-1/2"
-                >
-                    sample
-                </button>
-            </div>
-            <span
-                class="absolute top-0 -right-3 h-4 w-2 rounded-br-sm border-r border-b mask-t-from-0%"
-            ></span>
-        </div>
-        <div class="relative col-span-4 block py-1">
-            <!-- Input -->
-            <input
-                id="combo-item-add-1"
-                type="text"
-                class="input input hover:drop-shadow-acc/25 focus:drop-shadow-acc/25 text-base drop-shadow-md transition-shadow duration-75 sm:text-sm/6"
-                v-model="selectedItem.name"
-                @input="searchQueries[itemType] = $event.target.value"
-                :placeholder="`Type to search by ${itemType} name`"
-            />
-            <div class="absolute top-2 right-0">
-                <button
-                    class="relative flex cursor-pointer items-center rounded-r-md px-2 focus:outline-hidden"
-                    @click="(toggleDropdown(), console.log(dropDown))"
-                >
-                    <ChevronUpDownIcon
-                        class="hover:text-acc size-6 text-gray-400"
-                        aria-hidden="true"
-                    />
-                </button>
-            </div>
+<script setup lang="ts">
+import { computed, reactive, ref } from 'vue'
+import { onClickOutside } from '@vueuse/core'
+import { ChevronUpDownIcon, PlusIcon } from '@heroicons/vue/24/outline'
 
-            <!-- Dropdown -->
-            <transition
-                enter-active-class="transition duration-300 origin-top ease-out "
-                enter-from-class=" opacity-0 scale-y-25  "
-                enter-to-class="  opacity-100 scale-y-100 "
-                leave-active-class="transition duration-150  ease-in"
-                leave-from-class=" scale-y-100 origin-bottom opacity-100"
-                leave-to-class=" scale-y-0 origin-top opacity-0"
-            >
-                <div
-                    v-if="filteredItems.length > 0 && dropDown"
-                    class="input-dropdown absolute z-10 mt-2 max-h-60 max-w-full min-w-full overflow-auto rounded-md py-1 text-base shadow-md focus:outline-hidden sm:text-sm"
-                >
-                    <div
-                        v-for="(item, index) in filteredItems"
-                        :key="item.id"
-                        :value="item"
-                    >
-                        <li
-                            class="relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 px-2 py-2 font-normal"
-                        >
-                            <button
-                                class="hover:text-acc dark:hover:text-acc flex cursor-pointer justify-between"
-                                @click="selectItem(item)"
-                            >
-                                <div class="truncate">{{ item.name }}</div>
-                                <div class="truncate">{{ item.price }}</div>
-                            </button>
-                            <TheInput
-                                :id="`${item.id}-${index}`"
-                                class="placeholder:text-acc text-acc w-12"
-                                v-model="selectedItem.qty"
-                                placeholder="1"
-                            ></TheInput>
-                            <TheButton class="mr-1">add</TheButton>
-                            <div title="quick add item without selecting">
-                                <QuestionMarkCircleIcon
-                                    class="hover:text-acc relative z-20 size-5 cursor-pointer"
-                                ></QuestionMarkCircleIcon>
-                            </div>
-                        </li>
-                    </div>
-                </div>
-            </transition>
+import TheInput from '@/components/UI/TheInput.vue'
+import TheButton from '@/components/UI/TheButton.vue'
+
+import { useProductStore } from '@/stores/products'
+import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
+import type { Product, ProductType } from '@/utils/productHttpHandler'
+import { fmtGBPMinor, toMinor } from '@/utils/money'
+
+const prod = useProductStore()
+const inv = useInvoiceDraftStore()
+
+const itemType = ref<ProductType>('style')
+const q = ref('')
+const open = ref(false)
+
+const panelRef = ref<HTMLElement | null>(null)
+onClickOutside(panelRef, () => (open.value = false))
+
+const form = reactive({
+  qty: 1,
+  minutes: 60, // used for hourly samples
+})
+
+const list = computed<Product[]>(() => prod.byType[itemType.value] ?? [])
+const filteredItems = computed(() => {
+  const s = q.value.trim().toLowerCase()
+  if (!s) return list.value
+  return list.value.filter((p) => p.productName.toLowerCase().includes(s))
+})
+
+function toggleItemType() {
+  itemType.value = itemType.value === 'style' ? 'sample' : 'style'
+  q.value = ''
+  open.value = false
+}
+
+function priceLabel(p: Product) {
+  if (p.pricingMode === 'hourly') return `${fmtGBPMinor(p.hourlyRateMinor ?? 0)}/hr`
+  return fmtGBPMinor(p.flatPriceMinor ?? 0)
+}
+
+function addItem(p: Product) {
+  const qty = Number(form.qty) > 0 ? Number(form.qty) : 1
+
+  // style => always flat
+  if (p.productType === 'style') {
+    inv.addLine({
+      productId: p.id,
+      name: p.productName,
+      lineType: 'style',
+      pricingMode: 'flat',
+      quantity: qty,
+      unitPriceMinor: p.flatPriceMinor ?? 0,
+      minutesWorked: null,
+    })
+    open.value = false
+    return
+  }
+
+  // sample hourly
+  if (p.pricingMode === 'hourly') {
+    const minutes = p.minutesWorked ?? (Number(form.minutes) || 60)
+
+    inv.addLine({
+      productId: p.id,
+      name: p.productName,
+      lineType: 'sample',
+      pricingMode: 'hourly',
+      quantity: qty,
+      unitPriceMinor: p.hourlyRateMinor ?? 0,
+      minutesWorked: minutes,
+    })
+    open.value = false
+    return
+  }
+
+  // sample flat
+  inv.addLine({
+    productId: p.id,
+    name: p.productName,
+    lineType: 'sample',
+    pricingMode: 'flat',
+    quantity: qty,
+    unitPriceMinor: p.flatPriceMinor ?? 0,
+    minutesWorked: null,
+  })
+  open.value = false
+}
+</script>
+
+<template>
+  <div
+    ref="panelRef"
+    class="relative col-span-8 grid grid-cols-subgrid items-end gap-4 py-4"
+  >
+    <!-- Toggle Item Type -->
+    <div class="relative col-span-4">
+      <div class="mb-2 flex items-center justify-between">
+        <div class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+          Add item
+          <span class="ml-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            ({{ itemType }})
+          </span>
         </div>
-        <!-- Numerics -->
-        <TheInput
-            class="col-span-1"
-            placeholder="x1"
-            v-model="selectedItem.qty"
-            :id="'invo-qty-1'"
-            :type="'number'"
-        ></TheInput>
-        <TheInput
-            class="col-span-1"
-            v-model="selectedItem.time"
-            :disabled="itemType === 'style' ? true : false"
-            :id="'invo-time-1'"
-            :type="'number'"
-            :placeholder="itemType === 'style' ? 'N/A' : 'min'"
-            :title="itemType === 'style' ? 'No time property for styles' : 'min'"
-        ></TheInput>
-        <TheInput
-            class="col-span-1"
-            v-model="selectedItem.price"
-            :id="'invo-price-1'"
-            :type="'number'"
-            placeholder="item price"
-        ></TheInput>
+
+        <div
+          class="relative inline-flex h-8 w-44 rounded-xl border border-zinc-200 bg-white p-0.5 text-sm dark:border-zinc-800 dark:bg-zinc-950/40"
+        >
+          <span
+            class="absolute top-0 left-0 h-full w-1/2 rounded-lg bg-sky-50 transition-transform dark:bg-emerald-500/10"
+            :class="itemType === 'style' ? 'translate-x-0' : 'translate-x-full'"
+          />
+          <button
+            class="relative z-10 w-1/2 rounded-lg px-2 py-1"
+            :class="
+              itemType === 'style'
+                ? 'text-sky-700 dark:text-emerald-400'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
+            "
+            @click="itemType = 'style'"
+          >
+            style
+          </button>
+          <button
+            class="relative z-10 w-1/2 rounded-lg px-2 py-1"
+            :class="
+              itemType === 'sample'
+                ? 'text-sky-700 dark:text-emerald-400'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
+            "
+            @click="itemType = 'sample'"
+          >
+            sample
+          </button>
+        </div>
+      </div>
+
+      <!-- Search input -->
+      <div class="relative">
         <input
-            id="invo-total-1"
-            class="text-acc placeholder:text-acc input hover:!ring-brdr col-span-1 cursor-default select-none"
-            v-model="selectedItem.itemTotal"
-            disabled="true"
-            placeholder="0"
-            title="Cannot edit item total price"
+          class="input h-10.5 w-full px-3 pr-10 text-base"
+          v-model="q"
+          :placeholder="`Search ${itemType}s…`"
+          @focus="open = true"
+          @input="open = true"
         />
+        <button
+          class="absolute top-1/2 right-1 -translate-y-1/2 rounded-lg px-2 py-1 text-zinc-400 hover:text-sky-600 dark:hover:text-emerald-400"
+          @click="open = !open"
+          type="button"
+        >
+          <ChevronUpDownIcon class="size-5" />
+        </button>
+      </div>
+
+      <!-- Dropdown -->
+      <transition
+        enter-active-class="transition duration-150 origin-top ease-out"
+        enter-from-class="opacity-0 scale-y-90"
+        enter-to-class="opacity-100 scale-y-100"
+        leave-active-class="transition duration-100 ease-in"
+        leave-from-class="opacity-100 scale-y-100"
+        leave-to-class="opacity-0 scale-y-90"
+      >
+        <div
+          v-if="open && filteredItems.length"
+          class="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+        >
+          <div class="max-h-72 overflow-auto">
+            <div
+              v-for="p in filteredItems"
+              :key="p.id"
+              class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+            >
+              <div class="min-w-0">
+                <div class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  {{ p.productName }}
+                </div>
+                <div class="text-sm text-zinc-500 dark:text-zinc-400">
+                  {{ p.pricingMode }} · {{ priceLabel(p) }}
+                </div>
+              </div>
+
+              <TheButton
+                class="shrink-0"
+                @click="addItem(p)"
+              >
+                <PlusIcon class="size-4" />
+                Add
+              </TheButton>
+            </div>
+          </div>
+        </div>
+      </transition>
     </div>
+
+    <!-- Numerics -->
+    <div class="col-span-1">
+      <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Qty</div>
+      <TheInput
+        v-model="form.qty"
+        type="number"
+        placeholder="1"
+      />
+    </div>
+
+    <div class="col-span-1">
+      <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Minutes</div>
+      <TheInput
+        v-model="form.minutes"
+        type="number"
+        :disabled="itemType === 'style'"
+        :placeholder="itemType === 'style' ? '—' : '60'"
+        :title="itemType === 'style' ? 'Styles do not use minutes' : 'Used for hourly samples'"
+      />
+    </div>
+
+    <div class="col-span-2 flex justify-end">
+      <TheButton
+        class="h-10.5"
+        @click="
+          inv.addLine({
+            productId: null,
+            name: 'Custom item',
+            lineType: 'custom',
+            pricingMode: 'flat',
+            quantity: 1,
+            unitPriceMinor: toMinor(0),
+            minutesWorked: null,
+          })
+        "
+      >
+        <PlusIcon class="size-4" />
+        Custom
+      </TheButton>
+    </div>
+  </div>
 </template>

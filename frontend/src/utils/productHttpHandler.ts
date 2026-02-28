@@ -19,7 +19,7 @@ export interface Product {
     updated_at?: string
 }
 
-// What the Go API expects for BOTH create and update (yes, PATCH still requires full payload).
+// What the Go API expects for BOTH create and update
 export type ProductUpsert = {
     productType: ProductType
     pricingMode: PricingMode

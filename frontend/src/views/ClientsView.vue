@@ -3,7 +3,5 @@ import ClientsTable from '@/components/clients/ClientsTable.vue'
 </script>
 
 <template>
-    <div class="mt-26">
-        <ClientsTable></ClientsTable>
-    </div>
+  <ClientsTable></ClientsTable>
 </template>

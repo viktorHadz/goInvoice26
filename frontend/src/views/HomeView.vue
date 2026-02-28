@@ -11,141 +11,136 @@ import { UserIcon } from '@heroicons/vue/24/outline'
 const clientStore = useClientStore()
 
 const features = [
-    { title: 'Clients', body: 'Create and manage' },
-    { title: 'Items', body: 'Build inventory' },
-    { title: 'Invoices', body: 'Generate quickly' },
-    { title: 'Editor', body: 'Match demands' },
-    { title: 'Invoice Book', body: 'Track and audit' },
+  { title: 'Clients', body: 'Create and manage' },
+  { title: 'Items', body: 'Build inventory' },
+  { title: 'Invoices', body: 'Generate quickly' },
+  { title: 'Editor', body: 'Match demands' },
+  { title: 'Invoice Book', body: 'Track and audit' },
 ]
 </script>
-
 <template>
-    <main class="sm mx-auto w-full max-w-6xl px-4 py-18 sm:py-28">
-        <!-- Hero -->
-        <section class="grid items-center gap-8 lg:grid-cols-2">
-            <div>
-                <h1
-                    class="text-3xl font-bold tracking-tight text-sky-600 uppercase sm:text-5xl dark:text-emerald-400"
-                >
-                    Welcome to Invoicer
-                </h1>
+  <main class="mx-auto w-full max-w-6xl">
+    <!-- Hero -->
+    <section class="grid items-center gap-8 lg:grid-cols-2">
+      <div>
+        <h1
+          class="text-3xl font-bold tracking-tight text-sky-600 uppercase sm:text-5xl dark:text-emerald-400"
+        >
+          Welcome to Invoicer
+        </h1>
 
-                <p class="mt-3 max-w-xl text-base text-zinc-600 sm:text-xl dark:text-zinc-300">
-                    Your one stop invoice shop
-                </p>
+        <p class="mt-3 max-w-xl text-base text-zinc-600 sm:text-xl dark:text-zinc-300">
+          Your one stop invoice shop
+        </p>
 
-                <!-- quick points -->
-                <div class="mt-6 grid gap-3 sm:grid-cols-3">
-                    <ul
-                        v-for="feature in features"
-                        :key="feature.body"
-                    >
-                        <li>
-                            <div
-                                class="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
-                            >
-                                <div class="font-semibold text-zinc-900 dark:text-zinc-100">
-                                    {{ feature.title }}
-                                </div>
-                                <div class="mt-1 text-zinc-600 dark:text-zinc-400">
-                                    {{ feature.body }}
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
+        <!-- quick points -->
+        <div class="mt-6 grid gap-3 sm:grid-cols-3">
+          <ul
+            v-for="feature in features"
+            :key="feature.body"
+          >
+            <li>
+              <div
+                class="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+              >
+                <div class="font-semibold text-zinc-900 dark:text-zinc-100">
+                  {{ feature.title }}
                 </div>
-
-                <!-- tiny “how to” -->
-                <div class="mt-7 text-zinc-600 dark:text-zinc-400">
-                    <div class="font-medium text-zinc-900 dark:text-zinc-200">Quick start:</div>
-                    <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
-                        <li class="hover:text-sky-600 dark:hover:text-emerald-400">
-                            Create a client
-                        </li>
-                        <li class="hover:text-sky-600 dark:hover:text-emerald-400">
-                            Select them from the top-right menu
-                        </li>
-                        <li class="hover:text-sky-600 dark:hover:text-emerald-400">
-                            Jump into invoice or item editor
-                        </li>
-                    </ol>
+                <div class="mt-1 text-zinc-600 dark:text-zinc-400">
+                  {{ feature.body }}
                 </div>
-            </div>
+              </div>
+            </li>
+          </ul>
+        </div>
 
-            <div class="flex justify-center lg:justify-end">
-                <img
-                    :src="heroImg"
-                    alt="Invoicer mascot"
-                    class="w-full max-w-sm select-none"
-                    draggable="false"
-                />
-            </div>
-        </section>
+        <!-- tiny “how to” -->
+        <div class="mt-7 text-zinc-600 dark:text-zinc-400">
+          <div class="font-medium text-zinc-900 dark:text-zinc-200">Quick start:</div>
+          <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
+            <li class="hover:text-sky-600 dark:hover:text-emerald-400">Create a client</li>
+            <li class="hover:text-sky-600 dark:hover:text-emerald-400">
+              Select them from the top-right menu
+            </li>
+            <li class="hover:text-sky-600 dark:hover:text-emerald-400">
+              Jump into invoice or item editor
+            </li>
+          </ol>
+        </div>
+      </div>
 
-        <!-- Actions / State -->
-        <section class="mt-10">
-            <div
-                class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-lg sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
-            >
-                <div class="mb-3 flex items-center justify-between gap-3">
-                    <h2 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                        Continue where you left off
-                    </h2>
-                    <span class="text-sm text-zinc-500 dark:text-zinc-400">
-                        client → invoice → export → edit
-                    </span>
-                </div>
+      <div class="flex justify-center lg:justify-end">
+        <img
+          :src="heroImg"
+          alt="Invoicer mascot"
+          class="w-full max-w-sm select-none"
+          draggable="false"
+        />
+      </div>
+    </section>
 
-                <NoClients v-if="!clientStore.hasClients"></NoClients>
+    <!-- Actions / State -->
+    <section class="mt-10">
+      <div
+        class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-lg sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
+      >
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <h2 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            Continue where you left off
+          </h2>
+          <span class="text-sm text-zinc-500 dark:text-zinc-400">
+            client → invoice → export → edit
+          </span>
+        </div>
 
-                <div
-                    v-else-if="clientStore.hasClients && !clientStore.selectedClient"
-                    class="space-y-3"
-                >
-                    <p class="text-sm text-zinc-600 dark:text-zinc-300">
-                        Please select a client to continue:
-                    </p>
+        <NoClients v-if="!clientStore.hasClients"></NoClients>
 
-                    <div class="max-w-xl">
-                        <TheDropdown
-                            v-model="clientStore.selectedClient"
-                            :options="clientStore.clients"
-                            placeholder="No client selected"
-                            :left-icon="UserIcon"
-                            label-key="name"
-                            value-key="id"
-                        ></TheDropdown>
-                    </div>
+        <div
+          v-else-if="clientStore.hasClients && !clientStore.selectedClient"
+          class="space-y-3"
+        >
+          <p class="text-sm text-zinc-600 dark:text-zinc-300">
+            Please select a client to continue:
+          </p>
 
-                    <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                        Tip: create / edit clients in the Clients page.
-                    </div>
+          <div class="max-w-xl">
+            <TheDropdown
+              v-model="clientStore.selectedClient"
+              :options="clientStore.clients"
+              placeholder="No client selected"
+              :left-icon="UserIcon"
+              label-key="name"
+              value-key="id"
+            ></TheDropdown>
+          </div>
 
-                    <RouterLink to="/clients">
-                        <TheButton class="cursor-pointer">clients</TheButton>
-                    </RouterLink>
-                </div>
+          <div class="text-xs text-zinc-500 dark:text-zinc-400">
+            Tip: create / edit clients in the Clients page.
+          </div>
 
-                <div v-else>
-                    <p class="text-sm text-zinc-600 dark:text-zinc-300">
-                        Ready. Pick where you want to go:
-                    </p>
+          <RouterLink to="/clients">
+            <TheButton class="cursor-pointer">clients</TheButton>
+          </RouterLink>
+        </div>
 
-                    <div class="mt-4 flex flex-wrap gap-3">
-                        <RouterLink to="/clients">
-                            <TheButton class="cursor-pointer">clients</TheButton>
-                        </RouterLink>
+        <div v-else>
+          <p class="text-sm text-zinc-600 dark:text-zinc-300">Ready. Pick where you want to go:</p>
 
-                        <RouterLink to="/invoice">
-                            <TheButton class="cursor-pointer">invoice</TheButton>
-                        </RouterLink>
+          <div class="mt-4 flex flex-wrap gap-3">
+            <RouterLink to="/clients">
+              <TheButton class="cursor-pointer">clients</TheButton>
+            </RouterLink>
 
-                        <RouterLink to="/editor">
-                            <TheButton class="cursor-pointer">editor</TheButton>
-                        </RouterLink>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
+            <RouterLink to="/invoice">
+              <TheButton class="cursor-pointer">invoice</TheButton>
+            </RouterLink>
+
+            <RouterLink to="/editor">
+              <TheButton class="cursor-pointer">editor</TheButton>
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 </template>
