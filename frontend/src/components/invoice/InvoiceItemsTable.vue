@@ -11,7 +11,7 @@ const lines = computed(() => inv.draft?.lines ?? [])
   <div class="overflow-x-auto">
     <div class="min-w-205">
       <div
-        class="grid grid-cols-10 items-center gap-4 py-2 pr-6 pl-2 text-sm font-semibold text-zinc-600 dark:text-zinc-400"
+        class="grid grid-cols-10 items-center gap-4 py-2 pr-6 pl-2 text-sm font-semibold text-zinc-600 dark:text-zinc-200"
       >
         <div class="col-span-5">Product name</div>
         <div class="text-right">Qty</div>

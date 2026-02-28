@@ -3,10 +3,10 @@ import { computed, ref } from 'vue'
 import { calcInvoiceTotals } from '@/utils/invoiceMath'
 import type { InvoiceDraft, InvoiceLine } from '@/components/invoice/invoiceTypes'
 
-// Patch may omit keys, but values are the real types (NOT “| undefined”)
+// Patch may omits keys but values are the real types not undefined
 export type Patch<T extends object> = Partial<{ [K in keyof T]: T[K] }>
 
-// Runtime helper: ignore keys whose value is actually undefined
+// Runtime helper: ignore keys when their value is undefined
 function assignDefined<T extends object>(target: T, patch: Patch<T>) {
     for (const k in patch) {
         const v = patch[k as keyof T]
@@ -24,7 +24,6 @@ export const useInvoiceDraftStore = defineStore('invoiceDraft', () => {
         draft.value = next
     }
 
-    // If you *want* this to be non-crashy, return null instead of throwing.
     function ensure() {
         return draft.value
     }
@@ -44,7 +43,6 @@ export const useInvoiceDraftStore = defineStore('invoiceDraft', () => {
         const line = d.lines.find((l) => l.sortOrder === sortOrder)
         if (!line) return
 
-        // Mutate in place; keep required fields intact; ignore undefined values at runtime.
         assignDefined(line, patch)
     }
 

@@ -11,7 +11,18 @@ const emit = defineEmits<{
 }>()
 
 const date = ref<Date>(new Date())
+// TODO: Big one!
+// For backend processing
+//   function toISODate(d: Date) {
+//   const y = d.getFullYear()
+//   const m = String(d.getMonth() + 1).padStart(2, '0')
+//   const day = String(d.getDate()).padStart(2, '0')
+//   return `${y}-${m}-${day}` // 2026-03-01
+// }
 
+// emit('update-date', toISODate(v))
+
+// For client side display
 const format = (d: Date) => {
   const day = d.getDate()
   const month = d.getMonth() + 1

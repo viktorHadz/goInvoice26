@@ -36,11 +36,13 @@ const emailProxy = computed<string>({
         </div>
 
         <div class="min-w-0">
-          <div class="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-200">
-            Invoice
+          <div
+            class="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-200"
+          >
+            Invoice Builder
           </div>
           <div class="text-base text-zinc-500 dark:text-zinc-400">
-            Build an invoice for the selected client
+            Create an invoice for the selected client
           </div>
         </div>
       </div>

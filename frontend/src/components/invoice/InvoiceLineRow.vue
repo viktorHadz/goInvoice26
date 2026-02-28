@@ -100,14 +100,12 @@ function setUnitPounds(v: any) {
 
     <!-- remove -->
     <div class="flex justify-end">
-      <TheButton
-        variant="danger"
-        title="Remove line"
-        class="cursor-pointer"
+      <button
+        class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-500 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
         @click="inv.removeLine(line.sortOrder)"
       >
-        <TrashIcon class="size-4" />
-      </TheButton>
+        <TrashIcon class="size-5" />
+      </button>
     </div>
   </div>
 </template>

@@ -10,7 +10,7 @@ import InvoiceTotals from '@/components/invoice/InvoiceTotals.vue'
 import InvoAddItems from '@/components/invoice/InvoAddItems.vue'
 
 const clients = useClientStore()
-const inv = useInvoiceDraftStore()
+const invStore = useInvoiceDraftStore()
 
 const selected = computed(() => clients.selectedClient)
 
@@ -18,7 +18,7 @@ watch(
   selected,
   (c) => {
     if (!c?.id) return
-    inv.setDraft({
+    invStore.setDraft({
       clientId: c.id,
       issueDate: '',
       dueByDate: '',
@@ -42,7 +42,7 @@ watch(
 </script>
 
 <template>
-  <main class="mx-auto w-full 2xl:max-w-5xl">
+  <main class="mx-auto w-full 2xl:max-w-6xl">
     <section
       class="relative rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
     >
@@ -69,10 +69,10 @@ watch(
         >
           <div class="border-b border-zinc-200 px-4 py-3.5 dark:border-zinc-800">
             <div class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">
-              Add invoice items
+              Insert products
             </div>
             <div class="text-sm text-sky-600 dark:text-emerald-400">
-              Search client products and add them as lines
+              Select an existing or insert a custom product
             </div>
           </div>
 
@@ -84,9 +84,22 @@ watch(
         <section
           class="min-w-0 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
         >
-          <div class="border-b border-zinc-200 px-4 py-3.5 dark:border-zinc-800">
-            <div class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
-            <div class="text-sm text-sky-600 dark:text-emerald-400">Edit products inline</div>
+          <div
+            class="flex items-center justify-between border-b border-zinc-200 px-4 py-3.5 dark:border-zinc-800"
+          >
+            <div>
+              <div class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">
+                Invoice items
+              </div>
+              <div class="text-sm text-sky-600 dark:text-emerald-400">
+                For #{{ invStore.draft?.baseNumber || '{invoice number}' }}
+              </div>
+            </div>
+            <span
+              class="rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+            >
+              Tip: Invoice items can be modified
+            </span>
           </div>
 
           <div class="min-w-0 p-2 md:p-3">

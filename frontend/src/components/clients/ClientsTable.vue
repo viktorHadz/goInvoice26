@@ -74,13 +74,18 @@ const editForm = reactive({
 })
 
 function toggleOpen(id: number) {
-  openId.value = openId.value === id ? null : id
-  // stop editing when collapsing
-  if (openId.value !== id) cancelEdit()
+  const isClosing = openId.value === id
+
+  if (isClosing && editingId.value === id) cancelEdit()
+
+  // If we'switching to another row stop any edit
+  if (!isClosing && editingId.value != null) cancelEdit()
+
+  openId.value = isClosing ? null : id
 }
 
 function startEdit(c: Client) {
-  openId.value = c.id // expanded when editing
+  openId.value = c.id // expanded editing
   editingId.value = c.id
 
   editForm.id = c.id
@@ -175,7 +180,7 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
             Clients
           </h2>
           <p class="text-sm tracking-wide text-zinc-500 dark:text-zinc-400">
-            Add, search, and edit clients.
+            Add, search, and edit clients
           </p>
         </div>
       </div>
@@ -231,7 +236,7 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
               </div>
 
               <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-300">
-                Create a client, then use it in invoices and items.
+                Create a client, to use in invoices and items
               </p>
             </div>
           </div>
@@ -308,7 +313,14 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
             <p class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
               {{ c.name || 'Unnamed client' }}
             </p>
-            <p class="truncate text-xs text-zinc-600 dark:text-zinc-400">
+            <p
+              class="truncate text-xs"
+              :class="
+                c.id === openId
+                  ? 'text-sky-600 dark:text-emerald-400'
+                  : 'text-zinc-600 dark:text-zinc-400'
+              "
+            >
               {{ c.companyName || '—' }}
             </p>
           </div>
@@ -317,26 +329,25 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
             <template v-if="editingId === c.id">
               <button
                 type="button"
-                class="rounded-md p-1 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-sky-900/20 hover:bg-sky-100 hover:text-sky-600 dark:text-zinc-300 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400"
                 @click.stop="saveEdit"
                 title="Save"
               >
-                <CheckCircleIcon class="size-6" />
+                <CheckCircleIcon class="size-5" />
               </button>
               <button
                 type="button"
-                class="rounded-md p-1 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/20"
+                class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-600 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
                 @click.stop="cancelEdit"
                 title="Cancel"
               >
-                <XCircleIcon class="size-6" />
+                <XCircleIcon class="size-5" />
               </button>
             </template>
-
             <template v-else>
               <button
                 type="button"
-                class="cursor-pointer rounded-md p-1 text-zinc-600 hover:bg-sky-100 hover:text-sky-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+                class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-sky-900/30 hover:bg-sky-100 hover:text-sky-600 dark:text-zinc-300 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400"
                 @click.stop="startEdit(c)"
                 title="Edit"
               >
@@ -345,7 +356,7 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
 
               <button
                 type="button"
-                class="cursor-pointer rounded-md p-1 text-zinc-600 hover:bg-rose-50 hover:text-rose-600 dark:text-zinc-300 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
+                class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-500 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
                 @click.stop="removeClient(c.id)"
                 title="Delete"
               >
