@@ -1,9 +1,18 @@
 export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'void'
 export type DiscountType = 'none' | 'percent' | 'fixed'
+export type DepositType = 'none' | 'fixed' | 'percent'
 export type LineType = 'style' | 'sample' | 'custom'
 export type PricingMode = 'flat' | 'hourly'
 
-export type MoneyMinor = number // integer minor units
+export type MoneyMinor = number // integer minor units (pence)
+
+export type Totals = {
+    subtotalMinor: MoneyMinor
+    discountMinor: MoneyMinor
+    afterDiscountMinor: MoneyMinor
+    vatMinor: MoneyMinor
+    totalMinor: MoneyMinor
+}
 
 export type InvoiceLine = {
     id?: number
@@ -20,7 +29,7 @@ export type InvoiceLine = {
     sortOrder: number
 }
 
-export type InvoiceDraft = {
+export type Invoice = {
     invoiceId?: number
     baseNumber?: number
     status?: InvoiceStatus
@@ -37,15 +46,19 @@ export type InvoiceDraft = {
         email: string
     }
 
-    note: string
-
-    vatRate: number // 2000 => 20.00%
-    discountType: DiscountType
-    // fixed => minor units; percent => 0..10000 (basis points percent)
-    discountValue: number
-
     lines: InvoiceLine[]
 
+    discountType: DiscountType
+    // fixed price => minor units | percent => 0..10000 (basis points)
+    discountValue: number
+
+    vatRate: number // 2000 => 20.00%
+
     paidMinor: MoneyMinor
-    depositMinor: MoneyMinor
+
+    depositType: DepositType
+    // fixed price => minor units | percent => 0..10000 (basis points)
+    depositValue: number
+
+    note: string
 }

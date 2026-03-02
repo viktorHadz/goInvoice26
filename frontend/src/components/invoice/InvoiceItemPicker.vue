@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
-import { ChevronUpDownIcon, PlusIcon, SquaresPlusIcon } from '@heroicons/vue/24/outline'
-import TheButton from '@/components/UI/TheButton.vue'
-import TheInput from '@/components/UI/TheInput.vue'
-import { useProductStore } from '@/stores/products'
-import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
-import { fmtGBPMinor, toMinor } from '@/utils/money'
-import type { Product, ProductType } from '@/utils/productHttpHandler'
+import { computed, reactive, ref, watch } from 'vue'
+import { ChevronUpDownIcon, MagnifyingGlassIcon, SquaresPlusIcon } from '@heroicons/vue/24/outline'
 import { onClickOutside } from '@vueuse/core'
 
+import TheButton from '@/components/UI/TheButton.vue'
+import TheInput from '@/components/UI/TheInput.vue'
+
+import { useProductStore } from '@/stores/products'
+import { useInvoiceStore } from '@/stores/invoice'
+import type { Product, ProductType } from '@/utils/productHttpHandler'
+
 const prod = useProductStore()
-const inv = useInvoiceDraftStore()
+const inv = useInvoiceStore()
 
 const itemType = ref<ProductType>('style')
 const q = ref('')
@@ -26,24 +27,35 @@ watch(itemType, () => {
   open.value = false
 })
 
-const pickerCloseTarget = useTemplateRef('pickerClose')
-
-onClickOutside(pickerCloseTarget, (event) => (open.value = false))
+const pickerRef = ref<HTMLElement | null>(null)
+onClickOutside(pickerRef, () => (open.value = false))
 
 const list = computed<Product[]>(() => prod.byType[itemType.value] ?? [])
 const filtered = computed(() => {
   const s = q.value.trim().toLowerCase()
   if (!s) return list.value
-  return list.value.filter((p) => p.productName.toLowerCase().includes(s))
+  return list.value.filter((p) => (p.productName ?? '').toLowerCase().includes(s))
 })
 
 function priceLabel(p: Product) {
-  if (p.pricingMode === 'hourly') return `${fmtGBPMinor(p.hourlyRateMinor ?? 0)}/hr`
-  return fmtGBPMinor(p.flatPriceMinor ?? 0)
+  if (p.pricingMode === 'hourly') return `${inv.fmtGBPMinor(p.hourlyRateMinor ?? 0)}/hr`
+  return inv.fmtGBPMinor(p.flatPriceMinor ?? 0)
+}
+
+function safeQty(): number {
+  const n = Number(form.qty)
+  if (!Number.isFinite(n) || n <= 0) return 1
+  return Math.floor(n)
+}
+
+function safeMinutes(defaultMinutes = 60): number {
+  const n = Number(form.minutes)
+  if (!Number.isFinite(n) || n <= 0) return defaultMinutes
+  return Math.floor(n)
 }
 
 function addFromProduct(p: Product) {
-  const qty = Number(form.qty) > 0 ? Number(form.qty) : 1
+  const qty = safeQty()
 
   if (p.productType === 'style') {
     inv.addLine({
@@ -55,6 +67,7 @@ function addFromProduct(p: Product) {
       unitPriceMinor: p.flatPriceMinor ?? 0,
       minutesWorked: null,
     })
+    open.value = false
     return
   }
 
@@ -66,8 +79,9 @@ function addFromProduct(p: Product) {
       pricingMode: 'hourly',
       quantity: qty,
       unitPriceMinor: p.hourlyRateMinor ?? 0,
-      minutesWorked: p.minutesWorked ?? Number(form.minutes) ?? 60,
+      minutesWorked: safeMinutes(p.minutesWorked ?? 60),
     })
+    open.value = false
     return
   }
 
@@ -80,28 +94,39 @@ function addFromProduct(p: Product) {
     unitPriceMinor: p.flatPriceMinor ?? 0,
     minutesWorked: null,
   })
+  open.value = false
+}
+
+function addCustomItem() {
+  inv.addLine({
+    productId: null,
+    name: 'Custom item',
+    lineType: 'custom',
+    pricingMode: 'flat',
+    quantity: 1,
+    unitPriceMinor: inv.toMinor(0),
+    minutesWorked: null,
+  })
+  open.value = false
 }
 </script>
 
 <template>
   <div class="space-y-3">
     <!-- Header row -->
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div class="text-zinc-700 dark:text-zinc-200">
-        Product picker
-        <span class="ml-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-          ({{ itemType }})
-        </span>
-      </div>
+    <div class="flex flex-col font-medium sm:flex-row sm:items-center sm:justify-between">
+      <div class="text-zinc-700 capitalize dark:text-zinc-200">{{ itemType }} picker</div>
+
       <!-- Toggle -->
       <div
-        class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+        class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60"
       >
         <button
-          class="rounded-full px-3 py-1.5 text-sm font-medium transition"
+          type="button"
+          class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform"
           :class="
             itemType === 'style'
-              ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
+              ? 'bg-sky-100 text-sky-700 shadow-sm outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:bg-emerald-950/60 dark:text-emerald-200 dark:focus-visible:ring-emerald-400/30'
               : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           "
           @click="itemType = 'style'"
@@ -110,10 +135,11 @@ function addFromProduct(p: Product) {
         </button>
 
         <button
-          class="rounded-full px-3 py-1.5 text-sm font-medium transition"
+          type="button"
+          class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform"
           :class="
             itemType === 'sample'
-              ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
+              ? 'bg-sky-100 text-sky-700 shadow-sm outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:bg-emerald-950/60 dark:text-emerald-200 dark:focus-visible:ring-emerald-400/30'
               : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           "
           @click="itemType = 'sample'"
@@ -127,19 +153,31 @@ function addFromProduct(p: Product) {
     <div class="flex flex-col gap-3 md:flex-row md:items-center">
       <!-- Search -->
       <div
+        ref="pickerRef"
         class="relative min-w-0 flex-1"
-        ref="pickerClose"
       >
-        <div class="relative">
+        <div
+          class="group relative text-zinc-500 hover:text-sky-600 dark:text-zinc-400 hover:dark:text-emerald-400"
+        >
+          <label
+            :for="itemType + '-picker'"
+            class="absolute -top-6 text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          >
+            Product Menu
+          </label>
+
           <input
-            class="input w-full px-3 py-1.5 pr-10 text-base"
             v-model="q"
-            :placeholder="`Search ${itemType}s…`"
+            :id="itemType + '-picker'"
+            class="input input-accent w-full px-10 py-1.5 text-sm group-hover:placeholder:text-sky-600 dark:group-hover:placeholder:text-emerald-400"
+            placeholder="Search..."
             @focus="open = true"
             @input="open = true"
           />
+          <MagnifyingGlassIcon class="pointer-events-none absolute top-2 left-2 size-4" />
           <button
-            class="absolute top-1/2 right-1 -translate-y-1/2 rounded-lg px-2 py-1 text-zinc-400 hover:text-sky-600 dark:hover:text-emerald-400"
+            type="button"
+            class="absolute top-1/2 right-2 -translate-y-1/2 rounded-lg"
             @click="open = !open"
             title="Toggle results"
           >
@@ -192,7 +230,7 @@ function addFromProduct(p: Product) {
         <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Qty</div>
         <TheInput
           v-model="form.qty"
-          input-class="text-right py-1.5"
+          input-class="text-right py-1"
           type="number"
           placeholder="1"
         />
@@ -204,7 +242,7 @@ function addFromProduct(p: Product) {
         <TheInput
           v-model="form.minutes"
           type="number"
-          input-class="text-right py-1.5"
+          input-class="text-right py-1"
           :disabled="itemType === 'style'"
           :title="itemType === 'style' ? 'Styles do not use minutes' : 'Used for hourly samples'"
         />
@@ -213,18 +251,8 @@ function addFromProduct(p: Product) {
       <!-- Custom line -->
       <div class="w-full md:w-auto md:shrink-0">
         <TheButton
-          class="w-full py-2.5 md:w-auto"
-          @click="
-            inv.addLine({
-              productId: null,
-              name: 'Custom item',
-              lineType: 'custom',
-              pricingMode: 'flat',
-              quantity: 1,
-              unitPriceMinor: toMinor(0),
-              minutesWorked: null,
-            })
-          "
+          class="w-full py-2 text-sm md:w-auto"
+          @click="addCustomItem"
         >
           <SquaresPlusIcon class="size-5" />
           Custom item

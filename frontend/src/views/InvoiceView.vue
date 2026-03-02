@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useClientStore } from '@/stores/clients'
-import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
+import { useInvoiceStore } from '@/stores/invoice'
+
 import InvoiceHeader from '@/components/invoice/InvoiceHeader.vue'
 import InvoiceItemPicker from '@/components/invoice/InvoiceItemPicker.vue'
 import InvoiceItemsTable from '@/components/invoice/InvoiceItemsTable.vue'
 import InvoiceAdjustments from '@/components/invoice/InvoiceAdjustments.vue'
 import InvoiceTotals from '@/components/invoice/InvoiceTotals.vue'
 
+import TheTooltip from '@/components/UI/TheTooltip.vue'
+import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+
 const clients = useClientStore()
-const invStore = useInvoiceDraftStore()
+const invStore = useInvoiceStore()
 
 const selected = computed(() => clients.selectedClient)
 
@@ -17,7 +21,11 @@ watch(
   selected,
   (c) => {
     if (!c?.id) return
-    invStore.setDraft({
+
+    // Prevent deleting invoice when same client gets reselected
+    if (invStore.invoice?.clientId === c.id) return
+
+    invStore.setInvoice({
       clientId: c.id,
       issueDate: '',
       dueByDate: '',
@@ -27,25 +35,43 @@ watch(
         address: c.address ?? '',
         email: c.email ?? '',
       },
+
       note: '',
+
       vatRate: 2000,
       discountType: 'none',
+      // fixed => minor units | percent => 0..10000 (basis points)
       discountValue: 0,
+
       lines: [],
+
+      // Payments
       paidMinor: 0,
-      depositMinor: 0,
+
+      // Deposit config (strict-store model)
+      depositType: 'none',
+      depositValue: 0,
+
+      // TODO: - should be optional fields
+      // invoiceId: undefined,
+      // baseNumber: undefined, // called from the backend on load
+      status: 'draft',
     })
   },
   { immediate: true },
 )
+const infoLines = [
+  { id: 1, text: 'Ammount paid - calculated after VAT' },
+  { id: 2, text: 'Discount - calculated before VAT' },
+  { id: 3, text: 'Deposit - calculated after VAT' },
+  { id: 4, text: ' VAT Rate - set to 0% to exclude VAT ' },
+]
 </script>
 
 <template>
   <main class="mx-auto w-full max-w-4xl px-4">
-    <!-- HEADER DOCUMENT -->
     <InvoiceHeader />
 
-    <!-- PRODUCT PICKER -->
     <section
       class="mt-4 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
@@ -61,7 +87,6 @@ watch(
       </div>
     </section>
 
-    <!-- INVOICE LINES  -->
     <section
       class="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
@@ -71,7 +96,7 @@ watch(
         <div class="min-w-0">
           <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
           <div class="text-xs text-sky-600 dark:text-emerald-400">
-            For #{{ invStore.draft?.baseNumber || '{invoice number}' }}
+            For #{{ invStore.invoice?.baseNumber || '{invoice number}' }}
           </div>
         </div>
 
@@ -87,17 +112,22 @@ watch(
       </div>
     </section>
 
-    <!-- FINANCIALS -->
     <section class="mt-4 grid gap-4 md:grid-cols-2">
-      <!-- Adjustments -->
       <section
         class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
-        <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
-          <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Adjustments</div>
-          <div class="text-xs text-sky-600 dark:text-emerald-400">
-            Paid, deposit, discount, VAT and note
+        <div class="flex justify-between border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+          <div>
+            <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Adjustments</div>
+            <div class="text-xs text-sky-600 dark:text-emerald-400">
+              Paid, deposit, discount, VAT and note
+            </div>
           </div>
+          <TheTooltip
+            :icon="InformationCircleIcon"
+            :lines="infoLines"
+            side="top"
+          />
         </div>
 
         <div class="p-3 md:p-4">
@@ -105,15 +135,21 @@ watch(
         </div>
       </section>
 
-      <!-- Totals -->
       <section
         class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
-        <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
-          <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-          <div class="text-xs text-sky-600 dark:text-emerald-400">
-            Subtotal, discount, VAT, total, balance
+        <div class="flex justify-between border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+          <div>
+            <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
+            <div class="text-xs text-sky-600 dark:text-emerald-400">Balance overview</div>
           </div>
+
+          <TheTooltip
+            :icon="InformationCircleIcon"
+            text="Create a draft to save in invoice book. This lets you free edit invoice."
+            side="top"
+            align="center"
+          />
         </div>
 
         <div class="p-3 md:p-4">

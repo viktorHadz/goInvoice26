@@ -3,118 +3,125 @@ import { computed, ref, watch } from 'vue'
 import TheInput from '@/components/UI/TheInput.vue'
 import TheButton from '@/components/UI/TheButton.vue'
 import TheDropdown from '@/components/UI/TheDropdown.vue'
-import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
-import { toMinor, fromMinor } from '@/utils/money'
+import { useInvoiceStore } from '@/stores/invoice'
+import TheTooltip from '../UI/TheTooltip.vue'
+import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 
-const inv = useInvoiceDraftStore()
-const draft = computed(() => inv.draft)
+const inv = useInvoiceStore()
 
 const paid = ref<number | null>(0)
-const depositMode = ref<'fixed' | 'percent'>('fixed')
+const depositMode = ref<'none' | 'fixed' | 'percent'>('none')
 const deposit = ref<number | null>(0)
 
 const discountMode = ref<'none' | 'fixed' | 'percent'>('none')
 const discount = ref<number | null>(0)
 
+const vatPercent = ref<number | null>(20)
+
 const noteProxy = computed<string>({
-  get: () => inv.draft?.note ?? '',
-  set: (v) => {
-    if (!inv.draft) return
-    inv.draft.note = String(v ?? '')
-  },
+  get: () => inv.invoice?.note ?? '',
+  set: (v) => inv.setNote(String(v ?? '')),
 })
 
 watch(
-  draft,
+  () => inv.invoice,
   (v) => {
     if (!v) return
-    paid.value = fromMinor(v.paidMinor)
-    deposit.value = fromMinor(v.depositMinor)
-    depositMode.value = 'fixed'
+
+    paid.value = inv.fromMinor(v.paidMinor)
+
+    // Deposit - store holds config | UI shows either £/%
+    depositMode.value = v.depositType
+    deposit.value =
+      v.depositType === 'fixed'
+        ? inv.fromMinor(v.depositValue as any)
+        : v.depositType === 'percent'
+          ? v.depositValue / 100
+          : 0
 
     discountMode.value = v.discountType
     discount.value =
       v.discountType === 'fixed'
-        ? fromMinor(v.discountValue)
+        ? inv.fromMinor(v.discountValue as any)
         : v.discountType === 'percent'
           ? v.discountValue / 100
           : 0
+
+    // VAT
+    vatPercent.value = (v.vatRate ?? 2000) / 100
   },
   { immediate: true },
 )
 
 function applyPaid() {
-  if (!inv.draft) return
-  inv.draft.paidMinor = toMinor(Number(paid.value || 0))
+  if (!inv.invoice) return
+  inv.setPaidGBP(Number(paid.value || 0))
 }
 
 function applyDeposit() {
-  if (!inv.draft || !inv.totals) return
-  if (depositMode.value === 'fixed') {
-    inv.draft.depositMinor = toMinor(Number(deposit.value || 0))
+  if (!inv.invoice) return
+
+  if (depositMode.value === 'none') {
+    inv.clearDeposit()
+    deposit.value = 0
     return
   }
-  const total = inv.totals.totalMinor
-  const pct = Math.max(0, Math.min(100, Number(deposit.value || 0)))
-  inv.draft.depositMinor = Math.round(total * (pct / 100))
+
+  if (depositMode.value === 'fixed') {
+    inv.setDepositFixedGBP(Number(deposit.value || 0))
+    return
+  }
+
+  const percent = Math.max(0, Math.min(100, Number(deposit.value || 0)))
+  inv.setDepositPercent(percent)
 }
 
 function applyDiscount() {
-  if (!inv.draft) return
+  if (!inv.invoice) return
 
   if (discountMode.value === 'none') {
-    inv.draft.discountType = 'none'
-    inv.draft.discountValue = 0
+    inv.clearDiscount()
+    discount.value = 0
     return
   }
 
   if (discountMode.value === 'fixed') {
-    inv.draft.discountType = 'fixed'
-    inv.draft.discountValue = toMinor(Number(discount.value || 0))
+    inv.setDiscountFixedGBP(Number(discount.value || 0))
     return
   }
 
-  const pct = Math.max(0, Math.min(100, Number(discount.value || 0)))
-  inv.draft.discountType = 'percent'
-  inv.draft.discountValue = Math.round(pct * 100) // bps
+  const percent = Math.max(0, Math.min(100, Number(discount.value || 0)))
+  inv.setDiscountPercent(percent)
+}
+
+function applyVat() {
+  if (!inv.invoice) return
+  const percent = Math.max(0, Math.min(100, Number(vatPercent.value || 0)))
+  inv.setVatRateBps(Math.round(percent * 100))
 }
 </script>
 
 <template>
   <div class="min-w-0 space-y-5">
-    <!-- Payments -->
     <div class="min-w-0 space-y-2">
-      <div class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Ammount paid (£)</div>
-      <div class="grid min-w-0 grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-        <TheInput
-          v-model="paid"
-          type="number"
-          placeholder="Amount paid (£)"
-          labelHidden
-          :reserveErrorSpace="false"
-          inputClass="w-full py-1.5"
-        />
-        <TheButton
-          class="w-full sm:w-auto"
-          @click="applyPaid"
-        >
-          Apply
-        </TheButton>
-      </div>
       <div class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Deposit</div>
       <div class="grid min-w-0 grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_6rem_auto]">
         <TheInput
           v-model="deposit"
           type="number"
-          placeholder="Deposit"
+          :placeholder="depositMode === 'percent' ? '10' : '0'"
           labelHidden
           :reserveErrorSpace="false"
+          :disabled="depositMode === 'none'"
+          :title="
+            depositMode === 'none' ? 'select deposit mode from dropdown first' : 'deposit value'
+          "
           inputClass="w-full py-1.5"
         />
         <div class="min-w-0 sm:w-24">
           <TheDropdown
             v-model="depositMode"
-            :options="['fixed', 'percent']"
+            :options="['none', 'fixed', 'percent']"
           />
         </div>
         <TheButton
@@ -125,6 +132,7 @@ function applyDiscount() {
         </TheButton>
       </div>
     </div>
+
     <!-- Discount -->
     <div class="min-w-0 space-y-2">
       <div class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Discount</div>
@@ -137,6 +145,9 @@ function applyDiscount() {
           labelHidden
           :reserveErrorSpace="false"
           :disabled="discountMode === 'none'"
+          :title="
+            discountMode === 'none' ? 'select discount mode from dropdown first' : 'discount value'
+          "
           inputClass="w-full py-1.5"
         />
         <div class="min-w-0 sm:w-24">
@@ -154,25 +165,57 @@ function applyDiscount() {
       </div>
     </div>
 
+    <!-- Paid -->
+    <div class="min-w-0 space-y-2">
+      <div
+        class="flex w-full justify-between text-sm font-semibold text-zinc-700 dark:text-zinc-200"
+      >
+        <p>Amount paid (£)</p>
+        <TheTooltip
+          :icon="InformationCircleIcon"
+          text="Tip: use for unpredicted deductions"
+          side="top"
+          max-width-class="w-42"
+          align="center"
+        />
+      </div>
+
+      <div class="grid min-w-0 grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <TheInput
+          v-model="paid"
+          type="number"
+          placeholder="Amount paid (£)"
+          labelHidden
+          :reserveErrorSpace="false"
+          inputClass="w-full py-1.5"
+        />
+        <TheButton
+          class="w-full sm:w-auto"
+          @click="applyPaid"
+        >
+          Apply
+        </TheButton>
+      </div>
+    </div>
     <!-- VAT -->
     <div class="min-w-0 space-y-2">
       <div class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">VAT Rate (%)</div>
 
-      <div class="flex min-w-0 items-end gap-2">
+      <div class="grid min-w-0 grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
         <TheInput
-          :modelValue="(draft?.vatRate ?? 2000) / 100"
-          @update:modelValue="
-            (v) => {
-              if (!inv.draft) return
-              const pct = Math.max(0, Math.min(100, Number(v) || 0))
-              inv.draft.vatRate = Math.round(pct * 100)
-            }
-          "
+          v-model="vatPercent"
           type="number"
           placeholder="20"
           labelHidden
-          inputClass="w-full sm:w-32 py-1.5"
+          :reserveErrorSpace="false"
+          inputClass="w-full py-1.5"
         />
+        <TheButton
+          class="w-full sm:w-auto"
+          @click="applyVat"
+        >
+          Apply
+        </TheButton>
       </div>
     </div>
 
@@ -183,7 +226,7 @@ function applyDiscount() {
         class="input w-full border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-950/40"
         :value="noteProxy"
         @input="(e) => (noteProxy = (e.target as HTMLTextAreaElement).value)"
-        :disabled="!inv.draft"
+        :disabled="!inv.invoice"
         placeholder="Add a note to show on the invoice…"
       />
     </div>

@@ -26,10 +26,10 @@ export const useClientStore = defineStore('clients', () => {
         }
     }
 
-    /** Used across app  */
+    // Used as router guard
     const hasClients = computed(() => clients.value.length > 0)
 
-    // Client Selection Localstorage Sync
+    // Client Selection Localstorage
     const LS_KEY = 'selectedClientId'
 
     const loadSelectedClientId = (): number | null => {

@@ -318,7 +318,7 @@ onKeyStroke(escArr, escKeyHandler, { dedupe: true })
                   <div class="text-xs whitespace-nowrap text-zinc-500 dark:text-zinc-400">
                     {{
                       p.pricingMode === 'hourly'
-                        ? money(p.hourlyRateMinor)
+                        ? money(p.hourlyRateMinor) + ' (£/hr)'
                         : money(p.flatPriceMinor)
                     }}
                   </div>

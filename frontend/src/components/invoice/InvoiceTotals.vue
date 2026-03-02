@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
-import { fmtGBPMinor } from '@/utils/money'
-import { DocumentArrowDownIcon } from '@heroicons/vue/24/outline'
+import { useInvoiceStore } from '@/stores/invoice'
+import { DocumentArrowDownIcon, DocumentIcon } from '@heroicons/vue/24/outline'
 import TheButton from '../UI/TheButton.vue'
 
-const inv = useInvoiceDraftStore()
-const totals = computed(() => inv.totals)
+const inv = useInvoiceStore()
 </script>
 
 <template>
   <div
-    v-if="!inv.draft || !totals"
+    v-if="!inv.invoice || !inv.totals"
     class="text-base text-zinc-500 dark:text-zinc-400"
   >
-    No draft invoice loaded loaded.
+    No invoice loaded.
   </div>
 
   <div
@@ -26,7 +23,7 @@ const totals = computed(() => inv.totals)
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        {{ fmtGBPMinor(totals.subtotalMinor) }}
+        {{ inv.fmtGBPMinor(inv.totals.subtotalMinor) }}
       </div>
     </div>
 
@@ -35,7 +32,7 @@ const totals = computed(() => inv.totals)
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        -{{ fmtGBPMinor(totals.discountMinor) }}
+        -{{ inv.fmtGBPMinor(inv.totals.discountMinor) }}
       </div>
     </div>
 
@@ -44,7 +41,7 @@ const totals = computed(() => inv.totals)
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        {{ fmtGBPMinor(totals.vatMinor) }}
+        {{ inv.fmtGBPMinor(inv.totals.vatMinor) }}
       </div>
     </div>
 
@@ -55,7 +52,7 @@ const totals = computed(() => inv.totals)
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        {{ fmtGBPMinor(totals.totalMinor) }}
+        {{ inv.fmtGBPMinor(inv.totals.totalMinor) }}
       </div>
     </div>
 
@@ -67,7 +64,7 @@ const totals = computed(() => inv.totals)
         <div
           class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
         >
-          -{{ fmtGBPMinor(inv.draft.depositMinor) }}
+          -{{ inv.fmtGBPMinor(inv.depositMinor) }}
         </div>
       </div>
 
@@ -76,7 +73,7 @@ const totals = computed(() => inv.totals)
         <div
           class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
         >
-          -{{ fmtGBPMinor(inv.draft.paidMinor) }}
+          -{{ inv.fmtGBPMinor(inv.invoice.paidMinor) }}
         </div>
       </div>
 
@@ -87,16 +84,27 @@ const totals = computed(() => inv.totals)
         <div
           class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
         >
-          {{ fmtGBPMinor(inv.balanceDueMinor) }}
+          {{ inv.fmtGBPMinor(inv.balanceDueMinor) }}
         </div>
       </div>
     </div>
-    <TheButton
-      class="flex items-center gap-2"
-      title="Generate PDF"
-    >
-      <DocumentArrowDownIcon class="size-4" />
-      Print / PDF
-    </TheButton>
+
+    <div class="flex flex-col gap-y-2 sm:flex-row sm:gap-x-4">
+      <TheButton
+        class="flex w-full items-center gap-2"
+        title="Generate PDF"
+      >
+        <DocumentArrowDownIcon class="size-4" />
+        Print / PDF
+      </TheButton>
+
+      <TheButton
+        class="flex w-full items-center gap-2"
+        title="Generate Draft"
+      >
+        <DocumentIcon class="size-4" />
+        Create Draft
+      </TheButton>
+    </div>
   </div>
 </template>

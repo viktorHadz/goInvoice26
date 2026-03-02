@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import { ChevronUpDownIcon, PlusIcon } from '@heroicons/vue/24/outline'
 
@@ -7,12 +7,11 @@ import TheInput from '@/components/UI/TheInput.vue'
 import TheButton from '@/components/UI/TheButton.vue'
 
 import { useProductStore } from '@/stores/products'
-import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
+import { useInvoiceStore } from '@/stores/invoice'
 import type { Product, ProductType } from '@/utils/productHttpHandler'
-import { fmtGBPMinor, toMinor } from '@/utils/money'
 
 const prod = useProductStore()
-const inv = useInvoiceDraftStore()
+const inv = useInvoiceStore()
 
 const itemType = ref<ProductType>('style')
 const q = ref('')
@@ -23,29 +22,42 @@ onClickOutside(panelRef, () => (open.value = false))
 
 const form = reactive({
   qty: 1,
-  minutes: 60, // used for hourly samples
+  minutes: 60, // for hourly samples
 })
 
 const list = computed<Product[]>(() => prod.byType[itemType.value] ?? [])
+
 const filteredItems = computed(() => {
   const s = q.value.trim().toLowerCase()
   if (!s) return list.value
-  return list.value.filter((p) => p.productName.toLowerCase().includes(s))
+  return list.value.filter((p) => (p.productName ?? '').toLowerCase().includes(s))
 })
 
-function toggleItemType() {
-  itemType.value = itemType.value === 'style' ? 'sample' : 'style'
+// reset search and close dropdown when switching tabs
+watch(itemType, () => {
   q.value = ''
   open.value = false
-}
+})
 
 function priceLabel(p: Product) {
-  if (p.pricingMode === 'hourly') return `${fmtGBPMinor(p.hourlyRateMinor ?? 0)}/hr`
-  return fmtGBPMinor(p.flatPriceMinor ?? 0)
+  if (p.pricingMode === 'hourly') return `${inv.fmtGBPMinor(p.hourlyRateMinor ?? 0)}/hr`
+  return inv.fmtGBPMinor(p.flatPriceMinor ?? 0)
+}
+
+function safeQty(): number {
+  const n = Number(form.qty)
+  if (!Number.isFinite(n) || n <= 0) return 1
+  return Math.floor(n)
+}
+
+function safeMinutes(defaultMinutes = 60): number {
+  const n = Number(form.minutes)
+  if (!Number.isFinite(n) || n <= 0) return defaultMinutes
+  return Math.floor(n)
 }
 
 function addItem(p: Product) {
-  const qty = Number(form.qty) > 0 ? Number(form.qty) : 1
+  const qty = safeQty()
 
   // style => always flat
   if (p.productType === 'style') {
@@ -64,7 +76,7 @@ function addItem(p: Product) {
 
   // sample hourly
   if (p.pricingMode === 'hourly') {
-    const minutes = p.minutesWorked ?? (Number(form.minutes) || 60)
+    const minutes = safeMinutes(p.minutesWorked ?? 60)
 
     inv.addLine({
       productId: p.id,
@@ -91,6 +103,19 @@ function addItem(p: Product) {
   })
   open.value = false
 }
+
+function addCustom() {
+  inv.addLine({
+    productId: null,
+    name: 'Custom item',
+    lineType: 'custom',
+    pricingMode: 'flat',
+    quantity: 1,
+    unitPriceMinor: inv.toMinor(0),
+    minutesWorked: null,
+  })
+  open.value = false
+}
 </script>
 
 <template>
@@ -98,7 +123,7 @@ function addItem(p: Product) {
     ref="panelRef"
     class="relative col-span-8 grid grid-cols-subgrid items-end gap-4 py-4"
   >
-    <!-- Toggle Item Type -->
+    <!-- Toggle -->
     <div class="relative col-span-4">
       <div class="mb-2 flex items-center justify-between">
         <div class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
@@ -116,6 +141,7 @@ function addItem(p: Product) {
             :class="itemType === 'style' ? 'translate-x-0' : 'translate-x-full'"
           />
           <button
+            type="button"
             class="relative z-10 w-1/2 rounded-lg px-2 py-1"
             :class="
               itemType === 'style'
@@ -127,6 +153,7 @@ function addItem(p: Product) {
             style
           </button>
           <button
+            type="button"
             class="relative z-10 w-1/2 rounded-lg px-2 py-1"
             :class="
               itemType === 'sample'
@@ -143,16 +170,16 @@ function addItem(p: Product) {
       <!-- Search input -->
       <div class="relative">
         <input
-          class="input h-10.5 w-full px-3 pr-10 text-base"
           v-model="q"
+          class="input h-10.5 w-full px-3 pr-10 text-base"
           :placeholder="`Search ${itemType}s…`"
           @focus="open = true"
           @input="open = true"
         />
         <button
+          type="button"
           class="absolute top-1/2 right-1 -translate-y-1/2 rounded-lg px-2 py-1 text-zinc-400 hover:text-sky-600 dark:hover:text-emerald-400"
           @click="open = !open"
-          type="button"
         >
           <ChevronUpDownIcon class="size-5" />
         </button>
@@ -199,7 +226,7 @@ function addItem(p: Product) {
       </transition>
     </div>
 
-    <!-- Numerics -->
+    <!-- Number inputs -->
     <div class="col-span-1">
       <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Qty</div>
       <TheInput
@@ -223,17 +250,7 @@ function addItem(p: Product) {
     <div class="col-span-2 flex justify-end">
       <TheButton
         class="h-10.5"
-        @click="
-          inv.addLine({
-            productId: null,
-            name: 'Custom item',
-            lineType: 'custom',
-            pricingMode: 'flat',
-            quantity: 1,
-            unitPriceMinor: toMinor(0),
-            minutesWorked: null,
-          })
-        "
+        @click="addCustom"
       >
         <PlusIcon class="size-4" />
         Custom

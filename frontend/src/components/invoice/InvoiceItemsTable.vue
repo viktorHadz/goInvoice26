@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
+import { useInvoiceStore } from '@/stores/invoice'
 import InvoiceLineRow from '@/components/invoice/InvoiceLineRow.vue'
 
-const inv = useInvoiceDraftStore()
-const lines = computed(() => inv.draft?.lines ?? [])
+const inv = useInvoiceStore()
+
+const lines = computed(() => {
+  const list = inv.invoice?.lines ?? []
+  // stable render + defensive ordering
+  return [...list].sort((a, b) => a.sortOrder - b.sortOrder)
+})
 </script>
 
 <template>

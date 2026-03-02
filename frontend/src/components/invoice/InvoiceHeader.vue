@@ -1,26 +1,24 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { DocumentArrowDownIcon, DocumentTextIcon, PrinterIcon } from '@heroicons/vue/24/outline'
-import TheButton from '@/components/UI/TheButton.vue'
+import { DocumentTextIcon } from '@heroicons/vue/24/outline'
 import TheInput from '@/components/UI/TheInput.vue'
 import DatePick from '@/components/invoice/DatePick.vue'
 import { useClientStore } from '@/stores/clients'
-import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
+import { useInvoiceStore } from '@/stores/invoice'
 import DecorGradient from '../UI/DecorGradient.vue'
 
 const clients = useClientStore()
-const inv = useInvoiceDraftStore()
+const inv = useInvoiceStore()
 
 const client = computed(() => clients.selectedClient)
-const draft = computed(() => inv.draft)
 
 const emailProxy = computed<string>({
   get() {
-    return inv.draft?.clientSnapshot.email ?? ''
+    return inv.invoice?.clientSnapshot.email ?? ''
   },
   set(v) {
-    if (!inv.draft) return
-    inv.draft.clientSnapshot.email = String(v ?? '')
+    if (!inv.invoice) return
+    inv.setClientEmail(String(v ?? ''))
   },
 })
 </script>
@@ -48,7 +46,6 @@ const emailProxy = computed<string>({
       <div class="relative z-10 space-y-4 p-3 md:p-4">
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
           <div class="min-w-0">
-            <!-- removed useless flex wrapper -->
             <div class="mb-2 text-base font-semibold text-zinc-800 dark:text-zinc-100">
               Invoice details
             </div>
@@ -58,12 +55,12 @@ const emailProxy = computed<string>({
                 <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   Issue date
                 </div>
-                <DatePick @update-date="(v) => inv.draft && (inv.draft.issueDate = v)" />
+                <DatePick @update-date="(v) => inv.invoice && inv.setIssueDate(v)" />
               </div>
 
               <div>
                 <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">Due by</div>
-                <DatePick @update-date="(v) => inv.draft && (inv.draft.dueByDate = v)" />
+                <DatePick @update-date="(v) => inv.invoice && inv.setDueByDate(v)" />
               </div>
             </div>
           </div>
@@ -80,21 +77,21 @@ const emailProxy = computed<string>({
               <div class="grid grid-cols-[84px_1fr] items-start gap-2">
                 <div class="text-zinc-500 dark:text-zinc-400">Name</div>
                 <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ inv.draft?.clientSnapshot.name || client?.name || '—' }}
+                  {{ inv.invoice?.clientSnapshot.name || client?.name || '—' }}
                 </div>
               </div>
 
               <div class="grid grid-cols-[84px_1fr] items-start gap-2">
                 <div class="text-zinc-500 dark:text-zinc-400">Company</div>
                 <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ inv.draft?.clientSnapshot.companyName || client?.companyName || '—' }}
+                  {{ inv.invoice?.clientSnapshot.companyName || client?.companyName || '—' }}
                 </div>
               </div>
 
               <div class="grid grid-cols-[84px_1fr] items-start gap-2">
                 <div class="text-zinc-500 dark:text-zinc-400">Address</div>
                 <div class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ inv.draft?.clientSnapshot.address || client?.address || '—' }}
+                  {{ inv.invoice?.clientSnapshot.address || client?.address || '—' }}
                 </div>
               </div>
             </div>
@@ -104,15 +101,15 @@ const emailProxy = computed<string>({
                 Email (optional)
               </div>
               <TheInput
-                :modelValue="emailProxy"
-                @update:modelValue="(v) => (emailProxy = String(v ?? ''))"
-                :disabled="!inv.draft"
+                v-model="emailProxy"
+                :disabled="!inv.invoice"
                 placeholder="client@email.com"
               />
             </div>
           </div>
         </div>
       </div>
+
       <DecorGradient />
     </section>
   </header>

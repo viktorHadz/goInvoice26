@@ -98,6 +98,9 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			id INTEGER PRIMARY KEY,
 			client_id INTEGER NOT NULL,
 
+			current_revision_id INTEGER
+				CHECK (current_revision_id IS NULL OR current_revision_id > 0),
+
 			base_number INTEGER NOT NULL UNIQUE CHECK (base_number > 0),
 
 			status TEXT NOT NULL DEFAULT 'draft'
@@ -109,6 +112,9 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT
 		);`,
 
+		// -----------------------
+		// Invoice Revisions
+		// -----------------------
 		`CREATE TABLE IF NOT EXISTS invoice_revisions (
 			id INTEGER PRIMARY KEY,
 			invoice_id INTEGER NOT NULL,
@@ -117,7 +123,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			issue_date TEXT NOT NULL,
 			due_by_date TEXT NOT NULL,
 			
-			-- Client snapshot (frozen at time of this revision)
+			-- Client Snapshot - copied and stored for each invoice 
 			client_name TEXT NOT NULL,
 			client_company_name TEXT NOT NULL DEFAULT '',
 			client_address TEXT NOT NULL DEFAULT '',
@@ -125,12 +131,15 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			
 			note TEXT,
 
-			vat_rate_bps INTEGER NOT NULL DEFAULT 2000 CHECK (vat_rate_bps >= 0),
+			vat_rate INTEGER NOT NULL DEFAULT 2000 CHECK (vat_rate >= 0),
 
 			discount_type TEXT NOT NULL DEFAULT 'none'
 				CHECK (discount_type IN ('none','percent','fixed')),
 
-			discount_value INTEGER NOT NULL DEFAULT 0 CHECK (discount_value >= 0),
+			discount_minor INTEGER NOT NULL DEFAULT 0 CHECK (discount_minor >= 0),
+			subtotal_minor INTEGER NOT NULL CHECK (subtotal_minor >= 0),
+			vat_amount_minor INTEGER NOT NULL CHECK (vat_amount_minor >= 0),
+			total_minor INTEGER NOT NULL CHECK (total_minor >= 0),
 
 			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 
@@ -138,9 +147,9 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			UNIQUE (invoice_id, revision_no),
 
 			CHECK (
-				(discount_type = 'none'    AND discount_value = 0) OR
-				(discount_type = 'percent' AND discount_value BETWEEN 0 AND 10000) OR
-				(discount_type = 'fixed'   AND discount_value >= 0)
+				(discount_type = 'none'    AND discount_minor = 0) OR
+				(discount_type = 'percent' AND discount_minor BETWEEN 0 AND 10000) OR
+				(discount_type = 'fixed'   AND discount_minor >= 0)
 			)
 		);`,
 
@@ -158,13 +167,13 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			line_type TEXT NOT NULL DEFAULT 'custom'
 				CHECK (line_type IN ('style','sample','custom')),
 
-			-- How this line is priced self-describing for the editor
 			pricing_mode TEXT NOT NULL DEFAULT 'flat'
 				CHECK (pricing_mode IN ('flat','hourly')),
 
 			-- For flat lines: quantity * unit_price_minor
-			quantity REAL NOT NULL DEFAULT 1 CHECK (quantity > 0),
+			quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
 			unit_price_minor INTEGER NOT NULL CHECK (unit_price_minor >= 0),
+			line_subtotal_minor INTEGER NOT NULL DEFAULT 0 CHECK (line_subtotal_minor >= 0),
 
 			-- For hourly lines: minutes_worked must be present
 			minutes_worked INTEGER CHECK (minutes_worked IS NULL OR minutes_worked >= 0),
@@ -189,8 +198,8 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			id INTEGER PRIMARY KEY,
 			invoice_id INTEGER NOT NULL,
 
-			kind TEXT NOT NULL DEFAULT 'payment'
-				CHECK (kind IN ('deposit','payment')),
+			payment_type TEXT NOT NULL DEFAULT 'payment'
+				CHECK (payment_type IN ('deposit','payment')),
 
 			amount_minor INTEGER NOT NULL CHECK (amount_minor > 0),
 
@@ -202,6 +211,57 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		);`,
 
 		// -----------------------
+		// Views
+		// -----------------------
+		`CREATE INDEX IF NOT EXISTS idx_invoices_current_revision_id ON invoices(current_revision_id);`,
+		// Load current items for invoice/invoice_revision without finding revision_id
+		`CREATE VIEW IF NOT EXISTS invoice_current_items AS
+		SELECT
+			i.id AS invoice_id,
+			i.current_revision_id AS revision_id,
+
+			r.revision_no,
+
+			it.id AS item_id,
+			it.sort_order,
+			it.product_id,
+			it.name,
+			it.line_type,
+			it.pricing_mode,
+			it.quantity,
+			it.unit_price_minor,
+			it.minutes_worked,
+			it.line_subtotal_minor
+
+		FROM invoices i
+		JOIN invoice_revisions r
+			ON r.id = i.current_revision_id
+		JOIN invoice_items it
+			ON it.invoice_revision_id = r.id
+		ORDER BY i.id, it.sort_order;`,
+
+		// items for a specific invoice revision
+		`CREATE VIEW IF NOT EXISTS invoice_revision_items AS
+		SELECT
+			r.invoice_id,
+			r.id AS revision_id,
+			r.revision_no,
+			it.id AS item_id,
+			it.sort_order,
+			it.product_id,
+			it.name,
+			it.line_type,
+			it.pricing_mode,
+			it.quantity,
+			it.unit_price_minor,
+			it.minutes_worked,
+			it.line_subtotal_minor
+		FROM invoice_revisions r
+		JOIN invoice_items it
+			ON it.invoice_revision_id = r.id;
+		`,
+
+		// -----------------------
 		// Indexes
 		// -----------------------
 		`CREATE INDEX IF NOT EXISTS idx_invoices_client_id ON invoices(client_id);`,
@@ -211,6 +271,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_items_product_id ON invoice_items(product_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_products_client_id ON products(client_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_invoices_current_revision_id ON invoices(current_revision_id);`,
 	}
 
 	tx, err := db.BeginTx(ctx, nil)
@@ -234,3 +295,17 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 	}
 	return nil
 }
+
+/*
+
+USAGE EXAMPLES FOR VIEWS
+
+--- load all items for specific invoice ---
+	SELECT * FROM invoice_latest_items WHERE invoice_id = ?;
+
+--- load items for a specific revision ---
+	SELECT * FROM invoice_revision_items WHERE invoice_id = ? AND revision_no = ? ORDER BY sort_order;
+
+-- load current revision's invoice items
+	SELECT * FROM invoice_current_items WHERE invoice_id = ?;
+*/

@@ -2,41 +2,42 @@
 import { computed } from 'vue'
 import { TrashIcon } from '@heroicons/vue/24/outline'
 import TheInput from '@/components/UI/TheInput.vue'
-import TheButton from '@/components/UI/TheButton.vue'
-import { useInvoiceDraftStore } from '@/stores/invoiceDraft'
-import { fmtGBPMinor, fromMinor, toMinor } from '@/utils/money'
-import { lineTotalMinor } from '@/utils/invoiceMath'
-import type { InvoiceLine } from './invoiceTypes'
+import { useInvoiceStore } from '@/stores/invoice'
+import type { InvoiceLine } from '@/components/invoice/invoiceTypes'
 
 const props = defineProps<{ line: InvoiceLine }>()
 
-const inv = useInvoiceDraftStore()
+const inv = useInvoiceStore()
 
-const totalMinor = computed(() => lineTotalMinor(props.line))
+const totalMinor = computed(() => inv.lineTotalMinor(props.line))
 const minutesDisabled = computed(() => props.line.pricingMode !== 'hourly')
 
-const unitPounds = computed(() => fromMinor(props.line.unitPriceMinor))
+const unitPounds = computed(() => inv.fromMinor(props.line.unitPriceMinor))
 
-function setName(v: any) {
+function setName(v: unknown) {
   inv.updateLine(props.line.sortOrder, { name: String(v ?? '') })
 }
 
-function setQty(v: any) {
+function setQty(v: unknown) {
+  if (v === '' || v === null || v === undefined) {
+    inv.updateLine(props.line.sortOrder, { quantity: 0 })
+    return
+  }
   const n = Number(v)
-  if (!Number.isFinite(n) || n <= 0) return
+  if (!Number.isFinite(n) || n < 0) return
   inv.updateLine(props.line.sortOrder, { quantity: n })
 }
 
-function setMinutes(v: any) {
+function setMinutes(v: unknown) {
   const n = Number(v)
   if (!Number.isFinite(n) || n < 0) return
   inv.updateLine(props.line.sortOrder, { minutesWorked: n })
 }
 
-function setUnitPounds(v: any) {
+function setUnitPounds(v: unknown) {
   const n = Number(v)
   if (!Number.isFinite(n) || n < 0) return
-  inv.updateLine(props.line.sortOrder, { unitPriceMinor: toMinor(n) })
+  inv.updateLine(props.line.sortOrder, { unitPriceMinor: inv.toMinor(n) })
 }
 </script>
 
@@ -50,7 +51,7 @@ function setUnitPounds(v: any) {
         type="text"
         :modelValue="line.name"
         @update:modelValue="setName"
-        inputClass="py-1 text-sm "
+        inputClass="py-1 text-sm"
         placeholder="Product name"
       />
       <div class="truncate text-sm text-zinc-500 capitalize dark:text-zinc-400">
@@ -91,7 +92,7 @@ function setUnitPounds(v: any) {
         :title="line.pricingMode === 'hourly' ? 'Hourly rate (£)' : 'Unit price (£)'"
       />
       <div class="truncate text-sm text-zinc-500 dark:text-zinc-400">
-        {{ fmtGBPMinor(line.unitPriceMinor) }}{{ line.pricingMode === 'hourly' ? '/hr' : '' }}
+        {{ inv.fmtGBPMinor(line.unitPriceMinor) }}{{ line.pricingMode === 'hourly' ? '/hr' : '' }}
       </div>
     </div>
 
@@ -99,12 +100,13 @@ function setUnitPounds(v: any) {
     <div
       class="min-w-0 text-right text-base font-semibold text-zinc-900 tabular-nums dark:text-zinc-100"
     >
-      {{ fmtGBPMinor(totalMinor) }}
+      {{ inv.fmtGBPMinor(totalMinor) }}
     </div>
 
     <!-- remove -->
     <div class="flex justify-end">
       <button
+        type="button"
         class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-500 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
         @click="inv.removeLine(line.sortOrder)"
       >
