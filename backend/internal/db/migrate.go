@@ -98,6 +98,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			id INTEGER PRIMARY KEY,
 			client_id INTEGER NOT NULL,
 
+			-- Root revision ID - origin decided here 
 			current_revision_id INTEGER
 				CHECK (current_revision_id IS NULL OR current_revision_id > 0),
 

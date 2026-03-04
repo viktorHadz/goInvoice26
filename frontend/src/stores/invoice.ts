@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type {
     Invoice,
     InvoiceLine,
@@ -8,6 +8,10 @@ import type {
     DepositType,
     DiscountType,
 } from '@/components/invoice/invoiceTypes'
+import { getNewInvoiceNumber } from '@/utils/invoiceHttpHandler'
+import { useClientStore } from './clients'
+
+const clientStore = useClientStore()
 
 // Internal helpers centralised here
 type Patch<T extends object> = Partial<{ [K in keyof T]: T[K] }>
@@ -68,21 +72,34 @@ function calcTotals(inv: Invoice): Totals {
 
     return { subtotalMinor, discountMinor, afterDiscountMinor, vatMinor, totalMinor }
 }
+function fmtPrettyInvoiceNumber(prefix: string, baseNumber?: number) {
+    if (!baseNumber || baseNumber <= 0) return '' // or '—'
+    return `${prefix} - ${baseNumber}`
+}
 
 // Store
 export const useInvoiceStore = defineStore('invoice', () => {
     const invoice = ref<Invoice | null>(null)
+    const invoicePrefix = import.meta.env.VITE_INVOICE_PREFIX
 
-    function setInvoice(next: Invoice) {
-        invoice.value = next
+    const prettyBaseNumber = computed(() => {
+        const n = invoice.value?.baseNumber
+        return fmtPrettyInvoiceNumber(invoicePrefix, n)
+    })
+
+    async function setInvoice(newInvoiceData: Invoice) {
+        const clientId = clientStore.selectedClientId
+        if (!clientId) throw new Error('No client selected')
+
+        const bNum = await getNewInvoiceNumber(clientId)
+        newInvoiceData.baseNumber = bNum
+        invoice.value = newInvoiceData
     }
 
     function ensure(): Invoice {
         if (!invoice.value) throw new Error('Invoice not initialised')
         return invoice.value
     }
-
-    // Single source
 
     const totals = computed<Totals | null>(() => (invoice.value ? calcTotals(invoice.value) : null))
 
@@ -227,6 +244,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
     return {
         // state
         invoice,
+        prettyBaseNumber,
         // init
         setInvoice,
         // derived

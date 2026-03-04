@@ -17,12 +17,13 @@ const invStore = useInvoiceStore()
 
 const selected = computed(() => clients.selectedClient)
 
+// clears invoice when re-selecting clients or
 watch(
   selected,
   (c) => {
     if (!c?.id) return
 
-    // Prevent deleting invoice when same client gets reselected
+    // Prevent deleting invoice when client re-selected/tabs changed...
     if (invStore.invoice?.clientId === c.id) return
 
     invStore.setInvoice({
@@ -52,9 +53,6 @@ watch(
       depositType: 'none',
       depositValue: 0,
 
-      // TODO: - should be optional fields
-      // invoiceId: undefined,
-      // baseNumber: undefined, // called from the backend on load
       status: 'draft',
     })
   },
@@ -96,7 +94,7 @@ const infoLines = [
         <div class="min-w-0">
           <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
           <div class="text-xs text-sky-600 dark:text-emerald-400">
-            For #{{ invStore.invoice?.baseNumber || '{invoice number}' }}
+            {{ 'For ' + invStore.prettyBaseNumber || '' }}
           </div>
         </div>
 

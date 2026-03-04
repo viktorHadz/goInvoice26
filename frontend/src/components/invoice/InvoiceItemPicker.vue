@@ -67,7 +67,6 @@ function addFromProduct(p: Product) {
       unitPriceMinor: p.flatPriceMinor ?? 0,
       minutesWorked: null,
     })
-    open.value = false
     return
   }
 
@@ -81,7 +80,6 @@ function addFromProduct(p: Product) {
       unitPriceMinor: p.hourlyRateMinor ?? 0,
       minutesWorked: safeMinutes(p.minutesWorked ?? 60),
     })
-    open.value = false
     return
   }
 
@@ -94,7 +92,6 @@ function addFromProduct(p: Product) {
     unitPriceMinor: p.flatPriceMinor ?? 0,
     minutesWorked: null,
   })
-  open.value = false
 }
 
 function addCustomItem() {
@@ -152,10 +149,7 @@ function addCustomItem() {
     <!-- Product Picker  -->
     <div class="flex flex-col gap-3 md:flex-row md:items-center">
       <!-- Search -->
-      <div
-        ref="pickerRef"
-        class="relative min-w-0 flex-1"
-      >
+      <div class="relative min-w-0 flex-1">
         <div
           class="group relative text-zinc-500 hover:text-sky-600 dark:text-zinc-400 hover:dark:text-emerald-400"
         >
@@ -175,14 +169,10 @@ function addCustomItem() {
             @input="open = true"
           />
           <MagnifyingGlassIcon class="pointer-events-none absolute top-2 left-2 size-4" />
-          <button
-            type="button"
-            class="absolute top-1/2 right-2 -translate-y-1/2 rounded-lg"
-            @click="open = !open"
-            title="Toggle results"
-          >
-            <ChevronUpDownIcon class="size-5" />
-          </button>
+
+          <ChevronUpDownIcon
+            class="pointer-events-none absolute top-1/2 right-2 size-5 -translate-y-1/2 rounded-lg"
+          />
         </div>
 
         <transition
@@ -196,6 +186,7 @@ function addCustomItem() {
           <div
             v-if="open && filtered.length"
             class="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+            ref="pickerRef"
           >
             <div class="max-h-72 overflow-auto">
               <div
@@ -214,7 +205,7 @@ function addCustomItem() {
 
                 <TheButton
                   class="shrink-0"
-                  @click="addFromProduct(p)"
+                  @click.stop="addFromProduct(p)"
                 >
                   <SquaresPlusIcon class="size-4" />
                   Add
@@ -248,14 +239,14 @@ function addCustomItem() {
         />
       </div>
 
-      <!-- Custom line -->
+      <!-- Custom item -->
       <div class="w-full md:w-auto md:shrink-0">
         <TheButton
           class="w-full py-2 text-sm md:w-auto"
           @click="addCustomItem"
         >
           <SquaresPlusIcon class="size-5" />
-          Custom item
+          Add Custom Item
         </TheButton>
       </div>
     </div>

@@ -223,6 +223,7 @@ onKeyStroke(escArr, escKeyHandler, { dedupe: true })
                 :right-icon="ChevronDownIcon"
                 label-key="name"
                 value-key="id"
+                input-class="overflow-x-clip"
               />
             </div>
 

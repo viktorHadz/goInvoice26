@@ -3,6 +3,7 @@ package clients
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/viktorHadz/goInvoice26/internal/app"
+	"github.com/viktorHadz/goInvoice26/internal/httpx/invoice"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/midware"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/products"
 )
@@ -19,6 +20,7 @@ func Router(r chi.Router, a *app.App) {
 			r.Patch("/", updateClient(a))  // UPDATE  PATCH /api/clients/{id}
 			r.Delete("/", deleteClient(a)) // DELETE  DELETE /api/clients/{id}
 			products.Router(r, a)
+			invoice.Router(r, a)
 		})
 	})
 }

@@ -121,6 +121,7 @@ function applyVat() {
         <div class="min-w-0 sm:w-24">
           <TheDropdown
             v-model="depositMode"
+            input-class="py-1.5"
             :options="['none', 'fixed', 'percent']"
           />
         </div>
@@ -153,6 +154,7 @@ function applyVat() {
         <div class="min-w-0 sm:w-24">
           <TheDropdown
             v-model="discountMode"
+            input-class="py-1.5"
             :options="['none', 'fixed', 'percent']"
           />
         </div>

@@ -8,7 +8,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
-// Checks if client with id exists in DB and returns it or an error
+// Checks if client with id exists in DB and returns all for client or an error
 func GetByID(ctx context.Context, a *app.App, id int64) (models.Client, error) {
 	var c models.Client
 	err := a.DB.QueryRowContext(ctx, `

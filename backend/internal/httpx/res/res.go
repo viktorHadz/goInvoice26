@@ -12,7 +12,9 @@ import (
 
 // FieldError represents a single validation problem for one specific input field.
 //
-// Usage: build a FieldError slice during validation and return via Validation(...)
+// Usage:
+//
+//   - build a FieldError slice during validation and return via Validation(...)
 type FieldError struct {
 	Field   string         `json:"field"`
 	Code    string         `json:"code"`
@@ -22,19 +24,19 @@ type FieldError struct {
 
 /*
 It is both:
-- a Go error (implements error interface via Error())
-- a structured payload to send client
+  - a Go error (implements error interface via Error())
+  - a structured payload to send client
 
 Usage:
-- Whenever returning a non-2xx response in a consistent JSON shape
+  - Whenever returning a non-2xx response in a consistent JSON shape
 
 Notes:
-- ID - for users to report errors to then find in logs - sent to client .
-- Code - error code - sent to the client.
-- Message - for displaying errors on the client.
-- Fields - used in multiple field validation - sent to client.
-- Status is HTTP transport detail - not sent in JSON.
-- Cause is an internal error for logging - not sent in JSON.
+  - ID  - for users to report errors to then find in logs  - sent to client .
+  - Code  - error code  - sent to the client.
+  - Message  - for displaying errors on the client.
+  - Fields  - used in multiple field validation  - sent to client.
+  - Status is HTTP transport detail  - not sent in JSON.
+  - Cause is an internal error for logging  - not sent in JSON.
 */
 type APIError struct {
 	ID      string       `json:"id,omitempty"`     // Generated if missing
@@ -43,11 +45,11 @@ type APIError struct {
 	Fields  []FieldError `json:"fields,omitempty"` // Used only with validation
 
 	Status int   `json:"-"` // HTTP status code
-	Cause  error `json:"-"` // Underlying error - for logs only never returned to client
+	Cause  error `json:"-"` // Underlying error  - for logs never returned to client
 }
 
 // Error makes APIError implement the built-in error interface.
-// In logs, this will show the error Code only unless logged via Message separately.
+// In logs, this will show the error code only unless logged via Message separately.
 func (e *APIError) Error() string { return e.Code }
 
 // envelope is the JSON shape the API returns for errors.
@@ -60,14 +62,16 @@ type envelope struct {
 Writes a successful JSON response.
 
 Usage:
-- request succeeded (2xx / 3xx)
-- need to return a JSON body
+
+  - request succeeded (2xx / 3xx)
+
+  - need to return a JSON body
 
 Examples:
 
-- res.JSON(w, http.StatusOK, client)
+	res.JSON(w, http.StatusOK, client)
 
-- res.JSON(w, http.StatusCreated, map[string]any{"id": id})
+	res.JSON(w, http.StatusCreated, map[string]any{"id": id})
 */
 func JSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -79,37 +83,45 @@ func JSON(w http.ResponseWriter, status int, v any) {
 NoContent writes a 204 No Content response.
 
 Usage:
-- operation succeeded but there is no body to return (common for DELETE/PATCH)
 
-Examples:
-- PATCH updated successfully, nothing else to return
-- DELETE successful
+  - operation succeeded but there is no body to return (common for DELETE/PATCH)
+
+  - PATCH updated successfully, nothing else to return
+
+  - DELETE successful
 */
 func NoContent(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func newID() string {
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	return hex.EncodeToString(b[:])
 }
 
 /*
 Error writes an error response in the standard JSON envelope and returns the error ID.
 
 Usage:
-- exiting a handler early with an error response
+
+  - exiting a handler early with an error response
 
 Important behavior:
-- If `err` is an *APIError, it writes it.
-- If `err` is a normal error, it is converted into an INTERNAL 500 error.
-- It fills missing defaults (ID/status/code/message)
+  - If `err` is an *APIError, it writes it.
+  - If `err` is a normal error, it is converted into an INTERNAL 500 error.
+  - It fills missing defaults (ID/status/code/message)
 
 Return value:
-- the correlation id used for the response - for logging/support tickets
+  - the correlation id used for the response  - for logging/support tickets
 
 Example:
 
-- res.Error(w, res.NotFound("client not found"))
+	res.Error(w, res.NotFound("client not found"))
 
-- res.Error(w, res.Validation(errs...))
+	res.Error(w, res.Validation(errs...))
 
-- res.Error(w, res.Database(err))
+	res.Error(w, res.Database(err))
 */
 func Error(w http.ResponseWriter, err error) string {
 	ae := AsAPIError(err)
@@ -128,11 +140,16 @@ func Error(w http.ResponseWriter, err error) string {
 	}
 	// Server side details for 5xx errros
 	if ae.Status >= 500 {
+		cause := ae.Cause
+		if cause == nil {
+			cause = err
+		}
+
 		slog.Error("request failed",
 			"error_id", ae.ID,
 			"status", ae.Status,
+			"message", ae.Message,
 			"code", ae.Code,
-			"err", err,
 		)
 	}
 	JSON(w, ae.Status, envelope{Error: ae})
@@ -143,40 +160,59 @@ func Error(w http.ResponseWriter, err error) string {
 AsAPIError converts any error into an *APIError.
 
 Usage:
-- to normalize error into the API error type
-- to inspect status/code before writing/logging
+
+  - to normalize error into the API error type
+
+  - to inspect status/code before writing/logging
 
 Behavior:
-- If err already wraps/is an *APIError, it returns a safe to modify COPY of it.
-- Otherwise it wraps it as Internal(err).
+
+  - If err already wraps/is an *APIError, it returns a safe to modify COPY of it.
+
+  - Otherwise it wraps it as Internal(err).
 
 Example:
-- ae := res.AsAPIError(err)
-- if ae.Status >= 500 { slog.ErrorContext(ctx, "server error", "cause", ae.Cause) }
+
+	 ae := res.AsAPIError(err)
+	 if ae.Status >= 500 {
+		slog.ErrorContext(ctx, "server error", "cause", ae.Cause)
+		return
+	 }
 */
 func AsAPIError(err error) *APIError {
 	var ae *APIError
 	if errors.As(err, &ae) {
 		// copy to avoid mutating shared pointers
 		out := *ae
+		if out.Cause == nil {
+			// Something useful to show server logs
+			out.Cause = err
+		}
 		return &out
 	}
 	return Internal(err)
 }
 
-// ---- constructors
+// --- - constructors
 
 /*
 BadJSON creates a 400 error for invalid JSON payloads.
 
 Usage:
-- json decoding fails
-- request body is not valid JSON
-- request contains unknown fields (if DisallowUnknownFields() is enabled)
+
+  - json decoding fails
+
+  - request body is not valid JSON
+
+  - request contains unknown fields (if DisallowUnknownFields() is enabled)
 
 Example:
-- dec := json.NewDecoder(r.Body) dec.DisallowUnknownFields()
-- if err := dec.Decode(&dst); err != nil { res.Error(w, res.BadJSON()); return }
+
+	dec := json.NewDecoder(r.Body) dec.DisallowUnknownFields()
+	if err := dec.Decode(&dst); err != nil {
+	  res.Error(w, res.BadJSON());
+	  return
+	}
 */
 func BadJSON() *APIError {
 	return &APIError{
@@ -187,14 +223,14 @@ func BadJSON() *APIError {
 }
 
 /*
-Checks JSON received from frontend is a single JSON object
+Checks JSON received from frontend is a single JSON object. Throws error if receiving multiple JSON objects
 
-Throws error if receiving multiple JSON objects
-USAGE:
+Example:
 
 	var client models.CreateClient
+
 	if ok := res.DecodeJSON(w, r, &client); !ok {
-	  return
+		return
 	}
 */
 func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
@@ -220,11 +256,17 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 Validation creates a 400 error for field validation problems.
 
 Usage:
-- the request was syntactically valid JSON
-- but values fail the rules (required, max length, invalid email, etc.)
+
+  - the request was syntactically valid JSON
+
+  - but values fail the rules (required, max length, invalid email, etc.)
 
 Example:
-- if len(errs) > 0 { res.Error(w, res.Validation(errs...)); return }
+
+	if len(errs) > 0 {
+		res.Error(w, res.Validation(errs...));
+		return
+	}
 */
 func Validation(fields ...FieldError) *APIError {
 	return &APIError{
@@ -239,11 +281,17 @@ func Validation(fields ...FieldError) *APIError {
 NotFound creates a 404 error.
 
 Usage:
-- the requested resource doesn't exist
-- an update/delete affected 0 rows for an id that should exist
+
+  - the requested resource doesn't exist
+
+  - an update/delete affected 0 rows for an id that should exist
 
 Example:
-- if affected == 0 { res.Error(w, res.NotFound("client not found")); return }
+
+	if affected == 0 {
+	  res.Error(w, res.NotFound("client not found"));
+	  return
+	}
 */
 func NotFound(msg string) *APIError {
 	if msg == "" {
@@ -260,14 +308,19 @@ func NotFound(msg string) *APIError {
 Database creates a 500 error representing a DB failure.
 
 Usage:
-- the DB call returned an error - query failed, connection issue...
-- Hides details from the client but keeps the cause for logs
 
-Important:
-- This is for unexpected DB errors (500).
+  - the DB call returned an error  - query failed, connection issue...
+
+  - Hides details from the client but keeps the cause for logs
+
+  - For unexpected DB errors (500).
 
 Example:
-- if err != nil { slog.ErrorContext(ctx, "db failed", "err", err); res.Error(w, res.Database(err)); return }
+
+	if err != nil {
+		res.Error(w, res.Database(err));
+		return
+	}
 */
 func Database(err error) *APIError {
 	return &APIError{
@@ -279,14 +332,17 @@ func Database(err error) *APIError {
 }
 
 /*
-Internal creates a 500 INTERNAL error.
+Internal creates a 500 INTERNAL error
 
-Usage
-- something unexpected happened
-- there is a raw error and it need a safe response for client
+Usage:
+
+  - something unexpected happened
+
+  - there is a raw error and it need a safe response for client
 
 Example:
-- return res.Internal(err)
+
+	return res.Internal(err)
 */
 func Internal(err error) *APIError {
 	return &APIError{
@@ -297,14 +353,15 @@ func Internal(err error) *APIError {
 	}
 }
 
-// ---- field error helpers
+// --- - field error helpers
+//---------------------------
 
 // Invalid builds a validation FieldError for "this value is invalid".
 // Examples:
 //
-// - res.Invalid("email", "email format is invalid")
+//	res.Invalid("email", "email format is invalid")
 //
-// - res.Invalid("id", "invalid route param")
+//	res.Invalid("id", "invalid route param")
 func Invalid(field, msg string) FieldError {
 	if msg == "" {
 		msg = "invalid"
@@ -331,9 +388,4 @@ func MinLen(field string, min int) FieldError {
 		Message: "too short",
 		Meta:    map[string]any{"min": min},
 	}
-}
-func newID() string {
-	var b [8]byte
-	_, _ = rand.Read(b[:])
-	return hex.EncodeToString(b[:])
 }

@@ -8,17 +8,17 @@ import { useInvoiceStore } from '@/stores/invoice'
 import DecorGradient from '../UI/DecorGradient.vue'
 
 const clients = useClientStore()
-const inv = useInvoiceStore()
+const invStore = useInvoiceStore()
 
 const client = computed(() => clients.selectedClient)
 
 const emailProxy = computed<string>({
   get() {
-    return inv.invoice?.clientSnapshot.email ?? ''
+    return invStore.invoice?.clientSnapshot.email ?? ''
   },
   set(v) {
-    if (!inv.invoice) return
-    inv.setClientEmail(String(v ?? ''))
+    if (!invStore.invoice) return
+    invStore.setClientEmail(String(v ?? ''))
   },
 })
 </script>
@@ -29,7 +29,7 @@ const emailProxy = computed<string>({
       <div
         class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
       >
-        <DocumentTextIcon class="size-7 text-sky-700 dark:text-emerald-400" />
+        <DocumentTextIcon class="size-7 text-sky-600 dark:text-emerald-400" />
       </div>
 
       <div class="min-w-0">
@@ -46,21 +46,26 @@ const emailProxy = computed<string>({
       <div class="relative z-10 space-y-4 p-3 md:p-4">
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
           <div class="min-w-0">
-            <div class="mb-2 text-base font-semibold text-zinc-800 dark:text-zinc-100">
+            <h2 class="mb-4 text-lg font-semibold text-zinc-800 dark:text-zinc-100">
               Invoice details
+            </h2>
+            <div class="mb-2 flex gap-x-4 font-medium">
+              <span>Invoice number:</span>
+              <span class="font-bold text-sky-600 dark:text-emerald-400">
+                {{ invStore.prettyBaseNumber }}
+              </span>
             </div>
-
             <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
               <div>
                 <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   Issue date
                 </div>
-                <DatePick @update-date="(v) => inv.invoice && inv.setIssueDate(v)" />
+                <DatePick @update-date="(v) => invStore.invoice && invStore.setIssueDate(v)" />
               </div>
 
               <div>
                 <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">Due by</div>
-                <DatePick @update-date="(v) => inv.invoice && inv.setDueByDate(v)" />
+                <DatePick @update-date="(v) => invStore.invoice && invStore.setDueByDate(v)" />
               </div>
             </div>
           </div>
@@ -69,29 +74,33 @@ const emailProxy = computed<string>({
             class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
           >
             <div class="mb-2 flex items-center justify-between">
-              <div class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">To</div>
-              <div class="text-xs text-zinc-500 dark:text-zinc-400">client snapshot</div>
+              <div class="font-semibold text-sky-600 dark:text-emerald-400">To</div>
+              <div
+                class="hidden rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+              >
+                client details
+              </div>
             </div>
 
             <div class="space-y-2 text-sm">
               <div class="grid grid-cols-[84px_1fr] items-start gap-2">
                 <div class="text-zinc-500 dark:text-zinc-400">Name</div>
                 <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ inv.invoice?.clientSnapshot.name || client?.name || '—' }}
+                  {{ invStore.invoice?.clientSnapshot.name || client?.name || '—' }}
                 </div>
               </div>
 
               <div class="grid grid-cols-[84px_1fr] items-start gap-2">
                 <div class="text-zinc-500 dark:text-zinc-400">Company</div>
                 <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ inv.invoice?.clientSnapshot.companyName || client?.companyName || '—' }}
+                  {{ invStore.invoice?.clientSnapshot.companyName || client?.companyName || '—' }}
                 </div>
               </div>
 
               <div class="grid grid-cols-[84px_1fr] items-start gap-2">
                 <div class="text-zinc-500 dark:text-zinc-400">Address</div>
                 <div class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ inv.invoice?.clientSnapshot.address || client?.address || '—' }}
+                  {{ invStore.invoice?.clientSnapshot.address || client?.address || '—' }}
                 </div>
               </div>
             </div>
@@ -102,7 +111,7 @@ const emailProxy = computed<string>({
               </div>
               <TheInput
                 v-model="emailProxy"
-                :disabled="!inv.invoice"
+                :disabled="!invStore.invoice"
                 placeholder="client@email.com"
               />
             </div>

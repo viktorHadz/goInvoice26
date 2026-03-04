@@ -13,7 +13,7 @@ import (
 
 func listItems(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := params.IDParam(w, r, "clientID")
+		id, ok := params.GetParam(w, r, "clientID")
 		if !ok {
 			return
 		}

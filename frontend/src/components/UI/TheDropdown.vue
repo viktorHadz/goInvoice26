@@ -92,17 +92,17 @@ function keyOf(v: T): string | number {
 
       <ListboxButton
         v-bind="props.id?.trim() ? { id: props.id } : {}"
-        class="input-dropdown input-dropdown-accent flex items-center justify-between gap-2"
+        class="input input-accent flex items-center justify-between gap-2"
         :class="[inputClass, disabled ? 'pointer-events-none opacity-60' : '']"
       >
         <div class="flex w-full items-center gap-2">
           <component
             v-if="leftIcon"
             :is="leftIcon"
-            class="size-4 shrink-0 text-zinc-500 dark:text-zinc-400"
+            class="size-4 shrink-0 text-zinc-800 dark:text-zinc-200"
           />
 
-          <span class="truncate text-zinc-900 dark:text-zinc-100">
+          <span class="truncate text-zinc-800 dark:text-zinc-100">
             {{ labelOf(selected) || placeholder }}
           </span>
         </div>
@@ -110,7 +110,7 @@ function keyOf(v: T): string | number {
         <component
           v-if="rightIcon"
           :is="rightIcon"
-          class="size-4 shrink-0 text-zinc-500 dark:text-zinc-400"
+          class="size-4 shrink-0 text-zinc-800 dark:text-zinc-200"
         />
         <ChevronDownIcon
           v-else
@@ -142,7 +142,6 @@ function keyOf(v: T): string | number {
                   ? 'bg-sky-50 text-zinc-900 dark:bg-emerald-950/25 dark:text-zinc-100'
                   : 'text-zinc-700 dark:text-zinc-300',
 
-                // selected emphasis (subtle)
                 selected ? 'font-semibold' : '',
               ]"
             >

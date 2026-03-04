@@ -15,12 +15,12 @@ import (
 
 func updateProduct(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		clientID, ok := params.IDParam(w, r, "clientID")
+		clientID, ok := params.GetParam(w, r, "clientID")
 		if !ok {
 			return
 		}
 
-		productID, ok := params.IDParam(w, r, "productID")
+		productID, ok := params.GetParam(w, r, "productID")
 		if !ok {
 			return
 		}
