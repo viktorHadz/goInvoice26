@@ -1,56 +1,55 @@
+// internal/models/invoiceModels.go
 package models
 
-// All data for an invoice - HTTP GET
-type Invoice struct {
-	InvoiceID int64
-	// Invoices
-	ClientID          string
-	CurrentRevisionID *int64  // > 0 || Null - new invoice set to NULL e.g. DRAFT
-	BaseNumber        int64   // invoice number e.g."SAM-1"
-	Status            *string // draft(default), issued, paid, void
-	CreatedAt         *string
-	UpdatedAt         *string
-	// Invoice Revisions
-	RevisionNumber    int64   // creating new so revision number is 1
-	IssuedDate        string  // cant be null
-	DueByDate         *string // CAN be NULLABLE leave pointer for DB
-	ClientName        string
-	ClientCompanyName string
-	ClientAddress     string
-	ClientEmail       string
-	Note              *string
-	VATRate           int64  // VAT RATE, percent based units  2000 = 20%
-	DiscountType      string // none(default), percent, fixed
-	DiscountMinor     int64
-	SubtotalMinor     int64
-	VatAmountMinor    int64 // VAT ammount in minor
-	TotalMinor        int64
-	RevisionCreatedAt *string
-	// Payments
-	PaymentType string // payment(default), deposit
-	PaidMinor   *int64
-	// Line Items
-	Line []LineItem
+type FEInvoiceIn struct {
+	Overview InvoiceCreateIn
+	Lines    []LineCreateIn
+	Totals   TotalsCreateIn
 }
 
-// Allows loading items separately from invoice. Insert last
-type LineItem struct {
-	RevisionID        int64
-	ProductID         *int64 // NULLABLE
-	Name              string
-	LineType          string // custom(default), style, sample,
-	PricingMode       string // flat(default) hourly
-	Quantity          int64  // default 1
-	UnitPriceMinor    int64  // >= 0
-	LineSubtotalMinor int64
-	MinutesWorked     *int64 // >= 0 || NULL
+type InvoiceCreateIn struct {
+	ClientID int64 `json:"clientId"`
+	// CurrentRevisionID int64   `json:"currentRevisionId"` ---> Set by server
+	BaseNumber int64 `json:"baseNumber"`
+	// Status            string  `json:"status"` ---> Set by server
+	// CreatedAt         string  `json:"createdAt"`
+	IssueDate         string  `json:"issueDate"`
+	DueByDate         *string `json:"dueByDate"`
+	ClientName        string  `json:"clientName"`
+	ClientCompanyName string  `json:"clientCompanyName"`
+	ClientAddress     string  `json:"clientAddress"`
+	ClientEmail       string  `json:"clientEmail"`
+	Note              *string `json:"note"`
 }
 
-// Makes a new draft invoice clientID retrieved from path pa
-type NewInvoice struct {
-	CurrentRevisionID *int64  `json:"currentRevisionID,omitempty"`
-	BaseNumber        int64   `json:"baseNumber"`
-	Status            *string `json:"status,omitempty"`
-	CreatedAt         *string `json:"createdAt,omitempty"`
-	UpdatedAt         *string `json:"updatedAt,omitempty"`
+type LineCreateIn struct {
+	// RevisionID     int64  `json:"revisionId"` ---> Set by server
+	ProductID      *int64 `json:"productId"` // NULLABLE
+	Name           string `json:"name"`
+	LineType       string `json:"lineType"`       // custom(default), style, sample,
+	PricingMode    string `json:"pricingMode"`    // flat(default) hourly
+	Quantity       int64  `json:"quantity"`       // default 1
+	MinutesWorked  *int64 `json:"minutesWorked"`  // >= 0 || NULL
+	UnitPriceMinor int64  `json:"unitPriceMinor"` // >= 0
+	LineTotalMinor int64  `json:"lineTotalMinor"` // qty * unite price minor
+	SortOrder      int64  `json:"sortOrder"`
+}
+
+// Can use to doublecheck if they match
+type TotalsCreateIn struct {
+	VATRate        int64 `json:"vatRate"`  // VAT RATE, percent based units  2000 = 20%
+	VatAmountMinor int64 `json:"vatMinor"` // VAT ammount in minor
+
+	DepositType   string `json:"depositType"` // none(default), percent, fixed
+	DepositMinor  int64  `json:"depositMinor"`
+	DiscountType  string `json:"discountType"` // none(default), percent, fixed
+	DiscountMinor int64  `json:"discountMinor"`
+
+	PaidMinor int64 `json:"paidMinor"`
+
+	SubtotalAfterDisc int64 `json:"subtotalAfterDiscountMinor"` // checks FE data validity
+	SubtotalMinor     int64 `json:"subtotalMinor"`
+
+	TotalMinor int64 `json:"totalMinor"`      // pre deposit and payments
+	BalanceDue int64 `json:"balanceDueMinor"` // actual total post deposit and payment
 }

@@ -98,9 +98,11 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			id INTEGER PRIMARY KEY,
 			client_id INTEGER NOT NULL,
 
-			-- Root revision ID - origin decided here 
+			-- stores latest invoice revision (if 1.1, 1.2, 1.3 it return 1.3)  
 			current_revision_id INTEGER
-				CHECK (current_revision_id IS NULL OR current_revision_id > 0),
+				REFERENCES invoice_revisions(id)
+				ON DELETE SET NULL
+				DEFERRABLE INITIALLY DEFERRED,
 
 			base_number INTEGER NOT NULL UNIQUE CHECK (base_number > 0),
 
@@ -108,7 +110,6 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 				CHECK (status IN ('draft','issued','paid','void')),
 
 			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-			updated_at TEXT,
 
 			FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT
 		);`,
@@ -122,8 +123,10 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			revision_no INTEGER NOT NULL CHECK (revision_no >= 1),
 
 			issue_date TEXT NOT NULL,
-			due_by_date TEXT NOT NULL,
-			
+			due_by_date TEXT,
+
+			updated_at TEXT,
+
 			-- Client Snapshot - copied and stored for each invoice 
 			client_name TEXT NOT NULL,
 			client_company_name TEXT NOT NULL DEFAULT '',
@@ -136,8 +139,12 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 
 			discount_type TEXT NOT NULL DEFAULT 'none'
 				CHECK (discount_type IN ('none','percent','fixed')),
-
 			discount_minor INTEGER NOT NULL DEFAULT 0 CHECK (discount_minor >= 0),
+
+			 deposit_type TEXT NOT NULL DEFAULT 'none'
+       			 CHECK (deposit_type IN ('none','percent','fixed')),
+   			 deposit_minor INTEGER NOT NULL DEFAULT 0 CHECK (deposit_minor >= 0),
+
 			subtotal_minor INTEGER NOT NULL CHECK (subtotal_minor >= 0),
 			vat_amount_minor INTEGER NOT NULL CHECK (vat_amount_minor >= 0),
 			total_minor INTEGER NOT NULL CHECK (total_minor >= 0),
@@ -151,6 +158,11 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 				(discount_type = 'none'    AND discount_minor = 0) OR
 				(discount_type = 'percent' AND discount_minor BETWEEN 0 AND 10000) OR
 				(discount_type = 'fixed'   AND discount_minor >= 0)
+			),
+			CHECK (
+				(deposit_type = 'none'    AND deposit_minor = 0) OR
+				(deposit_type = 'percent' AND deposit_minor BETWEEN 0 AND 10000) OR
+				(deposit_type = 'fixed'   AND deposit_minor >= 0)
 			)
 		);`,
 
@@ -174,7 +186,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			-- For flat lines: quantity * unit_price_minor
 			quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
 			unit_price_minor INTEGER NOT NULL CHECK (unit_price_minor >= 0),
-			line_subtotal_minor INTEGER NOT NULL DEFAULT 0 CHECK (line_subtotal_minor >= 0),
+			line_total_minor INTEGER NOT NULL DEFAULT 0 CHECK (line_total_minor >= 0),
 
 			-- For hourly lines: minutes_worked must be present
 			minutes_worked INTEGER CHECK (minutes_worked IS NULL OR minutes_worked >= 0),
@@ -201,7 +213,6 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 
 			payment_type TEXT NOT NULL DEFAULT 'payment'
 				CHECK (payment_type IN ('deposit','payment')),
-
 			amount_minor INTEGER NOT NULL CHECK (amount_minor > 0),
 
 			label TEXT,
@@ -232,7 +243,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			it.quantity,
 			it.unit_price_minor,
 			it.minutes_worked,
-			it.line_subtotal_minor
+			it.line_total_minor
 
 		FROM invoices i
 		JOIN invoice_revisions r
@@ -256,7 +267,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			it.quantity,
 			it.unit_price_minor,
 			it.minutes_worked,
-			it.line_subtotal_minor
+			it.line_total_minor
 		FROM invoice_revisions r
 		JOIN invoice_items it
 			ON it.invoice_revision_id = r.id;
@@ -272,7 +283,6 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_items_product_id ON invoice_items(product_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_products_client_id ON products(client_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);`,
-		`CREATE INDEX IF NOT EXISTS idx_invoices_current_revision_id ON invoices(current_revision_id);`,
 	}
 
 	tx, err := db.BeginTx(ctx, nil)

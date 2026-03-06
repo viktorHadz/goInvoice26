@@ -59,7 +59,7 @@ type envelope struct {
 }
 
 /*
-Writes a successful JSON response.
+Encodes a JSON response - typically successful
 
 Usage:
 
@@ -138,6 +138,7 @@ func Error(w http.ResponseWriter, err error) string {
 	if ae.Message == "" {
 		ae.Message = "Internal server error"
 	}
+
 	// Server side details for 5xx errros
 	if ae.Status >= 500 {
 		cause := ae.Cause
@@ -150,6 +151,15 @@ func Error(w http.ResponseWriter, err error) string {
 			"status", ae.Status,
 			"message", ae.Message,
 			"code", ae.Code,
+		)
+	}
+
+	if ae.Cause != nil {
+		slog.Error("request failed",
+			"error_id", ae.ID,
+			"status", ae.Status,
+			"code", ae.Code,
+			"cause", ae.Cause,
 		)
 	}
 	JSON(w, ae.Status, envelope{Error: ae})
@@ -235,17 +245,20 @@ Example:
 */
 func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	dec := json.NewDecoder(r.Body)
-	dec.UseNumber() // keeps numbers exact json.Number
+	dec.UseNumber()
 	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(dst); err != nil {
-		Error(w, BadJSON())
+		apiErr := BadJSON()
+		apiErr.Cause = err // preserve the real decoder error
+		Error(w, apiErr)
 		return false
 	}
 
-	// Must be exactly one JSON value
 	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		Error(w, BadJSON())
+		apiErr := BadJSON()
+		apiErr.Cause = errors.New("request body contained more than one JSON value")
+		Error(w, apiErr)
 		return false
 	}
 

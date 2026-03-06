@@ -6,5 +6,5 @@ import (
 
 // Provides dependencies to the application
 type App struct {
-	DB *sql.DB
+	DB *sql.DB // DB mounted in main
 }

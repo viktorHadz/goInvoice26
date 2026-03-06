@@ -1,12 +1,5 @@
 package invoiceTx
 
-import (
-	"context"
-
-	"github.com/viktorHadz/goInvoice26/internal/app"
-	"github.com/viktorHadz/goInvoice26/internal/models"
-)
-
 // Check DB this is a new invoice
 // Checks that a client exists in clients table and a current revision id exists in invoices
 // If it doesnt exist proceed to creating invoice
@@ -37,11 +30,11 @@ INTO invoice_revisions(
 VALUES(?, ?, ?, ?)`
 )
 
-func Create(ctx *context.Context, a *app.App, i *models.Invoice) (bool, error) {
+// func Create(ctx *context.Context, a *app.App, i *models.InvoiceCreateOut) (bool, error) {
 
-	_, err := a.DB.ExecContext(*ctx, clientStmt, &i.ClientName, &i.ClientCompanyName, &i.ClientAddress, &i.ClientEmail)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
+// 	_, err := a.DB.ExecContext(*ctx, clientStmt, &i.ClientName, &i.ClientCompanyName, &i.ClientAddress, &i.ClientEmail)
+// 	if err != nil {
+// 		return false, err
+// 	}
+// 	return true, nil
+// }
