@@ -10,9 +10,10 @@ export async function getNewInvoiceNumber(clientId: number): Promise<number> {
 export async function newInvoiceHandler(
     clientId: number,
     baseNumber: number,
-    invoPayload: Request,
+    invoPayload: unknown,
 ) {
-    console.log(clientId, baseNumber, invoPayload)
     const url = `api/clients/${clientId}/invoice/${baseNumber}`
-    return await request<Invoice>(url, { method: 'POST', body: JSON.stringify(invoPayload) })
+    const payload = JSON.stringify(invoPayload)
+    console.log('Preparing to send: ', invoPayload)
+    return await request<Invoice>(url, { method: 'POST', body: payload })
 }

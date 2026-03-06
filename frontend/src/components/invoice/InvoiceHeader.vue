@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { DocumentTextIcon } from '@heroicons/vue/24/outline'
-import TheInput from '@/components/UI/TheInput.vue'
 import DatePick from '@/components/invoice/DatePick.vue'
 import { useClientStore } from '@/stores/clients'
 import { useInvoiceStore } from '@/stores/invoice'
@@ -11,6 +10,17 @@ const clients = useClientStore()
 const invStore = useInvoiceStore()
 
 const client = computed(() => clients.selectedClient)
+
+// Computed proxies so DatePick can use v-model without touching store state directly
+const issueDate = computed<string | null>({
+  get: () => invStore.invoice?.issueDate ?? null,
+  set: (v) => invStore.setIssueDate(v ?? ''),
+})
+
+const dueByDate = computed<string | null>({
+  get: () => invStore.invoice?.dueByDate ?? null,
+  set: (v) => invStore.setDueByDate(v ?? ''),
+})
 </script>
 
 <template>
@@ -34,7 +44,10 @@ const client = computed(() => clients.selectedClient)
       class="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
       <div class="relative z-10 space-y-4 p-3 md:p-4">
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+        <div
+          class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start"
+          v-if="invStore.invoice"
+        >
           <div class="min-w-0">
             <h2 class="mb-4 text-lg font-semibold text-zinc-800 dark:text-zinc-100">
               Invoice details
@@ -50,12 +63,18 @@ const client = computed(() => clients.selectedClient)
                 <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   Issue date
                 </div>
-                <DatePick @update-date="(v) => invStore.invoice && invStore.setIssueDate(v)" />
+                <DatePick
+                  v-model="issueDate"
+                  placeholder="Select issue date"
+                />
               </div>
 
               <div>
                 <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">Due by</div>
-                <DatePick @update-date="(v) => invStore.invoice && invStore.setDueByDate(v)" />
+                <DatePick
+                  v-model="dueByDate"
+                  placeholder="Select due date"
+                />
               </div>
             </div>
           </div>
@@ -103,7 +122,6 @@ const client = computed(() => clients.selectedClient)
           </div>
         </div>
       </div>
-
       <DecorGradient />
     </section>
   </header>

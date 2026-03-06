@@ -17,19 +17,20 @@ const invStore = useInvoiceStore()
 
 const selected = computed(() => clients.selectedClient)
 
-// clears invoice when re-selecting clients or
+// Initialises or resets the invoice whenever the selected client changes
+// initInvoiceFromServer fetches the invoice number itself
 watch(
   selected,
   (c) => {
     if (!c?.id) return
 
-    // Prevent deleting invoice when client re-selected/tabs changed...
+    // Dont wipe progress of invoice if re-selecting the same client
     if (invStore.invoice?.clientId === c.id) return
 
-    invStore.setInvoice({
+    invStore.initInvoiceFromServer({
       clientId: c.id,
       issueDate: '',
-      dueByDate: '',
+      dueByDate: undefined,
       clientSnapshot: {
         name: c.name ?? '',
         companyName: c.companyName ?? '',
@@ -41,28 +42,24 @@ watch(
 
       vatRate: 2000,
       discountType: 'none',
-      // fixed => minor units | percent => 0..10000 (basis points)
       discountValue: 0,
 
       lines: [],
 
-      // Payments
       paidMinor: 0,
 
-      // Deposit config (strict-store model)
       depositType: 'none',
       depositValue: 0,
-
-      status: 'draft',
     })
   },
   { immediate: true },
 )
+
 const infoLines = [
-  { id: 1, text: 'Ammount paid - calculated after VAT' },
+  { id: 1, text: 'Amount paid - calculated after VAT' },
   { id: 2, text: 'Discount - calculated before VAT' },
   { id: 3, text: 'Deposit - calculated after VAT' },
-  { id: 4, text: ' VAT Rate - set to 0% to exclude VAT ' },
+  { id: 4, text: 'VAT Rate - set to 0% to exclude VAT' },
 ]
 </script>
 
@@ -94,7 +91,7 @@ const infoLines = [
         <div class="min-w-0">
           <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
           <div class="text-xs text-sky-600 dark:text-emerald-400">
-            {{ 'For ' + invStore.prettyBaseNumber || '' }}
+            {{ invStore.prettyBaseNumber ? 'For ' + invStore.prettyBaseNumber : '' }}
           </div>
         </div>
 

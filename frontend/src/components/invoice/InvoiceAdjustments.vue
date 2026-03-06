@@ -176,7 +176,7 @@ function applyVat() {
         <p>Amount paid (£)</p>
         <TheTooltip
           :icon="InformationCircleIcon"
-          text="Tip: use for unpredicted deductions"
+          text="For invoice payments made before the deposit"
           side="top"
           max-width-class="w-42"
           align="center"

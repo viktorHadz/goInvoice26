@@ -2,7 +2,6 @@
 import { useInvoiceStore } from '@/stores/invoice'
 import { DocumentArrowDownIcon, DocumentIcon } from '@heroicons/vue/24/outline'
 import TheButton from '../UI/TheButton.vue'
-import { BellIcon } from '@heroicons/vue/24/solid'
 
 const invStore = useInvoiceStore()
 </script>

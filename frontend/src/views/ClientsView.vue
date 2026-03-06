@@ -3,5 +3,5 @@ import ClientsTable from '@/components/clients/ClientsTable.vue'
 </script>
 
 <template>
-  <ClientsTable></ClientsTable>
+    <ClientsTable></ClientsTable>
 </template>

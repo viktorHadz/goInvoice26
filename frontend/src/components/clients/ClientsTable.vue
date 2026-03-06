@@ -79,7 +79,7 @@ function toggleOpen(id: number) {
 
   if (isClosing && editingId.value === id) cancelEdit()
 
-  // If we'switching to another row stop any edit
+  // Stop edit when switching rows
   if (!isClosing && editingId.value != null) cancelEdit()
 
   openId.value = isClosing ? null : id
@@ -127,7 +127,7 @@ async function removeClient(id: number) {
   if (editingId.value === id) cancelEdit()
 }
 
-// -- Field Schema --
+// Field Schema
 type ClientFieldKey = keyof typeof createForm
 
 type FieldDef = {

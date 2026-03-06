@@ -1,4 +1,3 @@
-export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'void'
 export type DiscountType = 'none' | 'percent' | 'fixed'
 export type DepositType = 'none' | 'fixed' | 'percent'
 export type LineType = 'style' | 'sample' | 'custom'
@@ -15,7 +14,6 @@ export type Totals = {
 }
 
 export type InvoiceLine = {
-    id?: number
     productId?: number | null
 
     name: string
@@ -25,19 +23,17 @@ export type InvoiceLine = {
     quantity: number
     unitPriceMinor: MoneyMinor
     minutesWorked?: number | null
-
     sortOrder: number
 }
 
 export type Invoice = {
     invoiceId?: number
-    baseNumber?: number
-    status?: InvoiceStatus
+    baseNumber: number
 
     clientId: number
 
     issueDate: string
-    dueByDate: string
+    dueByDate?: string
 
     clientSnapshot: {
         name: string
@@ -60,5 +56,5 @@ export type Invoice = {
     // fixed price => minor units | percent => 0..10000 (basis points)
     depositValue: number
 
-    note: string
+    note?: string
 }
