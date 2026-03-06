@@ -11,16 +11,6 @@ const clients = useClientStore()
 const invStore = useInvoiceStore()
 
 const client = computed(() => clients.selectedClient)
-
-const emailProxy = computed<string>({
-  get() {
-    return invStore.invoice?.clientSnapshot.email ?? ''
-  },
-  set(v) {
-    if (!invStore.invoice) return
-    invStore.setClientEmail(String(v ?? ''))
-  },
-})
 </script>
 
 <template>
@@ -103,17 +93,12 @@ const emailProxy = computed<string>({
                   {{ invStore.invoice?.clientSnapshot.address || client?.address || '—' }}
                 </div>
               </div>
-            </div>
-
-            <div class="mt-3">
-              <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                Email (optional)
+              <div class="grid grid-cols-[84px_1fr] items-start gap-2">
+                <div class="text-zinc-500 dark:text-zinc-400">Email</div>
+                <div class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100">
+                  {{ invStore.invoice?.clientSnapshot.email || client?.email || '—' }}
+                </div>
               </div>
-              <TheInput
-                v-model="emailProxy"
-                :disabled="!invStore.invoice"
-                placeholder="client@email.com"
-              />
             </div>
           </div>
         </div>

@@ -103,37 +103,6 @@ function applyVat() {
 
 <template>
   <div class="min-w-0 space-y-5">
-    <div class="min-w-0 space-y-2">
-      <div class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Deposit</div>
-      <div class="grid min-w-0 grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_6rem_auto]">
-        <TheInput
-          v-model="deposit"
-          type="number"
-          :placeholder="depositMode === 'percent' ? '10' : '0'"
-          labelHidden
-          :reserveErrorSpace="false"
-          :disabled="depositMode === 'none'"
-          :title="
-            depositMode === 'none' ? 'select deposit mode from dropdown first' : 'deposit value'
-          "
-          inputClass="w-full py-1.5"
-        />
-        <div class="min-w-0 sm:w-24">
-          <TheDropdown
-            v-model="depositMode"
-            input-class="py-1.5"
-            :options="['none', 'fixed', 'percent']"
-          />
-        </div>
-        <TheButton
-          class="w-full sm:w-auto"
-          @click="applyDeposit"
-        >
-          Apply
-        </TheButton>
-      </div>
-    </div>
-
     <!-- Discount -->
     <div class="min-w-0 space-y-2">
       <div class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Discount</div>
@@ -161,6 +130,38 @@ function applyVat() {
         <TheButton
           class="w-full sm:w-auto"
           @click="applyDiscount"
+        >
+          Apply
+        </TheButton>
+      </div>
+    </div>
+
+    <!-- Deposit -->
+    <div class="min-w-0 space-y-2">
+      <div class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Deposit</div>
+      <div class="grid min-w-0 grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_6rem_auto]">
+        <TheInput
+          v-model="deposit"
+          type="number"
+          :placeholder="depositMode === 'percent' ? '10' : '0'"
+          labelHidden
+          :reserveErrorSpace="false"
+          :disabled="depositMode === 'none'"
+          :title="
+            depositMode === 'none' ? 'select deposit mode from dropdown first' : 'deposit value'
+          "
+          inputClass="w-full py-1.5"
+        />
+        <div class="min-w-0 sm:w-24">
+          <TheDropdown
+            v-model="depositMode"
+            input-class="py-1.5"
+            :options="['none', 'fixed', 'percent']"
+          />
+        </div>
+        <TheButton
+          class="w-full sm:w-auto"
+          @click="applyDeposit"
         >
           Apply
         </TheButton>

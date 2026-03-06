@@ -9,7 +9,7 @@ export type MoneyMinor = number // integer minor units (pence)
 export type Totals = {
     subtotalMinor: MoneyMinor
     discountMinor: MoneyMinor
-    afterDiscountMinor: MoneyMinor
+    subtotalAfterDiscountMinor: MoneyMinor
     vatMinor: MoneyMinor
     totalMinor: MoneyMinor
 }

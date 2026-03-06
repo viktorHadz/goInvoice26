@@ -11,7 +11,7 @@ import { useInvoiceStore } from '@/stores/invoice'
 import type { Product, ProductType } from '@/utils/productHttpHandler'
 
 const prod = useProductStore()
-const inv = useInvoiceStore()
+const invStore = useInvoiceStore()
 
 const itemType = ref<ProductType>('style')
 const q = ref('')
@@ -38,8 +38,8 @@ const filtered = computed(() => {
 })
 
 function priceLabel(p: Product) {
-  if (p.pricingMode === 'hourly') return `${inv.fmtGBPMinor(p.hourlyRateMinor ?? 0)}/hr`
-  return inv.fmtGBPMinor(p.flatPriceMinor ?? 0)
+  if (p.pricingMode === 'hourly') return `${invStore.fmtGBPMinor(p.hourlyRateMinor ?? 0)}/hr`
+  return invStore.fmtGBPMinor(p.flatPriceMinor ?? 0)
 }
 
 function safeQty(): number {
@@ -58,7 +58,7 @@ function addFromProduct(p: Product) {
   const qty = safeQty()
 
   if (p.productType === 'style') {
-    inv.addLine({
+    invStore.addLine({
       productId: p.id,
       name: p.productName,
       lineType: 'style',
@@ -71,7 +71,7 @@ function addFromProduct(p: Product) {
   }
 
   if (p.pricingMode === 'hourly') {
-    inv.addLine({
+    invStore.addLine({
       productId: p.id,
       name: p.productName,
       lineType: 'sample',
@@ -83,7 +83,7 @@ function addFromProduct(p: Product) {
     return
   }
 
-  inv.addLine({
+  invStore.addLine({
     productId: p.id,
     name: p.productName,
     lineType: 'sample',
@@ -95,13 +95,13 @@ function addFromProduct(p: Product) {
 }
 
 function addCustomItem() {
-  inv.addLine({
+  invStore.addLine({
     productId: null,
     name: 'Custom item',
     lineType: 'custom',
     pricingMode: 'flat',
     quantity: 1,
-    unitPriceMinor: inv.toMinor(0),
+    unitPriceMinor: invStore.toMinor(0),
     minutesWorked: null,
   })
   open.value = false

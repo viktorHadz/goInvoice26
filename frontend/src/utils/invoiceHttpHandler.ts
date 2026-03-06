@@ -1,13 +1,18 @@
+import type { Invoice } from '@/components/invoice/invoiceTypes'
 import { request } from './fetchHelper'
 
-const base = (clientId: number | null) => `api/clients/${clientId}/invoice`
-
 export async function getNewInvoiceNumber(clientId: number): Promise<number> {
-    const bNum = await request<number>(base(clientId))
+    const n = await request<number>(`api/clients/${clientId}/invoice`)
+    const out = typeof n === 'number' && Number.isFinite(n) ? Math.round(n) : 0
+    return out > 0 ? out : 0
+}
 
-    if (!Number.isFinite(bNum) || bNum <= 0) {
-        throw new Error('Invalid invoice number returned from server')
-    }
-
-    return bNum
+export async function newInvoiceHandler(
+    clientId: number,
+    baseNumber: number,
+    invoPayload: Request,
+) {
+    console.log(clientId, baseNumber, invoPayload)
+    const url = `api/clients/${clientId}/invoice/${baseNumber}`
+    return await request<Invoice>(url, { method: 'POST', body: JSON.stringify(invoPayload) })
 }

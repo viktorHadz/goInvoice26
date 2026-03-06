@@ -2,13 +2,14 @@
 import { useInvoiceStore } from '@/stores/invoice'
 import { DocumentArrowDownIcon, DocumentIcon } from '@heroicons/vue/24/outline'
 import TheButton from '../UI/TheButton.vue'
+import { BellIcon } from '@heroicons/vue/24/solid'
 
-const inv = useInvoiceStore()
+const invStore = useInvoiceStore()
 </script>
 
 <template>
   <div
-    v-if="!inv.invoice || !inv.totals"
+    v-if="!invStore.invoice || !invStore.totals"
     class="text-base text-zinc-500 dark:text-zinc-400"
   >
     No invoice loaded.
@@ -23,7 +24,7 @@ const inv = useInvoiceStore()
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        {{ inv.fmtGBPMinor(inv.totals.subtotalMinor) }}
+        {{ invStore.fmtGBPMinor(invStore.totals.subtotalMinor) }}
       </div>
     </div>
 
@@ -32,7 +33,7 @@ const inv = useInvoiceStore()
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        -{{ inv.fmtGBPMinor(inv.totals.discountMinor) }}
+        -{{ invStore.fmtGBPMinor(invStore.totals.discountMinor) }}
       </div>
     </div>
 
@@ -41,7 +42,7 @@ const inv = useInvoiceStore()
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        {{ inv.fmtGBPMinor(inv.totals.vatMinor) }}
+        {{ invStore.fmtGBPMinor(invStore.totals.vatMinor) }}
       </div>
     </div>
 
@@ -52,7 +53,7 @@ const inv = useInvoiceStore()
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        {{ inv.fmtGBPMinor(inv.totals.totalMinor) }}
+        {{ invStore.fmtGBPMinor(invStore.totals.totalMinor) }}
       </div>
     </div>
 
@@ -64,7 +65,7 @@ const inv = useInvoiceStore()
         <div
           class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
         >
-          -{{ inv.fmtGBPMinor(inv.depositMinor) }}
+          -{{ invStore.fmtGBPMinor(invStore.depositMinor) }}
         </div>
       </div>
 
@@ -73,7 +74,7 @@ const inv = useInvoiceStore()
         <div
           class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
         >
-          -{{ inv.fmtGBPMinor(inv.invoice.paidMinor) }}
+          -{{ invStore.fmtGBPMinor(invStore.invoice.paidMinor) }}
         </div>
       </div>
 
@@ -84,7 +85,7 @@ const inv = useInvoiceStore()
         <div
           class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
         >
-          {{ inv.fmtGBPMinor(inv.balanceDueMinor) }}
+          {{ invStore.fmtGBPMinor(invStore.balanceDueMinor) }}
         </div>
       </div>
     </div>
@@ -101,6 +102,7 @@ const inv = useInvoiceStore()
       <TheButton
         class="flex w-full items-center gap-2"
         title="Generate Draft"
+        @click="invStore.newDraftInvoice(invStore.invoice)"
       >
         <DocumentIcon class="size-4" />
         Create Draft

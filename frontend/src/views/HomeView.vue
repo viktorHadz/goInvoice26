@@ -5,7 +5,8 @@ import { useClientStore } from '@/stores/clients'
 import NoClients from '@/components/clients/NoClients.vue'
 import heroImg from '@/assets/images/vik_wave.svg'
 import TheDropdown from '@/components/UI/TheDropdown.vue'
-import { UserIcon } from '@heroicons/vue/24/outline'
+import { DocumentTextIcon, PencilSquareIcon, UserIcon, UsersIcon } from '@heroicons/vue/24/outline'
+import ProductsEditor from '@/components/items/ProductsEditor.vue'
 
 // The idea is to disable invoice and editor if no client is selected
 const clientStore = useClientStore()
@@ -14,8 +15,7 @@ const features = [
   { title: 'Clients', body: 'Create and manage' },
   { title: 'Items', body: 'Build inventory' },
   { title: 'Invoices', body: 'Generate quickly' },
-  { title: 'Editor', body: 'Match demands' },
-  { title: 'Invoice Book', body: 'Track and audit' },
+  { title: 'Editor', body: 'Track and audit' },
 ]
 </script>
 <template>
@@ -34,7 +34,7 @@ const features = [
         </p>
 
         <!-- quick points -->
-        <div class="mt-6 grid gap-3 sm:grid-cols-3">
+        <div class="mt-8 grid gap-3 sm:grid-cols-3">
           <ul
             v-for="feature in features"
             :key="feature.body"
@@ -55,15 +55,20 @@ const features = [
         </div>
 
         <!-- tiny “how to” -->
-        <div class="mt-7 text-zinc-600 dark:text-zinc-400">
+        <div class="mt-8 text-zinc-600 dark:text-zinc-400">
           <div class="font-medium text-zinc-900 dark:text-zinc-200">Quick start:</div>
           <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
-            <li class="hover:text-sky-600 dark:hover:text-emerald-400">Create a client</li>
-            <li class="hover:text-sky-600 dark:hover:text-emerald-400">
-              Select them from the top-right menu
+            <li class="cursor-default hover:text-sky-600 dark:hover:text-emerald-400">
+              Select a client from the top-right menu
             </li>
-            <li class="hover:text-sky-600 dark:hover:text-emerald-400">
-              Jump into invoice or item editor
+            <li class="cursor-default hover:text-sky-600 dark:hover:text-emerald-400">
+              Create some items for the selected client
+            </li>
+            <li class="cursor-default hover:text-sky-600 dark:hover:text-emerald-400">
+              Jump into invoice to generate a PDF
+            </li>
+            <li class="cursor-default hover:text-sky-600 dark:hover:text-emerald-400">
+              Go to editor for your invoice book or to make revisions
             </li>
           </ol>
         </div>
@@ -80,7 +85,7 @@ const features = [
     </section>
 
     <!-- Actions / State -->
-    <section class="mt-10">
+    <section class="mt-12">
       <div
         class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-lg sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
       >
@@ -88,7 +93,7 @@ const features = [
           <h2 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             Continue where you left off
           </h2>
-          <span class="text-sm text-zinc-500 dark:text-zinc-400">
+          <span class="text-sm text-sky-600 dark:text-emerald-400">
             client → invoice → export → edit
           </span>
         </div>
@@ -99,7 +104,7 @@ const features = [
           v-else-if="clientStore.hasClients && !clientStore.selectedClient"
           class="space-y-3"
         >
-          <p class="text-sm text-zinc-600 dark:text-zinc-300">
+          <p class="text-sm text-sky-600 dark:text-emerald-400">
             Please select a client to continue:
           </p>
 
@@ -124,19 +129,30 @@ const features = [
         </div>
 
         <div v-else>
-          <p class="text-sm text-zinc-600 dark:text-zinc-300">Ready. Pick where you want to go:</p>
+          <p class="text-sm text-zinc-600 dark:text-zinc-300">Where to next?</p>
 
           <div class="mt-4 flex flex-wrap gap-3">
             <RouterLink to="/clients">
-              <TheButton class="cursor-pointer">clients</TheButton>
+              <TheButton class="cursor-pointer">
+                <UsersIcon class="size-4"></UsersIcon>
+                clients
+              </TheButton>
             </RouterLink>
 
+            <ProductsEditor :iconOnly="false" />
+
             <RouterLink to="/invoice">
-              <TheButton class="cursor-pointer">invoice</TheButton>
+              <TheButton class="cursor-pointer">
+                <DocumentTextIcon class="size-4" />
+                invoice
+              </TheButton>
             </RouterLink>
 
             <RouterLink to="/editor">
-              <TheButton class="cursor-pointer">editor</TheButton>
+              <TheButton class="cursor-pointer">
+                <PencilSquareIcon class="size-4" />
+                editor
+              </TheButton>
             </RouterLink>
           </div>
         </div>

@@ -21,6 +21,15 @@ import { onKeyStroke } from '@vueuse/core'
 const store = useProductStore()
 const clientStore = useClientStore()
 
+const props = withDefaults(
+  defineProps<{
+    iconOnly?: boolean
+  }>(),
+  {
+    iconOnly: true,
+  },
+)
+
 const open = ref(false)
 const tab = ref<ProductType>('style')
 const q = ref('')
@@ -131,14 +140,20 @@ onKeyStroke(escArr, escKeyHandler, { dedupe: true })
 </script>
 
 <template>
-  <div
-    class="flex flex-col items-center"
-    title="products"
-  >
-    <BriefcaseIcon
+  <div title="products">
+    <SquaresPlusIcon
+      v-if="iconOnly"
       class="size-8 cursor-pointer stroke-1 text-zinc-600 hover:text-sky-600 dark:text-zinc-300 dark:hover:text-emerald-400"
       @click="open = true"
     />
+    <TheButton
+      v-else
+      @click="open = true"
+      class="cursor-pointer"
+    >
+      <SquaresPlusIcon class="size-4"></SquaresPlusIcon>
+      items
+    </TheButton>
   </div>
 
   <Teleport to="body">
@@ -174,7 +189,7 @@ onKeyStroke(escArr, escKeyHandler, { dedupe: true })
                 <div
                   class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50"
                 >
-                  <BriefcaseIcon class="stroke-1.5 size-7 text-sky-700 dark:text-emerald-400" />
+                  <SquaresPlusIcon class="stroke-1.5 size-7 text-sky-700 dark:text-emerald-400" />
                 </div>
 
                 <!-- title -->

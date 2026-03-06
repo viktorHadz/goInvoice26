@@ -16,7 +16,7 @@ const mode = useColorMode({
     <button
       title="light mode"
       class="flex cursor-pointer flex-col items-center"
-      @click="((mode = 'dark'), console.log(mode))"
+      @click="mode = 'dark'"
     >
       <SunIcon
         class="size-8 stroke-1 transition-all duration-300 hover:text-sky-600 dark:hover:text-emerald-400"
