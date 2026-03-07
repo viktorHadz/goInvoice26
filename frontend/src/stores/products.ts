@@ -11,7 +11,7 @@ import type { Product, ProductType, ProductUpsert } from '@/utils/productHttpHan
 
 export const useProductStore = defineStore('products', () => {
     const clientStore = useClientStore()
-
+    const open = ref(false)
     const products = ref<Product[]>([])
     const isLoading = ref(false)
     const error = ref<string | null>(null)
@@ -81,6 +81,7 @@ export const useProductStore = defineStore('products', () => {
 
     return {
         products,
+        open,
         byType,
         isLoading,
         error,

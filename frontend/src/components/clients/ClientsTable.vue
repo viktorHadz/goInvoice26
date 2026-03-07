@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useClientStore } from '@/stores/clients'
 import type { Client } from '@/utils/clientHttpHandler'
-
+import { useEnter, useEscape } from '@/composables/keyHandlers'
 import TheInput from '../UI/TheInput.vue'
 import TheButton from '../UI/TheButton.vue'
 
@@ -18,6 +18,8 @@ import {
   UsersIcon,
 } from '@heroicons/vue/24/outline'
 import DecorGradient from '../UI/DecorGradient.vue'
+import TheTooltip from '../UI/TheTooltip.vue'
+import { useFetch } from '@/composables/fetch'
 
 const clientStore = useClientStore()
 
@@ -106,7 +108,7 @@ function cancelEdit() {
 }
 
 async function saveEdit() {
-  if (editForm.id == null) return
+  if (editForm.id === null) return
   try {
     console.info('sending to server: ', editForm)
     await clientStore.edit(editForm.id, {
@@ -164,10 +166,14 @@ const clientFields: FieldDef[] = [
 ]
 
 const displayFields: ClientFieldKey[] = ['email', 'address']
+// Keyboard events
+useEscape(cancelEdit, { enabled: openId !== null })
+useEnter(saveEdit, { enabled: editForm.id === null })
 </script>
 
 <template>
   <section class="mx-auto w-full max-w-4xl 2xl:max-w-5xl">
+    <input type="text" />
     <!-- Header -->
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div class="flex items-center gap-2">
@@ -188,12 +194,6 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
 
       <!-- Search -->
       <div class="w-full sm:max-w-md">
-        <label
-          class="sr-only"
-          for="srchQry-clients-1"
-        >
-          Search clients
-        </label>
         <div class="relative shadow-md">
           <MagnifyingGlassIcon
             class="pointer-events-none absolute top-1/2 left-2 size-5 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
@@ -238,24 +238,29 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
           </div>
 
           <div class="flex shrink-0 items-center gap-2">
-            <TheButton
-              type="button"
-              variant="secondary"
-              @click="resetCreate"
-            >
-              <ArrowPathIcon class="size-4" />
-              Clear
-            </TheButton>
+            <TheTooltip text="Clear inputs">
+              <TheButton
+                type="button"
+                variant="secondary"
+                @click="resetCreate"
+              >
+                <ArrowPathIcon class="size-4" />
+                Clear
+              </TheButton>
+            </TheTooltip>
 
-            <TheButton
-              type="button"
-              :disabled="!canCreate"
-              variant="primary"
-              @click="addClient"
-            >
-              <UserPlusIcon class="size-5" />
-              Add
-            </TheButton>
+            <TheTooltip :text="canCreate ? 'Add new' : 'Please add a name first'">
+              <TheButton
+                type="button"
+                :disabled="!canCreate"
+                variant="primary"
+                @click="addClient"
+                :class="canCreate ? 'cursor-pointer' : 'cursor-not-allowed'"
+              >
+                <UserPlusIcon class="size-5" />
+                Create
+              </TheButton>
+            </TheTooltip>
           </div>
         </div>
 
@@ -299,10 +304,9 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
         :key="c.id"
         class="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
       >
-        <!-- compact row -->
         <button
           type="button"
-          class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+          class="group flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
           @click="toggleOpen(c.id)"
         >
           <div class="min-w-0">
@@ -323,45 +327,58 @@ const displayFields: ClientFieldKey[] = ['email', 'address']
 
           <div class="flex items-center gap-2">
             <template v-if="editingId === c.id">
-              <button
-                type="button"
-                class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-sky-900/20 hover:bg-sky-100 hover:text-sky-600 dark:text-zinc-300 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400"
-                @click.stop="saveEdit"
-                title="Save"
-              >
-                <CheckCircleIcon class="size-5" />
-              </button>
-              <button
-                type="button"
-                class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-600 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
-                @click.stop="cancelEdit"
-                title="Cancel"
-              >
-                <XCircleIcon class="size-5" />
-              </button>
+              <TheTooltip text="Confirm edit and save. Press enter to confirm">
+                <button
+                  type="button"
+                  class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-sky-900/20 hover:bg-sky-100 hover:text-sky-600 dark:text-zinc-300 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400"
+                  @click.stop="saveEdit"
+                >
+                  <CheckCircleIcon class="size-5" />
+                </button>
+              </TheTooltip>
+              <TheTooltip text="Cancel edit and restore previous. Press escape to cancel">
+                <button
+                  type="button"
+                  class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-600 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
+                  @click.stop="cancelEdit"
+                >
+                  <XCircleIcon class="size-5" />
+                </button>
+              </TheTooltip>
             </template>
             <template v-else>
-              <button
-                type="button"
-                class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-sky-900/30 hover:bg-sky-100 hover:text-sky-600 dark:text-zinc-300 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400"
-                @click.stop="startEdit(c)"
-                title="Edit"
+              <TheTooltip
+                text="Edit client details"
+                side="top"
+                max-width-class="w-42"
+                align="center"
               >
-                <PencilIcon class="size-5" />
-              </button>
-
-              <button
-                type="button"
-                class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-500 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
-                @click.stop="removeClient(c.id)"
-                title="Delete"
+                <button
+                  type="button"
+                  class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-sky-900/30 hover:bg-sky-100 hover:text-sky-600 dark:text-zinc-300 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400"
+                  @click.stop="startEdit(c)"
+                >
+                  <PencilIcon class="size-5" />
+                </button>
+              </TheTooltip>
+              <TheTooltip
+                text="Delete client"
+                side="top"
+                max-width-class="w-42"
+                align="center"
               >
-                <TrashIcon class="size-5" />
-              </button>
+                <button
+                  type="button"
+                  class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-500 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
+                  @click.stop="removeClient(c.id)"
+                >
+                  <TrashIcon class="size-5" />
+                </button>
+              </TheTooltip>
             </template>
 
             <ChevronDownIcon
-              class="size-5 text-zinc-500 transition-transform dark:text-zinc-400"
+              class="size-5 text-zinc-500 transition-transform group-hover:text-sky-600 dark:text-zinc-400 group-hover:dark:text-emerald-400"
               :class="openId === c.id ? 'rotate-180' : ''"
             />
           </div>

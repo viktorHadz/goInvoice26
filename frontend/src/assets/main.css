@@ -106,7 +106,7 @@
     /* Accent variant */
     .input-accent {
         @apply hover:ring-sky-500/60 focus:border-sky-500 focus:ring-sky-500/50;
-        @apply dark:hover:ring-emerald-400/30 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/40;
+        @apply dark:hover:ring-emerald-400/50 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/60;
     }
 
     /* Error variant */
@@ -162,7 +162,12 @@
         }
     }
 }
-
+@layer components {
+    kbd {
+        @apply text-tiny mx-0.5 rounded border border-zinc-300 bg-zinc-100/50 px-1.5 py-0.5 font-mono font-medium text-zinc-700 shadow-sm;
+        @apply dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300;
+    }
+}
 /* .router-active {
     @apply text-primary dark:text-acc;
 } */
