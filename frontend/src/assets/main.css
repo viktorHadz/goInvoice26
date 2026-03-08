@@ -112,7 +112,7 @@
     /* Error variant */
     .input-error {
         @apply ring-rose-500/40 hover:ring-rose-500/55 focus:ring-rose-500/65;
-        @apply dark:ring-rose-400/30 dark:hover:ring-rose-400/40 dark:focus:ring-rose-400/50;
+        @apply dark:ring-rose-400/40 dark:hover:ring-rose-400/50 dark:focus:ring-rose-400/50;
     }
 
     /* Dropdown base */

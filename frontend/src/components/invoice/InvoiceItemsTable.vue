@@ -17,7 +17,7 @@ const lines = computed(() => {
     <div class="min-w-0">
       <p
         v-if="inv.showAllValidation && inv.getFieldError('lines')"
-        class="px-2 py-2 text-xs text-rose-600 dark:text-rose-300"
+        class="px-2 py-2 text-xs text-rose-600 dark:text-rose-400"
       >
         {{ inv.getFieldError('lines') }}
       </p>

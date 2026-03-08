@@ -146,7 +146,7 @@ function onBlur() {
     <p
       :id="errId"
       class="text-xs"
-      :class="showError ? 'text-rose-600 dark:text-rose-300' : 'text-transparent'"
+      :class="showError ? 'text-rose-600 dark:text-rose-400' : 'text-transparent'"
       :style="props.reserveErrorSpace ? 'min-height: 1.25rem' : ''"
       v-if="props.reserveErrorSpace || showError"
     >
