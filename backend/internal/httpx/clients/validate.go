@@ -55,9 +55,7 @@ func ValidateUpdate(client models.UpdateClient) (models.UpdateClient, []res.Fiel
 	return client, errs
 }
 
-// --------------------
 // helpers
-// --------------------
 
 func text(value string, rules validate.TextRules, errs []res.FieldError) (string, []res.FieldError) {
 	v, e := validate.Text(value, rules)

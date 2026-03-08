@@ -4,6 +4,16 @@ import { DocumentArrowDownIcon, DocumentIcon } from '@heroicons/vue/24/outline'
 import TheButton from '../UI/TheButton.vue'
 
 const invStore = useInvoiceStore()
+
+async function createDraft() {
+  if (!invStore.invoice) return
+
+  try {
+    await invStore.newDraftInvoice(invStore.invoice)
+  } catch {
+    // errors are handled via toast + field errors in store
+  }
+}
 </script>
 
 <template>
@@ -101,7 +111,7 @@ const invStore = useInvoiceStore()
       <TheButton
         class="flex w-full items-center gap-2"
         title="Generate Draft"
-        @click="invStore.newDraftInvoice(invStore.invoice)"
+        @click="createDraft"
       >
         <DocumentIcon class="size-4" />
         Create Draft

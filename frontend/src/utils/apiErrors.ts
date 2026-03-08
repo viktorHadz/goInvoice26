@@ -1,0 +1,110 @@
+export type APIFieldError = {
+    field: string
+    code: string
+    message?: string
+    meta?: Record<string, unknown>
+}
+
+export type APIErrorPayload = {
+    id?: string
+    code: string
+    message: string
+    fields?: APIFieldError[]
+}
+
+type APIErrorEnvelope = {
+    error?: APIErrorPayload
+}
+
+const ERROR_CODE_MESSAGES: Record<string, string> = {
+    VALIDATION_FAILED: 'Please review the highlighted fields.',
+    BAD_JSON: 'The submitted data format is invalid.',
+    NOT_FOUND: 'The requested resource was not found.',
+    DATABASE_ERROR: 'A database error occurred. Please try again.',
+    INTERNAL: 'An internal server error occurred. Please try again.',
+    INVALID_ID: 'The provided id is invalid.',
+}
+
+export class ApiError extends Error {
+    id?: string
+    code: string
+    status: number
+    fields: APIFieldError[]
+
+    constructor(payload: APIErrorPayload, status: number) {
+        super(payload.message || translateErrorCode(payload.code))
+        this.name = 'ApiError'
+        this.id = payload.id
+        this.code = payload.code
+        this.status = status
+        this.fields = payload.fields ?? []
+    }
+}
+
+export function isApiError(value: unknown): value is ApiError {
+    return value instanceof ApiError
+}
+
+export function translateErrorCode(code?: string, fallback?: string): string {
+    if (!code) return fallback ?? 'Request failed'
+    return ERROR_CODE_MESSAGES[code] ?? fallback ?? code
+}
+
+export function toFieldErrorMap(fields: APIFieldError[]): Record<string, string> {
+    const mapped: Record<string, string> = {}
+
+    for (const fieldError of fields) {
+        if (!fieldError.field || mapped[fieldError.field]) continue
+        mapped[fieldError.field] =
+            typeof fieldError.message === 'string' && fieldError.message.trim().length > 0
+                ? fieldError.message
+                : 'Invalid value'
+    }
+
+    return mapped
+}
+
+function parseErrorPayload(input: unknown): APIErrorPayload | null {
+    if (!input || typeof input !== 'object') {
+        return null
+    }
+
+    const data = input as Partial<APIErrorEnvelope & APIErrorPayload>
+    const payload = data.error ?? data
+
+    if (!payload || typeof payload !== 'object') {
+        return null
+    }
+
+    if (typeof payload.code !== 'string') {
+        return null
+    }
+
+    return {
+        id: typeof payload.id === 'string' ? payload.id : undefined,
+        code: payload.code,
+        message:
+            typeof payload.message === 'string'
+                ? payload.message
+                : translateErrorCode(payload.code),
+        fields: Array.isArray(payload.fields) ? payload.fields : [],
+    }
+}
+
+export function parseApiError(status: number, bodyText: string): ApiError {
+    if (bodyText) {
+        try {
+            const data = JSON.parse(bodyText)
+            const payload = parseErrorPayload(data)
+            if (payload) {
+                return new ApiError(payload, status)
+            }
+        } catch {
+            // plain text or invalid JSON body
+        }
+    }
+
+    const code = `HTTP_${status}`
+    const message = bodyText || `Response status: ${status}`
+    return new ApiError({ code, message, fields: [] }, status)
+}

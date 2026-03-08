@@ -18,7 +18,18 @@ func createInvoice(a *app.App) http.HandlerFunc {
 			)
 			return
 		}
-		slog.DebugContext(r.Context(), "Invoice received from FE", "inv", &invoice)
-		// validate.invoice
+
+		slog.Debug("Invoice received from FE", "inv", &invoice)
+
+		// validate received invoice
+		validInvoice, errs := ValidateInvoiceCreate(invoice)
+		if len(errs) > 0 {
+			res.Error(w, res.Validation(errs...))
+			return
+		}
+
+		slog.Debug("Validated Invoice", "------", "-----", "inv", validInvoice)
+		// recalculate totals and check they match those written by the frontend totals match
+
 	}
 }

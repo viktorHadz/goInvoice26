@@ -15,9 +15,15 @@ export async function newInvoiceHandler(
     const url = `api/clients/${clientId}/invoice/${baseNumber}`
     const payload = JSON.stringify(invoPayload)
 
-    return await request<Invoice>(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload,
-    })
+    return await request<Invoice>(
+        url,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+        },
+        {
+            toastOnError: true,
+        },
+    )
 }

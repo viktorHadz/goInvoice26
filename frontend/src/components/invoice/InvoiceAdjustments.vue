@@ -17,6 +17,7 @@ const discountMode = ref<'none' | 'fixed' | 'percent'>('none')
 const discount = ref<number | null>(0)
 
 const vatPercent = ref<number | null>(20)
+const noteTouched = ref(false)
 
 const noteProxy = computed<string>({
   get: () => inv.invoice?.note ?? '',
@@ -119,6 +120,7 @@ function applyVat() {
             discountMode === 'none' ? 'select discount mode from dropdown first' : 'discount value'
           "
           inputClass="w-full py-1.5"
+          :error="inv.getFieldError('totals.discountMinor')"
         />
         <div class="min-w-0 sm:w-24">
           <TheDropdown
@@ -151,6 +153,7 @@ function applyVat() {
             depositMode === 'none' ? 'select deposit mode from dropdown first' : 'deposit value'
           "
           inputClass="w-full py-1.5"
+          :error="inv.getFieldError('totals.depositMinor')"
         />
         <div class="min-w-0 sm:w-24">
           <TheDropdown
@@ -191,6 +194,7 @@ function applyVat() {
           labelHidden
           :reserveErrorSpace="false"
           inputClass="w-full py-1.5"
+          :error="inv.getFieldError('totals.paidMinor')"
         />
         <TheButton
           class="w-full sm:w-auto"
@@ -212,6 +216,7 @@ function applyVat() {
           labelHidden
           :reserveErrorSpace="false"
           inputClass="w-full py-1.5"
+          :error="inv.getFieldError('totals.vatRate')"
         />
         <TheButton
           class="w-full sm:w-auto"
@@ -229,9 +234,24 @@ function applyVat() {
         class="input w-full border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-950/40"
         :value="noteProxy"
         @input="(e) => (noteProxy = (e.target as HTMLTextAreaElement).value)"
+        @blur="noteTouched = true"
         :disabled="!inv.invoice"
         placeholder="Add a note to show on the invoice…"
       />
+      <p
+        class="mt-1 min-h-5 text-xs"
+        :class="
+          inv.getFieldError('note') && (noteTouched || inv.showAllValidation)
+            ? 'text-rose-600 dark:text-rose-300'
+            : 'text-transparent'
+        "
+      >
+        {{
+          inv.getFieldError('note') && (noteTouched || inv.showAllValidation)
+            ? inv.getFieldError('note')
+            : '•'
+        }}
+      </p>
     </div>
   </div>
 </template>

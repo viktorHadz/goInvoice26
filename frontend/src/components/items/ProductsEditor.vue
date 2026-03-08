@@ -18,6 +18,8 @@ import TheInput from '../UI/TheInput.vue'
 import { useEscape } from '@/composables/keyHandlers'
 import TheTooltip from '../UI/TheTooltip.vue'
 import { formatDisplay } from '@/utils/dates'
+import { isApiError, toFieldErrorMap } from '@/utils/apiErrors'
+import { validateProductForm } from '@/utils/frontendValidation'
 
 const store = useProductStore()
 const clientStore = useClientStore()
@@ -33,7 +35,23 @@ const props = withDefaults(
 const tab = ref<ProductType>('style')
 const q = ref('')
 const selectedId = ref<number | null>(null)
+const fieldErrors = ref<Record<string, string>>({})
+const liveFieldErrors = computed(() =>
+  validateProductForm({
+    productType: tab.value,
+    pricingMode: tab.value === 'style' ? 'flat' : form.pricingMode,
+    productName: form.productName,
+    flatPrice: form.flatPrice,
+    hourlyRate: form.hourlyRate,
+    minutesWorked: form.minutesWorked,
+  }),
+)
+const displayFieldErrors = computed(() => ({
+  ...fieldErrors.value,
+  ...liveFieldErrors.value,
+}))
 
+const canSave = computed(() => Object.keys(liveFieldErrors.value).length === 0)
 type Form = {
   id: number | null
   productName: string
@@ -55,6 +73,20 @@ const form = reactive<Form>({
   createdAt: null,
   updatedAt: null,
 })
+
+watch(
+  () => [
+    tab.value,
+    form.productName,
+    form.pricingMode,
+    form.flatPrice,
+    form.hourlyRate,
+    form.minutesWorked,
+  ],
+  () => {
+    fieldErrors.value = {}
+  },
+)
 
 const list = computed(() => store.byType[tab.value] ?? [])
 const filtered = computed(() => {
@@ -82,6 +114,7 @@ function reset() {
   form.minutesWorked = null
   form.createdAt = null
   form.updatedAt = null
+  fieldErrors.value = {}
 }
 
 function pick(p: Product) {
@@ -117,12 +150,22 @@ function buildUpsert(): ProductUpsert {
 }
 
 async function save() {
+  fieldErrors.value = {}
+  if (!canSave.value) return
   const payload = buildUpsert()
-  if (form.id == null) {
-    await store.create(payload)
-  } else {
-    const updated = await store.update(form.id, payload)
-    pick(updated)
+  try {
+    if (form.id == null) {
+      await store.create(payload)
+    } else {
+      const updated = await store.update(form.id, payload)
+      pick(updated)
+    }
+  } catch (err: unknown) {
+    if (isApiError(err)) {
+      fieldErrors.value = toFieldErrorMap(err.fields)
+      return
+    }
+    throw err
   }
 }
 
@@ -153,15 +196,10 @@ useEscape(
     align="end"
   >
     <template #content>
-      <div class="hidden text-start sm:block">
-        <p>Add, delete or edit client items</p>
-        <div class="flex items-center text-start">
-          <span class="mr-1 text-sky-600 dark:text-emerald-400">Open Shortcut:</span>
-          <kbd>Ctrl</kbd>
-          +
-          <kbd>i</kbd>
-        </div>
-      </div>
+      <span class="mr-1 text-sky-600 dark:text-emerald-400">Shortcut:</span>
+      <kbd>Ctrl</kbd>
+      +
+      <kbd>i</kbd>
     </template>
     <SquaresPlusIcon
       v-if="iconOnly"
@@ -241,7 +279,7 @@ useEscape(
               <TheTooltip side="bottom">
                 <template #content>
                   <div class="flex items-center text-start">
-                    <span class="mr-1 text-sky-600 dark:text-emerald-400">Close Shortcut:</span>
+                    <span class="mr-1 text-sky-600 dark:text-emerald-400">Shortcut:</span>
                     <kbd>Esc</kbd>
                   </div>
                 </template>
@@ -414,6 +452,7 @@ useEscape(
                 class="w-full capitalize"
                 placeholder="Name"
                 autocomplete="off"
+                :error="displayFieldErrors.productName"
               />
 
               <div v-if="tab === 'sample'">
@@ -433,6 +472,7 @@ useEscape(
                   min="0"
                   step="0.01"
                   class="w-full placeholder:capitalize"
+                  :error="displayFieldErrors.flatPrice"
                 />
               </div>
 
@@ -447,6 +487,7 @@ useEscape(
                   min="0"
                   step="0.01"
                   class="w-full"
+                  :error="displayFieldErrors.hourlyRate"
                 />
                 <TheInput
                   v-model.number="form.minutesWorked"
@@ -455,6 +496,7 @@ useEscape(
                   min="0"
                   step="1"
                   class="w-full"
+                  :error="displayFieldErrors.minutesWorked"
                 />
               </div>
               <div
@@ -474,6 +516,7 @@ useEscape(
                 <button
                   type="button"
                   class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100 focus-visible:ring-2 focus-visible:ring-sky-500/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200 dark:hover:bg-emerald-950/40 dark:focus-visible:ring-emerald-400/25 dark:focus-visible:ring-offset-zinc-800"
+                  :disabled="!canSave"
                   @click="save"
                 >
                   <ShieldCheckIcon class="size-4" />

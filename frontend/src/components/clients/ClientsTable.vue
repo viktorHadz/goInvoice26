@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useClientStore } from '@/stores/clients'
 import type { Client } from '@/utils/clientHttpHandler'
 import { useEnter, useEscape } from '@/composables/keyHandlers'
 import TheInput from '../UI/TheInput.vue'
 import TheButton from '../UI/TheButton.vue'
+import { isApiError, toFieldErrorMap } from '@/utils/apiErrors'
+import { validateClientForm } from '@/utils/frontendValidation'
 
 import {
   PencilIcon,
@@ -19,7 +21,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import DecorGradient from '../UI/DecorGradient.vue'
 import TheTooltip from '../UI/TheTooltip.vue'
-import { useFetch } from '@/composables/fetch'
+import { emitToastInfo, emitToastSuccess } from '@/utils/toast'
 
 const clientStore = useClientStore()
 
@@ -44,22 +46,42 @@ const createForm = reactive({
   email: '',
   address: '',
 })
+const createFieldErrors = ref<Record<string, string>>({})
+const liveCreateErrors = computed(() => validateClientForm(createForm))
+const displayCreateErrors = computed(() => ({
+  ...createFieldErrors.value,
+  ...liveCreateErrors.value,
+}))
 
-const canCreate = computed(() => (createForm.name ?? '').trim().length > 1)
+const canCreate = computed(() => Object.keys(liveCreateErrors.value).length === 0)
+
+watch(
+  createForm,
+  () => {
+    createFieldErrors.value = {}
+  },
+  { deep: true },
+)
 
 function resetCreate() {
   createForm.name = ''
   createForm.companyName = ''
   createForm.email = ''
   createForm.address = ''
+  createFieldErrors.value = {}
 }
 
 async function addClient() {
   if (!canCreate.value) return
+  createFieldErrors.value = {}
   try {
     await clientStore.createNew(createForm)
     resetCreate()
-  } catch (err) {
+    emitToastSuccess('Client created')
+  } catch (err: unknown) {
+    if (isApiError(err)) {
+      createFieldErrors.value = toFieldErrorMap(err.fields)
+    }
     console.error(err)
   }
 }
@@ -75,6 +97,20 @@ const editForm = reactive({
   email: '',
   address: '',
 })
+const editFieldErrors = ref<Record<string, string>>({})
+const liveEditErrors = computed(() => validateClientForm(editForm))
+const displayEditErrors = computed(() => ({
+  ...editFieldErrors.value,
+  ...liveEditErrors.value,
+}))
+
+watch(
+  editForm,
+  () => {
+    editFieldErrors.value = {}
+  },
+  { deep: true },
+)
 
 function toggleOpen(id: number) {
   const isClosing = openId.value === id
@@ -96,6 +132,7 @@ function startEdit(c: Client) {
   editForm.companyName = c.companyName ?? ''
   editForm.email = c.email ?? ''
   editForm.address = c.address ?? ''
+  editFieldErrors.value = {}
 }
 
 function cancelEdit() {
@@ -105,10 +142,12 @@ function cancelEdit() {
   editForm.companyName = ''
   editForm.email = ''
   editForm.address = ''
+  editFieldErrors.value = {}
 }
 
 async function saveEdit() {
   if (editForm.id === null) return
+  editFieldErrors.value = {}
   try {
     console.info('sending to server: ', editForm)
     await clientStore.edit(editForm.id, {
@@ -118,7 +157,10 @@ async function saveEdit() {
       address: editForm.address,
     })
     cancelEdit()
-  } catch (err) {
+  } catch (err: unknown) {
+    if (isApiError(err)) {
+      editFieldErrors.value = toFieldErrorMap(err.fields)
+    }
     console.error(err)
   }
 }
@@ -173,7 +215,6 @@ useEnter(saveEdit, { enabled: editForm.id === null })
 
 <template>
   <section class="mx-auto w-full max-w-4xl 2xl:max-w-5xl">
-    <input type="text" />
     <!-- Header -->
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div class="flex items-center gap-2">
@@ -249,13 +290,13 @@ useEnter(saveEdit, { enabled: editForm.id === null })
               </TheButton>
             </TheTooltip>
 
-            <TheTooltip :text="canCreate ? 'Add new' : 'Please add a name first'">
+            <TheTooltip :text="canCreate ? 'Add new' : 'Adjust inputs'">
               <TheButton
                 type="button"
                 :disabled="!canCreate"
                 variant="primary"
                 @click="addClient"
-                :class="canCreate ? 'cursor-pointer' : 'cursor-not-allowed'"
+                :class="canCreate ? 'cursor-pointer' : ''"
               >
                 <UserPlusIcon class="size-5" />
                 Create
@@ -274,6 +315,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
             :placeholder="field.placeholder"
             :autocomplete="field.autocomplete"
             v-model="createForm[field.key]"
+            :error="displayCreateErrors[field.key]"
           />
         </div>
 
@@ -327,7 +369,12 @@ useEnter(saveEdit, { enabled: editForm.id === null })
 
           <div class="flex items-center gap-2">
             <template v-if="editingId === c.id">
-              <TheTooltip text="Confirm edit and save. Press enter to confirm">
+              <TheTooltip>
+                <template #content>
+                  Confirm edit.
+                  <span class="text-sky-600 dark:text-emerald-400">Shortcut:</span>
+                  <kbd>↵ Enter</kbd>
+                </template>
                 <button
                   type="button"
                   class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-sky-900/20 hover:bg-sky-100 hover:text-sky-600 dark:text-zinc-300 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400"
@@ -336,7 +383,12 @@ useEnter(saveEdit, { enabled: editForm.id === null })
                   <CheckCircleIcon class="size-5" />
                 </button>
               </TheTooltip>
-              <TheTooltip text="Cancel edit and restore previous. Press escape to cancel">
+              <TheTooltip>
+                <template #content>
+                  Cancel edit.
+                  <span class="text-sky-600 dark:text-emerald-400">Shortcut:</span>
+                  <kbd>Esc</kbd>
+                </template>
                 <button
                   type="button"
                   class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-600 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
@@ -397,6 +449,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
                 :id="`edit-${field.key}`"
                 :label="field.label"
                 v-model="editForm[field.key]"
+                :error="displayEditErrors[field.key]"
               />
             </div>
           </template>

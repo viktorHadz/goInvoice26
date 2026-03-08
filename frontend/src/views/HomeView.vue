@@ -149,13 +149,10 @@ const features = [
 
             <TheTooltip side="bottom">
               <template #content>
-                <p>Add, delete or edit client items</p>
-                <div class="flex items-center text-start">
-                  <span class="mr-1 text-sky-600 dark:text-emerald-400">Open Shortcut:</span>
-                  <kbd>Ctrl</kbd>
-                  +
-                  <kbd>i</kbd>
-                </div>
+                <span class="mr-1 text-sky-600 dark:text-emerald-400">Shortcut:</span>
+                <kbd>Ctrl</kbd>
+                +
+                <kbd>i</kbd>
               </template>
 
               <TheButton

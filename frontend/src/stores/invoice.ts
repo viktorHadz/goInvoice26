@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type {
     Invoice,
     InvoiceLine,
@@ -10,6 +10,8 @@ import type {
 } from '@/components/invoice/invoiceTypes'
 import { newInvoiceHandler, getNewInvoiceNumber } from '@/utils/invoiceHttpHandler'
 import { useClientStore } from './clients'
+import { isApiError, toFieldErrorMap } from '@/utils/apiErrors'
+import { validateInvoicePayload } from '@/utils/frontendValidation'
 
 // Primitives
 type Int = number
@@ -100,6 +102,8 @@ function fmtPrettyInvoiceNumber(prefix: string, baseNumber?: number): string {
 // Store
 export const useInvoiceStore = defineStore('invoice', () => {
     const invoice = ref<Invoice | null>(null)
+    const serverFieldErrors = ref<Record<string, string>>({})
+    const showAllValidation = ref(false)
     const invoicePrefix = import.meta.env.VITE_INVOICE_PREFIX
 
     // Called inside functions only never at module scope
@@ -134,6 +138,24 @@ export const useInvoiceStore = defineStore('invoice', () => {
         () => pricing.value?.balanceDueMinor ?? (0 as MoneyMinor),
     )
 
+    const liveFieldErrors = computed<Record<string, string>>(() => {
+        const inv = invoice.value
+        if (!inv) return {}
+        const dto = apiDTO(inv)
+        return validateInvoicePayload(dto)
+    })
+
+    watch(
+        invoice,
+        () => {
+            if (Object.keys(serverFieldErrors.value).length > 0) {
+                serverFieldErrors.value = {}
+            }
+            showAllValidation.value = false
+        },
+        { deep: true },
+    )
+
     async function initInvoiceFromServer(
         newInvoiceData: Omit<Invoice, 'baseNumber'>,
     ): Promise<void> {
@@ -148,17 +170,22 @@ export const useInvoiceStore = defineStore('invoice', () => {
     function addLine(line: Omit<InvoiceLine, 'sortOrder'>) {
         const inv = ensure()
 
-        const existingLine = inv.lines.find((ln) => line.productId === ln.productId)
-        console.log('Line id: ', line.productId)
-        console.log('Find: ', existingLine)
-        if (!existingLine) {
-            console.log('line doesnt exist adding new: ', line)
-            const maxSort = inv.lines.reduce((m, line) => Math.max(m, asNum(line.sortOrder, 0)), 0)
-            inv.lines.push({ ...line, sortOrder: maxSort + 1 })
+        const canMerge = line.lineType !== 'custom' && line.productId != null
+        const existingLine = canMerge
+            ? inv.lines.find((ln) => ln.productId === line.productId)
+            : undefined
+
+        if (existingLine) {
+            const qtyToAdd = Number.isFinite(line.quantity) && line.quantity > 0 ? line.quantity : 1
+            existingLine.quantity += qtyToAdd
             return
-        } else {
-            existingLine.quantity++
         }
+
+        const maxSort = inv.lines.reduce(
+            (m, current) => Math.max(m, asNum(current.sortOrder, 0)),
+            0,
+        )
+        inv.lines.push({ ...line, sortOrder: maxSort + 1 })
     }
 
     function updateLine(sortOrder: number, patch: Partial<InvoiceLine>): void {
@@ -302,14 +329,37 @@ export const useInvoiceStore = defineStore('invoice', () => {
         if (!selectedClientId) throw new Error('No client selected')
 
         const dto = apiDTO(inv)
-        const result = await newInvoiceHandler(dto.overview.clientId, inv.baseNumber, dto)
-        console.log(result)
-        return result
+        showAllValidation.value = true
+        serverFieldErrors.value = {}
+        try {
+            const result = await newInvoiceHandler(dto.overview.clientId, inv.baseNumber, dto)
+            showAllValidation.value = false
+            console.log(result)
+            return result
+        } catch (err: unknown) {
+            if (isApiError(err)) {
+                serverFieldErrors.value = toFieldErrorMap(err.fields)
+            }
+            throw err
+        }
+    }
+
+    function getFieldError(field: string): string | null {
+        return liveFieldErrors.value[field] ?? serverFieldErrors.value[field] ?? null
+    }
+
+    function clearServerFieldErrors() {
+        serverFieldErrors.value = {}
     }
 
     return {
         // state
         invoice,
+        serverFieldErrors,
+        showAllValidation,
+        liveFieldErrors,
+        getFieldError,
+        clearServerFieldErrors,
         prettyBaseNumber,
 
         // init

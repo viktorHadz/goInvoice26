@@ -37,16 +37,30 @@ export async function listClientProducts(clientId: number): Promise<Product[]> {
 }
 
 export function createProduct(clientId: number, payload: ProductUpsert) {
-    return request<Product>(base(clientId), { method: 'POST', body: JSON.stringify(payload) })
+    return request<Product>(
+        base(clientId),
+        { method: 'POST', body: JSON.stringify(payload) },
+        { toastOnError: true },
+    )
 }
 
 export function updateProduct(clientId: number, productId: number, payload: ProductUpsert) {
-    return request<Product>(`${base(clientId)}/${productId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(payload),
-    })
+    return request<Product>(
+        `${base(clientId)}/${productId}`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+        },
+        {
+            toastOnError: true,
+        },
+    )
 }
 
 export function deleteProduct(clientId: number, productId: number) {
-    return request<void>(`${base(clientId)}/${productId}`, { method: 'DELETE' })
+    return request<void>(
+        `${base(clientId)}/${productId}`,
+        { method: 'DELETE' },
+        { toastOnError: true },
+    )
 }

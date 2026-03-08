@@ -66,6 +66,8 @@ const dueByDate = computed<string | null>({
                 <DatePick
                   v-model="issueDate"
                   placeholder="Select issue date"
+                  :error="invStore.getFieldError('issueDate')"
+                  :forceShowError="invStore.showAllValidation"
                 />
               </div>
 
@@ -74,6 +76,8 @@ const dueByDate = computed<string | null>({
                 <DatePick
                   v-model="dueByDate"
                   placeholder="Select due date"
+                  :error="invStore.getFieldError('dueByDate')"
+                  :forceShowError="invStore.showAllValidation"
                 />
               </div>
             </div>

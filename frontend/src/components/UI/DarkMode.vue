@@ -8,18 +8,13 @@ const { mode } = useTheme()
 <template>
   <TheTooltip side="bottom">
     <template #content>
-      <div class="hidden sm:block">
-        <span class="mr-1 text-sky-600 dark:text-emerald-400">
-          Switch to {{ mode === 'dark' ? 'light' : 'dark' }}
-        </span>
-        <div class="flex items-center text-start">
-          <kbd>Ctrl</kbd>
-          +
-          <kbd>Shift</kbd>
-          +
-          <kbd>m</kbd>
-        </div>
-      </div>
+      <span class="mr-1 text-sky-600 dark:text-emerald-400">Shortcut:</span>
+
+      <kbd>Ctrl</kbd>
+      +
+      <kbd>Shift</kbd>
+      +
+      <kbd>m</kbd>
     </template>
     <div v-if="mode === 'light'">
       <button
