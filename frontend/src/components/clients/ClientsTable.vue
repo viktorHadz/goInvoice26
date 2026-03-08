@@ -21,7 +21,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import DecorGradient from '../UI/DecorGradient.vue'
 import TheTooltip from '../UI/TheTooltip.vue'
-import { emitToastInfo, emitToastSuccess } from '@/utils/toast'
+import { emitToastError, emitToastInfo, emitToastSuccess } from '@/utils/toast'
 
 const clientStore = useClientStore()
 
@@ -167,8 +167,11 @@ async function saveEdit() {
 
 async function removeClient(id: number) {
   await clientStore.remove(id)
+  emitToastInfo('Client removed')
   if (openId.value === id) openId.value = null
-  if (editingId.value === id) cancelEdit()
+  if (editingId.value === id) {
+    cancelEdit()
+  }
 }
 
 // Field Schema
