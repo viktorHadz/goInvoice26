@@ -148,14 +148,19 @@ useEscape(
 </script>
 
 <template>
-  <TheTooltip side="bottom">
+  <TheTooltip
+    side="bottom"
+    align="end"
+  >
     <template #content>
-      <p>Add, delete or edit client items</p>
-      <div class="flex items-center text-start">
-        <span class="mr-1 text-sky-600 dark:text-emerald-400">Open Shortcut:</span>
-        <kbd>Ctrl</kbd>
-        +
-        <kbd>i</kbd>
+      <div class="hidden text-start sm:block">
+        <p>Add, delete or edit client items</p>
+        <div class="flex items-center text-start">
+          <span class="mr-1 text-sky-600 dark:text-emerald-400">Open Shortcut:</span>
+          <kbd>Ctrl</kbd>
+          +
+          <kbd>i</kbd>
+        </div>
       </div>
     </template>
     <SquaresPlusIcon
@@ -316,10 +321,10 @@ useEscape(
           </div>
         </header>
 
-        <div class="grid h-[calc(100%-56px)] grid-cols-1 md:grid-cols-2">
+        <div class="grid h-[calc(100%-150px)] grid-cols-1 md:grid-cols-2">
           <!-- list -->
           <section
-            class="overflow-y-auto border-b border-zinc-200 px-2 [scrollbar-gutter:stable] md:border-r md:border-b-0 dark:border-zinc-800"
+            class="overflow-y-auto border-b border-zinc-200 px-2 pb-4 [scrollbar-gutter:stable] md:border-r md:border-b-0 dark:border-zinc-800"
           >
             <div class="flex items-center justify-between gap-3 px-3 py-3">
               <div class="text-sm text-zinc-600 dark:text-zinc-400">
@@ -456,8 +461,12 @@ useEscape(
                 v-if="form.id"
                 class="flex gap-4 text-sm"
               >
-                <span>Created at: {{ formatDisplay(new Date(form.createdAt)) || 'ss' }}</span>
-                <span>Updated at: {{ formatDisplay(new Date(form.updatedAt)) || 'ss' }}</span>
+                <span>
+                  Created at: {{ form.createdAt ? formatDisplay(new Date(form.createdAt)) : 'N/A' }}
+                </span>
+                <span>
+                  Updated at: {{ form.updatedAt ? formatDisplay(new Date(form.updatedAt)) : 'N/A' }}
+                </span>
               </div>
 
               <!-- buttons -->

@@ -15,7 +15,7 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	// Dev convenience | In prod, env vars come from systemd/docker.
+	// Dev convenience | In prod, env vars come from systemd/docker
 	_ = godotenv.Load()
 
 	cfg := Config{
@@ -32,12 +32,12 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-// Retrieves an .env key and returns empty string if the key is wrong.
+// Retrieves an .env key and returns empty string if the key is wrong
 // Similar to get but doesnt provide fallback
 func must(key string) string {
 	v := os.Getenv(key)
 	if v == "" {
-		// return error via validate path, but we need a value here
+		// return error via validate path. But need a placeholder value here
 		return ""
 	}
 	return v

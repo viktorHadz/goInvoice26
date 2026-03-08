@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -50,7 +51,21 @@ type APIError struct {
 
 // Error makes APIError implement the built-in error interface.
 // In logs, this will show the error code only unless logged via Message separately.
-func (e *APIError) Error() string { return e.Code }
+func (e *APIError) Error() string {
+	if e == nil {
+		return "<nil>"
+	}
+
+	if e.Cause != nil {
+		return e.Code + ": " + e.Message + ": " + e.Cause.Error()
+	}
+
+	if e.Message != "" {
+		return e.Code + ": " + e.Message
+	}
+
+	return e.Code
+}
 
 // envelope is the JSON shape the API returns for errors.
 // Clients can always expect: { "error": { ... } }
@@ -76,7 +91,13 @@ Examples:
 func JSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		slog.Error("failed to encode json response",
+			"status", status,
+			"cause", err,
+		)
+	}
 }
 
 /*
@@ -94,6 +115,7 @@ func NoContent(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// Error ID
 func newID() string {
 	var b [8]byte
 	_, _ = rand.Read(b[:])
@@ -139,29 +161,32 @@ func Error(w http.ResponseWriter, err error) string {
 		ae.Message = "Internal server error"
 	}
 
-	// Server side details for 5xx errros
+	cause := ae.Cause
+	if cause == nil {
+		cause = err
+	}
+
+	logArgs := []any{
+		"error_id", ae.ID,
+		"status", ae.Status,
+		"code", ae.Code,
+		"message", ae.Message,
+	}
+
+	if cause != nil {
+		logArgs = append(logArgs, "cause", cause)
+	}
+
+	if len(ae.Fields) > 0 {
+		logArgs = append(logArgs, "fields", ae.Fields)
+	}
+
 	if ae.Status >= 500 {
-		cause := ae.Cause
-		if cause == nil {
-			cause = err
-		}
-
-		slog.Error("request failed",
-			"error_id", ae.ID,
-			"status", ae.Status,
-			"message", ae.Message,
-			"code", ae.Code,
-		)
+		slog.Error("request failed", logArgs...)
+	} else {
+		slog.Warn("request failed", logArgs...)
 	}
 
-	if ae.Cause != nil {
-		slog.Error("request failed",
-			"error_id", ae.ID,
-			"status", ae.Status,
-			"code", ae.Code,
-			"cause", ae.Cause,
-		)
-	}
 	JSON(w, ae.Status, envelope{Error: ae})
 	return ae.ID
 }
@@ -190,16 +215,20 @@ Example:
 	 }
 */
 func AsAPIError(err error) *APIError {
+	if err == nil {
+		return &APIError{
+			Status:  http.StatusInternalServerError,
+			Code:    "INTERNAL",
+			Message: "Internal server error",
+		}
+	}
+
 	var ae *APIError
 	if errors.As(err, &ae) {
-		// copy to avoid mutating shared pointers
 		out := *ae
-		if out.Cause == nil {
-			// Something useful to show server logs
-			out.Cause = err
-		}
 		return &out
 	}
+
 	return Internal(err)
 }
 
@@ -257,7 +286,7 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 
 	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		apiErr := BadJSON()
-		apiErr.Cause = errors.New("request body contained more than one JSON value")
+		apiErr.Cause = fmt.Errorf("request body contained more than one JSON value: %w", err)
 		Error(w, apiErr)
 		return false
 	}

@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"log"
-	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v3"
+	"github.com/go-chi/httprate"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/config"
 	"github.com/viktorHadz/goInvoice26/internal/db"
@@ -22,7 +23,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("CONFIIG INIT")
 
 	// Ctx init
 	ctx := context.Background()
@@ -48,12 +48,29 @@ func main() {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
-	// logger.Log(ctx, slog.LevelInfo, "Testing logger") |-> usecase example in main
-	// slog.InfoContext(r.Context(), "All clients requested") |-> usecase globaly
+
 	r.Use(httplog.RequestLogger(logger, opts))
+	r.Use(httprate.Limit(
+		10,             // requests
+		10*time.Second, // per duration
+		httprate.WithKeyFuncs(httprate.KeyByIP, httprate.KeyByEndpoint),
+		httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {
+			logger.ErrorContext(r.Context(), "Rate limit exceeded",
+				"path", r.URL.Path,
+			)
+			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		}),
+	))
 
 	// Register routes
 	httpx.RegisterAllRouters(r, &app.App{DB: dbConn})
-	logger.Log(ctx, slog.LevelInfo, "Init:", "ENV:", cfg.Env, "DB:", cfg.DBPath, "API Listening on:", cfg.Port)
-	http.ListenAndServe(cfg.Port, r)
+
+	logger.Info("init",
+		"db", cfg.DBPath,
+		"port", cfg.Port,
+	)
+
+	if err := http.ListenAndServe(cfg.Port, r); err != nil {
+		log.Fatal(err)
+	}
 }

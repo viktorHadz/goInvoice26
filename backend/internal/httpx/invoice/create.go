@@ -18,6 +18,7 @@ func createInvoice(a *app.App) http.HandlerFunc {
 			)
 			return
 		}
+		slog.DebugContext(r.Context(), "Invoice received from FE", "inv", &invoice)
 		// validate.invoice
 	}
 }

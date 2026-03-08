@@ -39,7 +39,7 @@ func create(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		slog.InfoContext(r.Context(), "client created", "id", id)
+		slog.DebugContext(r.Context(), "client created", "id", id)
 		res.JSON(w, http.StatusCreated, created)
 	}
 }
