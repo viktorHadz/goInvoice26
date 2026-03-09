@@ -8,7 +8,11 @@ import type {
     DepositType,
     DiscountType,
 } from '@/components/invoice/invoiceTypes'
-import { newInvoiceHandler, getNewInvoiceNumber } from '@/utils/invoiceHttpHandler'
+import {
+    newInvoiceHandler,
+    getNewInvoiceNumber,
+    verifyInvoiceHandler,
+} from '@/utils/invoiceHttpHandler'
 import { useClientStore } from './clients'
 import { isApiError, toFieldErrorMap } from '@/utils/apiErrors'
 import { validateInvoicePayload } from '@/utils/frontendValidation'
@@ -105,6 +109,10 @@ export const useInvoiceStore = defineStore('invoice', () => {
     const serverFieldErrors = ref<Record<string, string>>({})
     const showAllValidation = ref(false)
     const invoicePrefix = import.meta.env.VITE_INVOICE_PREFIX
+    const verifyStatus = ref<'idle' | 'checking' | 'ok' | 'mismatch' | 'invalid' | 'error'>('idle')
+    const lastVerifyAt = ref<number | null>(null)
+    const serverCanonicalTotals = ref<Totals | null>(null)
+    const serverCanonicalLineTotals = ref<Record<number, MoneyMinor>>({})
 
     // Called inside functions only never at module scope
     const getClientStore = () => useClientStore()
@@ -117,6 +125,131 @@ export const useInvoiceStore = defineStore('invoice', () => {
     const prettyBaseNumber = computed(() =>
         fmtPrettyInvoiceNumber(invoicePrefix, invoice.value?.baseNumber),
     )
+
+    let verifyTimer: number | null = null
+    let verifyAbort: AbortController | null = null
+
+    function clearVerifyTimer() {
+        if (verifyTimer != null) {
+            window.clearTimeout(verifyTimer)
+            verifyTimer = null
+        }
+    }
+
+    function abortVerify() {
+        if (verifyAbort) {
+            verifyAbort.abort()
+            verifyAbort = null
+        }
+    }
+
+    async function runServerVerify() {
+        const inv = invoice.value
+        const { lsClientId } = getClientStore()
+        if (!inv || !lsClientId) return
+
+        const dto = apiDTO(inv)
+        abortVerify()
+        verifyAbort = new AbortController()
+
+        verifyStatus.value = 'checking'
+        try {
+            const res = await verifyInvoiceHandler(dto.overview.clientId, inv.baseNumber, dto, {
+                signal: verifyAbort.signal,
+            })
+
+            const canonical = (res as any)?.invoice as any
+            const canonicalLines: any[] = Array.isArray(canonical?.lines) ? canonical.lines : []
+            const canonicalTotals = canonical?.totals
+
+            const canonicalBySort: Record<number, MoneyMinor> = {}
+            for (const ln of canonicalLines) {
+                const so = Number(ln?.sortOrder)
+                const lt = Number(ln?.lineTotalMinor)
+                if (Number.isFinite(so) && Number.isFinite(lt)) {
+                    canonicalBySort[so] = Math.round(lt) as MoneyMinor
+                }
+            }
+
+            const serverTotals: Totals | null =
+                canonicalTotals &&
+                typeof canonicalTotals === 'object' &&
+                Number.isFinite((canonicalTotals as any).subtotalMinor) &&
+                Number.isFinite((canonicalTotals as any).discountMinor) &&
+                Number.isFinite((canonicalTotals as any).subtotalAfterDiscountMinor) &&
+                Number.isFinite((canonicalTotals as any).vatMinor) &&
+                Number.isFinite((canonicalTotals as any).totalMinor)
+                    ? {
+                          subtotalMinor: Math.round(
+                              (canonicalTotals as any).subtotalMinor,
+                          ) as MoneyMinor,
+                          discountMinor: Math.round(
+                              (canonicalTotals as any).discountMinor,
+                          ) as MoneyMinor,
+                          subtotalAfterDiscountMinor: Math.round(
+                              (canonicalTotals as any).subtotalAfterDiscountMinor,
+                          ) as MoneyMinor,
+                          vatMinor: Math.round((canonicalTotals as any).vatMinor) as MoneyMinor,
+                          totalMinor: Math.round((canonicalTotals as any).totalMinor) as MoneyMinor,
+                      }
+                    : null
+
+            serverCanonicalLineTotals.value = canonicalBySort
+            serverCanonicalTotals.value = serverTotals
+            lastVerifyAt.value = Date.now()
+
+            const optimisticTotals = totals.value
+            let mismatch = false
+
+            if (optimisticTotals && serverTotals) {
+                mismatch =
+                    optimisticTotals.subtotalMinor !== serverTotals.subtotalMinor ||
+                    optimisticTotals.discountMinor !== serverTotals.discountMinor ||
+                    optimisticTotals.subtotalAfterDiscountMinor !==
+                        serverTotals.subtotalAfterDiscountMinor ||
+                    optimisticTotals.vatMinor !== serverTotals.vatMinor ||
+                    optimisticTotals.totalMinor !== serverTotals.totalMinor
+            }
+
+            for (const line of inv.lines) {
+                const serverLT = canonicalBySort[line.sortOrder]
+                if (serverLT == null) continue
+                const optimisticLT = lineTotalMinor(line)
+                if (optimisticLT !== serverLT) {
+                    mismatch = true
+                    break
+                }
+            }
+
+            verifyStatus.value = mismatch ? 'mismatch' : 'ok'
+        } catch (err: unknown) {
+            // background verification should not spam toasts
+            if (
+                (err as any)?.name === 'NetworkError' &&
+                (err as any)?.message === 'Request aborted'
+            ) {
+                return
+            }
+            if (isApiError(err) && err.code === 'VALIDATION_FAILED') {
+                serverFieldErrors.value = toFieldErrorMap(err.fields)
+                verifyStatus.value = 'invalid'
+                return
+            }
+
+            verifyStatus.value = 'error'
+            console.error(err)
+        }
+    }
+
+    function scheduleServerVerify() {
+        if (typeof window === 'undefined') return
+        if (!invoice.value) return
+
+        clearVerifyTimer()
+        verifyTimer = window.setTimeout(() => {
+            runServerVerify()
+        }, 450)
+    }
 
     // Single computed that derives all pricing in one pass
     const pricing = computed(() => {
@@ -152,6 +285,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
                 serverFieldErrors.value = {}
             }
             showAllValidation.value = false
+            scheduleServerVerify()
         },
         { deep: true },
     )
@@ -159,10 +293,10 @@ export const useInvoiceStore = defineStore('invoice', () => {
     async function initInvoiceFromServer(
         newInvoiceData: Omit<Invoice, 'baseNumber'>,
     ): Promise<void> {
-        const { selectedClientId } = getClientStore()
-        if (!selectedClientId) throw new Error('No client selected')
+        const { lsClientId } = getClientStore()
+        if (!lsClientId) throw new Error('No client selected')
 
-        const bNum = await getNewInvoiceNumber(selectedClientId)
+        const bNum = await getNewInvoiceNumber(lsClientId)
         invoice.value = { ...newInvoiceData, baseNumber: bNum }
     }
 
@@ -325,8 +459,8 @@ export const useInvoiceStore = defineStore('invoice', () => {
     }
 
     async function newDraftInvoice(inv: Invoice) {
-        const { selectedClientId } = getClientStore()
-        if (!selectedClientId) throw new Error('No client selected')
+        const { lsClientId } = getClientStore()
+        if (!lsClientId) throw new Error('No client selected')
 
         const dto = apiDTO(inv)
         showAllValidation.value = true
@@ -369,6 +503,13 @@ export const useInvoiceStore = defineStore('invoice', () => {
         totals,
         depositMinor,
         balanceDueMinor,
+
+        // optimistic UI + server verification
+        verifyStatus,
+        lastVerifyAt,
+        serverCanonicalTotals,
+        serverCanonicalLineTotals,
+        scheduleServerVerify,
 
         // lines
         addLine,

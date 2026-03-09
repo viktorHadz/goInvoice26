@@ -232,7 +232,7 @@ defineExpose({
 <template>
   <Teleport to="body">
     <div
-      class="pointer-events-none fixed bottom-20 left-1/2 z-50 mx-auto mt-4 flex w-full max-w-md -translate-x-1/2 flex-col px-4 lg:top-0"
+      class="pointer-events-none fixed bottom-20 left-1/2 z-102 mx-auto mt-4 flex w-full max-w-md -translate-x-1/2 flex-col px-4 lg:top-0"
     >
       <TransitionGroup
         name="toast"

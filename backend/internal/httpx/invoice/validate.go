@@ -3,6 +3,7 @@ package invoice
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
@@ -207,8 +208,8 @@ func validateLines(lines []models.LineCreateIn) ([]models.LineCreateIn, []res.Fi
 		}
 
 		// sortOrder
-		if ln.SortOrder < 0 {
-			errs = append(errs, res.Invalid(prefix("sortOrder"), "must be 0 or greater"))
+		if ln.SortOrder < 1 {
+			errs = append(errs, res.Invalid(prefix("sortOrder"), "must be 1 or greater"))
 		} else {
 			clean.SortOrder = ln.SortOrder
 		}
@@ -218,13 +219,30 @@ func validateLines(lines []models.LineCreateIn) ([]models.LineCreateIn, []res.Fi
 			if ln.MinutesWorked == nil {
 				errs = append(errs, res.Required(prefix("minutesWorked")))
 			}
+		} else if pricingMode == "flat" {
+			// DB CHECK requires minutes_worked IS NULL for flat lines
+			if ln.MinutesWorked != nil {
+				errs = append(errs, res.Invalid(prefix("minutesWorked"), "must be null for flat pricing"))
+			}
 		}
 
-		expectedLineTotal := ln.Quantity * ln.UnitPriceMinor
+		var expectedLineTotal int64
+		if pricingMode == "hourly" && ln.MinutesWorked != nil {
+			// Match frontend: round(qty * unit * minutes / 60)
+			expectedLineTotal = int64(math.Round(
+				(float64(ln.Quantity) * float64(ln.UnitPriceMinor) * float64(*ln.MinutesWorked)) / 60.0,
+			))
+		} else {
+			expectedLineTotal = ln.Quantity * ln.UnitPriceMinor
+		}
 		if ln.LineTotalMinor < 0 {
 			errs = append(errs, res.Invalid(prefix("lineTotalMinor"), "must be 0 or greater"))
 		} else if ln.LineTotalMinor != expectedLineTotal {
-			errs = append(errs, res.Invalid(prefix("lineTotalMinor"), "does not match quantity * unitPriceMinor"))
+			if pricingMode == "hourly" {
+				errs = append(errs, res.Invalid(prefix("lineTotalMinor"), "does not match rounded(quantity * unitPriceMinor * minutesWorked / 60)"))
+			} else {
+				errs = append(errs, res.Invalid(prefix("lineTotalMinor"), "does not match quantity * unitPriceMinor"))
+			}
 		} else {
 			clean.LineTotalMinor = ln.LineTotalMinor
 		}
@@ -276,13 +294,6 @@ func validateTotals(t models.TotalsCreateIn) (models.TotalsCreateIn, []res.Field
 		errs = append(errs, res.Invalid("totals.discountMinor", "must be 0 or greater"))
 	} else {
 		out.DiscountMinor = t.DiscountMinor
-	}
-
-	if out.DepositType == "percent" && t.DepositMinor > 10000 {
-		errs = append(errs, res.Invalid("totals.depositMinor", "percent deposit must be between 0 and 10000"))
-	}
-	if out.DiscountType == "percent" && t.DiscountMinor > 10000 {
-		errs = append(errs, res.Invalid("totals.discountMinor", "percent discount must be between 0 and 10000"))
 	}
 
 	if t.PaidMinor < 0 {

@@ -10,6 +10,10 @@ const props = defineProps<{ line: InvoiceLine; lineIndex: number }>()
 const inv = useInvoiceStore()
 
 const totalMinor = computed(() => inv.lineTotalMinor(props.line))
+const serverTotalMinor = computed(() => inv.serverCanonicalLineTotals?.[props.line.sortOrder] ?? null)
+const serverMismatch = computed(
+  () => typeof serverTotalMinor.value === 'number' && serverTotalMinor.value !== totalMinor.value,
+)
 const minutesDisabled = computed(() => props.line.pricingMode !== 'hourly')
 
 const unitPounds = computed(() => inv.fromMinor(props.line.unitPriceMinor))
@@ -105,10 +109,20 @@ function setUnitPounds(v: unknown) {
     </div>
 
     <!-- total -->
-    <div
-      class="min-w-0 text-right text-base font-semibold text-zinc-900 tabular-nums dark:text-zinc-100"
-    >
-      {{ inv.fmtGBPMinor(totalMinor) }}
+    <div class="min-w-0 text-right">
+      <div
+        class="text-base font-semibold tabular-nums"
+        :class="{
+          'text-zinc-900 dark:text-zinc-100': !serverMismatch,
+          'text-amber-700 dark:text-amber-300': serverMismatch,
+        }"
+        :title="serverMismatch && serverTotalMinor != null ? `Server: ${inv.fmtGBPMinor(serverTotalMinor)}` : ''"
+      >
+        {{ inv.fmtGBPMinor(totalMinor) }}
+      </div>
+      <div v-if="serverMismatch && serverTotalMinor != null" class="text-xs text-amber-700 dark:text-amber-300">
+        Server: {{ inv.fmtGBPMinor(serverTotalMinor) }}
+      </div>
     </div>
 
     <!-- remove -->

@@ -21,17 +21,11 @@ export async function getClients(): Promise<Client[]> {
 export function createNewClient(client: Omit<Client, 'id'>): Promise<Client> {
     console.log('Preparing to send client to backend', client)
 
-    return request<Client>(
-        '/api/clients',
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(client),
-        },
-        {
-            toastOnError: true,
-        },
-    )
+    return request<Client>('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(client),
+    })
 }
 
 export function deleteClient(id: number | string): Promise<void> {
@@ -40,7 +34,7 @@ export function deleteClient(id: number | string): Promise<void> {
         throw new Error(`Invalid client id: ${String(id)}`)
     }
 
-    return request<void>(`/api/clients/${cleanId}`, { method: 'DELETE' }, { toastOnError: true })
+    return request<void>(`/api/clients/${cleanId}`, { method: 'DELETE' })
 }
 
 export function updateClient(id: number | string, patch: UpdateClientInput): Promise<Client> {
@@ -49,15 +43,9 @@ export function updateClient(id: number | string, patch: UpdateClientInput): Pro
         throw new Error(`Invalid client id: ${String(id)}`)
     }
 
-    return request<Client>(
-        `/api/clients/${cleanId}`,
-        {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(patch),
-        },
-        {
-            toastOnError: true,
-        },
-    )
+    return request<Client>(`/api/clients/${cleanId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+    })
 }

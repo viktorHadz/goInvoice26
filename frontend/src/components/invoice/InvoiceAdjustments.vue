@@ -233,6 +233,7 @@ function applyVat() {
       <textarea
         class="input w-full border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-950/40"
         :value="noteProxy"
+        id="invo-adjustments-text-area"
         @input="(e) => (noteProxy = (e.target as HTMLTextAreaElement).value)"
         @blur="noteTouched = true"
         :disabled="!inv.invoice"

@@ -32,6 +32,7 @@ const router = createRouter({
 })
 router.beforeEach(async (to) => {
     const clientStore = useClientStore()
+    clientStore.syncClientIdWithLS()
 
     if ((to.meta.requiresClients || to.meta.requiresSelectedClient) && !clientStore.hasLoaded) {
         await clientStore.load()

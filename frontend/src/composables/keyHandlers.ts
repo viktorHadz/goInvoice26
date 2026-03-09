@@ -77,7 +77,9 @@ const modifierMap: Record<Modifier, keyof KeyboardEvent> = {
 export function useShortcuts(shortcuts: ShortcutDefinition[]) {
     function handler(e: KeyboardEvent) {
         for (const shortcut of shortcuts) {
-            if (e.key.toLowerCase() !== shortcut.key.toLowerCase()) continue
+            if (!e.key) return
+            if (e.key.toLocaleLowerCase() && e.key.toLowerCase() !== shortcut.key.toLowerCase())
+                continue
             if (e.repeat) return
             const modifiers = shortcut.modifiers ?? []
             const allModifiersMatch = modifiers.every((mod) => e[modifierMap[mod]])

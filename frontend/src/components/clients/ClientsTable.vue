@@ -5,7 +5,6 @@ import type { Client } from '@/utils/clientHttpHandler'
 import { useEnter, useEscape } from '@/composables/keyHandlers'
 import TheInput from '../UI/TheInput.vue'
 import TheButton from '../UI/TheButton.vue'
-import { isApiError, toFieldErrorMap } from '@/utils/apiErrors'
 import { validateClientForm } from '@/utils/frontendValidation'
 
 import {
@@ -21,7 +20,8 @@ import {
 } from '@heroicons/vue/24/outline'
 import DecorGradient from '../UI/DecorGradient.vue'
 import TheTooltip from '../UI/TheTooltip.vue'
-import { emitToastError, emitToastInfo, emitToastSuccess } from '@/utils/toast'
+import { emitToastSuccess } from '@/utils/toast'
+import { handleActionError } from '@/utils/errors/handleActionError'
 
 const clientStore = useClientStore()
 
@@ -73,16 +73,20 @@ function resetCreate() {
 
 async function addClient() {
   if (!canCreate.value) return
+
   createFieldErrors.value = {}
+
   try {
     await clientStore.createNew(createForm)
+
     resetCreate()
+
     emitToastSuccess('Client created')
-  } catch (err: unknown) {
-    if (isApiError(err)) {
-      createFieldErrors.value = toFieldErrorMap(err.fields)
-    }
-    console.error(err)
+  } catch (err) {
+    handleActionError(err, {
+      fieldErrors: createFieldErrors,
+      toastTitle: 'Create client failed',
+    })
   }
 }
 
@@ -149,7 +153,7 @@ async function saveEdit() {
   if (editForm.id === null) return
   editFieldErrors.value = {}
   try {
-    console.info('sending to server: ', editForm)
+    console.log('sending to server: ', editForm)
     await clientStore.edit(editForm.id, {
       name: editForm.name,
       companyName: editForm.companyName,
@@ -157,21 +161,25 @@ async function saveEdit() {
       address: editForm.address,
     })
     cancelEdit()
-  } catch (err: unknown) {
-    if (isApiError(err)) {
-      editFieldErrors.value = toFieldErrorMap(err.fields)
-    }
-    console.error(err)
+  } catch (err) {
+    handleActionError(err, {
+      fieldErrors: editFieldErrors,
+      toastTitle: 'Update client failed',
+    })
   }
 }
 
 async function removeClient(id: number) {
-  await clientStore.remove(id)
-  emitToastInfo('Client removed')
-  emitToastError({ message: 'Client removed' })
-  if (openId.value === id) openId.value = null
-  if (editingId.value === id) {
-    cancelEdit()
+  try {
+    await clientStore.remove(id)
+    emitToastSuccess('Client removed')
+    if (openId.value === id) openId.value = null
+    if (editingId.value === id) cancelEdit()
+  } catch (err) {
+    handleActionError(err, {
+      toastTitle: 'Delete client failed',
+      mapFields: false,
+    })
   }
 }
 
@@ -184,6 +192,7 @@ type FieldDef = {
   placeholder?: string
   autocomplete?: string
 }
+
 const clientFields: FieldDef[] = [
   {
     key: 'name',

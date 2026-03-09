@@ -10,6 +10,7 @@ func Router(r chi.Router, a *app.App) {
 		r.Get("/", getNextInvoiceNumber(a))
 		r.Route("/{baseNumber}", func(r chi.Router) {
 			r.Post("/", createInvoice(a)) // Create new invoice
+			r.Post("/verify", verifyInvoice(a))
 
 		})
 	})

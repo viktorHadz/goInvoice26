@@ -115,6 +115,17 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		);`,
 
 		// -----------------------
+		// Invoice number allocator
+		// -----------------------
+		`CREATE TABLE IF NOT EXISTS invoice_number_seq (
+			id INTEGER PRIMARY KEY CHECK (id = 1),
+			next_base_number INTEGER NOT NULL CHECK (next_base_number > 0)
+		);`,
+
+		// ensure the single row exists (initial value may be adjusted in allocator)
+		`INSERT OR IGNORE INTO invoice_number_seq (id, next_base_number) VALUES (1, 1);`,
+
+		// -----------------------
 		// Invoice Revisions
 		// -----------------------
 		`CREATE TABLE IF NOT EXISTS invoice_revisions (

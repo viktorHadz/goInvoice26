@@ -8,18 +8,14 @@ export interface Product {
     productType: ProductType
     pricingMode: PricingMode
     productName: string
-
-    // stored as minor units (e.g. 1000 => £10.00)
     flatPriceMinor?: number
     hourlyRateMinor?: number
     minutesWorked?: number
-
     clientId: number
     created_at: string
     updated_at?: string
 }
 
-// Expected by Go API for create and update
 export type ProductUpsert = {
     productType: ProductType
     pricingMode: PricingMode
@@ -37,30 +33,23 @@ export async function listClientProducts(clientId: number): Promise<Product[]> {
 }
 
 export function createProduct(clientId: number, payload: ProductUpsert) {
-    return request<Product>(
-        base(clientId),
-        { method: 'POST', body: JSON.stringify(payload) },
-        { toastOnError: true },
-    )
+    return request<Product>(base(clientId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    })
 }
 
 export function updateProduct(clientId: number, productId: number, payload: ProductUpsert) {
-    return request<Product>(
-        `${base(clientId)}/${productId}`,
-        {
-            method: 'PATCH',
-            body: JSON.stringify(payload),
-        },
-        {
-            toastOnError: true,
-        },
-    )
+    return request<Product>(`${base(clientId)}/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    })
 }
 
 export function deleteProduct(clientId: number, productId: number) {
-    return request<void>(
-        `${base(clientId)}/${productId}`,
-        { method: 'DELETE' },
-        { toastOnError: true },
-    )
+    return request<void>(`${base(clientId)}/${productId}`, {
+        method: 'DELETE',
+    })
 }

@@ -320,14 +320,6 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     if (totals.depositMinor < 0) errors['totals.depositMinor'] = 'must be 0 or greater'
     if (totals.discountMinor < 0) errors['totals.discountMinor'] = 'must be 0 or greater'
 
-    if (totals.depositType === 'percent' && totals.depositMinor > 10000) {
-        errors['totals.depositMinor'] = 'percent deposit must be between 0 and 10000'
-    }
-
-    if (totals.discountType === 'percent' && totals.discountMinor > 10000) {
-        errors['totals.discountMinor'] = 'percent discount must be between 0 and 10000'
-    }
-
     if (totals.paidMinor < 0) errors['totals.paidMinor'] = 'must be 0 or greater'
 
     if (totals.subtotalAfterDiscountMinor < 0) {

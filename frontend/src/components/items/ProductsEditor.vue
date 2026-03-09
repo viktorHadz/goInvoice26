@@ -18,13 +18,14 @@ import TheInput from '../UI/TheInput.vue'
 import { useEscape } from '@/composables/keyHandlers'
 import TheTooltip from '../UI/TheTooltip.vue'
 import { formatDisplay } from '@/utils/dates'
-import { isApiError, toFieldErrorMap } from '@/utils/apiErrors'
 import { validateProductForm } from '@/utils/frontendValidation'
+import { emitToastSuccess } from '@/utils/toast'
+import { handleActionError } from '@/utils/errors/handleActionError'
 
 const store = useProductStore()
 const clientStore = useClientStore()
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     iconOnly?: boolean
   }>(),
@@ -32,26 +33,14 @@ const props = withDefaults(
     iconOnly: true,
   },
 )
+
 const tab = ref<ProductType>('style')
 const q = ref('')
 const selectedId = ref<number | null>(null)
 const fieldErrors = ref<Record<string, string>>({})
-const liveFieldErrors = computed(() =>
-  validateProductForm({
-    productType: tab.value,
-    pricingMode: tab.value === 'style' ? 'flat' : form.pricingMode,
-    productName: form.productName,
-    flatPrice: form.flatPrice,
-    hourlyRate: form.hourlyRate,
-    minutesWorked: form.minutesWorked,
-  }),
-)
-const displayFieldErrors = computed(() => ({
-  ...fieldErrors.value,
-  ...liveFieldErrors.value,
-}))
+const isSaving = ref(false)
+const isDeleting = ref(false)
 
-const canSave = computed(() => Object.keys(liveFieldErrors.value).length === 0)
 type Form = {
   id: number | null
   productName: string
@@ -74,6 +63,24 @@ const form = reactive<Form>({
   updatedAt: null,
 })
 
+const liveFieldErrors = computed(() =>
+  validateProductForm({
+    productType: tab.value,
+    pricingMode: tab.value === 'style' ? 'flat' : form.pricingMode,
+    productName: form.productName,
+    flatPrice: form.flatPrice,
+    hourlyRate: form.hourlyRate,
+    minutesWorked: form.minutesWorked,
+  }),
+)
+
+const displayFieldErrors = computed(() => ({
+  ...fieldErrors.value,
+  ...liveFieldErrors.value,
+}))
+
+const canSave = computed(() => Object.keys(liveFieldErrors.value).length === 0)
+
 watch(
   () => [
     tab.value,
@@ -89,6 +96,7 @@ watch(
 )
 
 const list = computed(() => store.byType[tab.value] ?? [])
+
 const filtered = computed(() => {
   const s = q.value.trim().toLowerCase()
   if (!s) return list.value
@@ -101,6 +109,7 @@ watch(
     if (v) void store.reload()
   },
 )
+
 watch(tab, () => reset())
 
 function reset() {
@@ -142,6 +151,7 @@ function buildUpsert(): ProductUpsert {
   if (pricingMode === 'flat') {
     return { ...base, flatPrice: form.flatPrice ?? 0 }
   }
+
   return {
     ...base,
     hourlyRate: form.hourlyRate ?? 0,
@@ -149,30 +159,64 @@ function buildUpsert(): ProductUpsert {
   }
 }
 
+function labelForTab(type: ProductType) {
+  return type === 'style' ? 'Style' : 'Sample'
+}
+
 async function save() {
+  if (isSaving.value || isDeleting.value) return
+
   fieldErrors.value = {}
   if (!canSave.value) return
+
+  isSaving.value = true
   const payload = buildUpsert()
+  const isEditing = form.id != null
+
   try {
-    if (form.id == null) {
-      await store.create(payload)
+    if (!isEditing) {
+      const created = await store.create(payload)
+      emitToastSuccess('Created successfully.', {
+        title: `${labelForTab(tab.value)} ${created.productName}`,
+      })
+      pick(created)
     } else {
-      const updated = await store.update(form.id, payload)
+      const updated = await store.update(form.id!, payload)
+      emitToastSuccess('Updated successfully.', {
+        title: `${labelForTab(tab.value)} ${updated.productName}`,
+      })
       pick(updated)
     }
   } catch (err: unknown) {
-    if (isApiError(err)) {
-      fieldErrors.value = toFieldErrorMap(err.fields)
-      return
-    }
-    throw err
+    handleActionError(err, {
+      toastTitle: isEditing ? 'Update failed' : 'Create failed',
+      mapFields: true,
+    })
+  } finally {
+    isSaving.value = false
   }
 }
 
 async function del() {
-  if (!form.id) return
-  await store.remove(form.id)
-  reset()
+  if (!form.id || isDeleting.value || isSaving.value) return
+
+  isDeleting.value = true
+  const name = form.productName
+
+  try {
+    await store.remove(form.id)
+    emitToastSuccess('Deleted successfully.', {
+      title: `${labelForTab(tab.value)} ${name}`,
+    })
+    reset()
+  } catch (err: unknown) {
+    handleActionError(err, {
+      toastTitle: 'Delete failed',
+      mapFields: false,
+    })
+  } finally {
+    isDeleting.value = false
+  }
 }
 
 function money(minor?: number) {
@@ -501,44 +545,65 @@ useEscape(
               </div>
               <div
                 v-if="form.id"
-                class="flex gap-4 text-sm"
+                class="rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/60"
               >
-                <span>
-                  Created at: {{ form.createdAt ? formatDisplay(new Date(form.createdAt)) : 'N/A' }}
-                </span>
-                <span>
-                  Updated at: {{ form.updatedAt ? formatDisplay(new Date(form.updatedAt)) : 'N/A' }}
-                </span>
+                <div
+                  class="mb-2 text-[11px] font-medium tracking-[0.12em] text-zinc-500 uppercase dark:text-zinc-400"
+                >
+                  Record details
+                </div>
+
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div
+                    class="rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/60"
+                  >
+                    <div
+                      class="text-[11px] font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400"
+                    >
+                      Created
+                    </div>
+                    <div class="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      {{ form.createdAt ? formatDisplay(new Date(form.createdAt)) : 'N/A' }}
+                    </div>
+                  </div>
+
+                  <div
+                    class="rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/60"
+                  >
+                    <div
+                      class="text-[11px] font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400"
+                    >
+                      Last updated
+                    </div>
+                    <div class="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      {{ form.updatedAt ? formatDisplay(new Date(form.updatedAt)) : 'N/A' }}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- buttons -->
               <div class="flex flex-wrap gap-2 pt-2">
                 <button
                   type="button"
-                  class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100 focus-visible:ring-2 focus-visible:ring-sky-500/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200 dark:hover:bg-emerald-950/40 dark:focus-visible:ring-emerald-400/25 dark:focus-visible:ring-offset-zinc-800"
-                  :disabled="!canSave"
+                  class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100 focus-visible:ring-2 focus-visible:ring-sky-500/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200 dark:hover:bg-emerald-950/40 dark:focus-visible:ring-emerald-400/25 dark:focus-visible:ring-offset-zinc-800"
+                  :disabled="!canSave || isSaving || isDeleting"
                   @click="save"
                 >
                   <ShieldCheckIcon class="size-4" />
-                  {{ form.id ? 'Save' : 'Create' }}
+                  {{ isSaving ? (form.id ? 'Saving…' : 'Creating…') : form.id ? 'Save' : 'Create' }}
                 </button>
 
                 <button
                   type="button"
                   v-if="form.id"
-                  class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100 focus-visible:ring-2 focus-visible:ring-sky-500/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none dark:border-rose-400/20 dark:bg-rose-950/25 dark:text-rose-200 dark:hover:bg-rose-950/40 dark:focus-visible:ring-emerald-400/25 dark:focus-visible:ring-offset-zinc-800"
+                  class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100 focus-visible:ring-2 focus-visible:ring-sky-500/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-400/20 dark:bg-rose-950/25 dark:text-rose-200 dark:hover:bg-rose-950/40 dark:focus-visible:ring-rose-400/25 dark:focus-visible:ring-offset-zinc-800"
+                  :disabled="isDeleting || isSaving"
                   @click="del"
                 >
                   <TrashIcon class="size-4" />
-                  Delete
+                  {{ isDeleting ? 'Deleting…' : 'Delete' }}
                 </button>
-              </div>
-
-              <div
-                v-if="store.error"
-                class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800 dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
-              >
-                {{ store.error }}
               </div>
             </div>
           </section>

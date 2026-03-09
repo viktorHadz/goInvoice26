@@ -2,21 +2,53 @@ package invoiceTx
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 
 	"github.com/viktorHadz/goInvoice26/internal/app"
 )
 
-// Checks invoices base number for client returns current or null
+// Allocates the next global invoice base number in a concurrency-safe way.
+//
+// Implementation notes (SQLite):
+// - We keep a single-row sequence table (`invoice_number_seq`).
+// - Allocation is performed inside a transaction with an atomic UPDATE.
 func GetNextBaseNumber(ctx context.Context, a *app.App) (int64, error) {
-	const sql = `
-		SELECT COALESCE(MAX(base_number), 0)
-		FROM invoices
-	`
+	tx, err := a.DB.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
 
-	var max int64
-	if err := a.DB.QueryRowContext(ctx, sql).Scan(&max); err != nil {
+	// Ensure the sequence never lags behind existing invoices.
+	// If this is the first allocation after importing data, this bumps the
+	// starting point to MAX(base_number)+1.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE invoice_number_seq
+		SET next_base_number = MAX(
+			next_base_number,
+			(SELECT COALESCE(MAX(base_number), 0) + 1 FROM invoices)
+		)
+		WHERE id = 1;
+	`); err != nil {
 		return 0, err
 	}
 
-	return max + 1, nil
+	var allocated int64
+	// Allocate current and increment for next caller.
+	// Requires SQLite with RETURNING support.
+	if err := tx.QueryRowContext(ctx, `
+		UPDATE invoice_number_seq
+		SET next_base_number = next_base_number + 1
+		WHERE id = 1
+		RETURNING next_base_number - 1;
+	`).Scan(&allocated); err != nil {
+		return 0, fmt.Errorf("allocate next_base_number: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return allocated, nil
 }

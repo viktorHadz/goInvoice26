@@ -39,6 +39,7 @@ export function emitToastError(error: {
     code?: string
     id?: string
     title?: string
+    durationMs?: number
 }) {
     emitToast({
         id: error.id,
@@ -46,6 +47,7 @@ export function emitToastError(error: {
         code: error.code,
         title: error.title,
         message: error.message,
+        durationMs: error.durationMs,
     })
 }
 

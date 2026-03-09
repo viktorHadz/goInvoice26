@@ -4,6 +4,7 @@ import { useStorage } from '@vueuse/core'
 import { CalendarIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+import { formatDisplay } from '@/utils/dates'
 
 const props = withDefaults(
   defineProps<{
@@ -38,13 +39,6 @@ function fromISODate(v: string | null | undefined) {
   if (!y || !m || !d) return null
 
   return new Date(y, m - 1, d)
-}
-
-function formatDisplay(d: Date) {
-  const day = String(d.getDate()).padStart(2, '0')
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const year = d.getFullYear()
-  return `${day}/${month}/${year}`
 }
 
 const pickerValue = computed({
