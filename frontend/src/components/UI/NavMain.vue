@@ -1,34 +1,51 @@
 <script setup lang="ts">
 const navLinks = [
-    { name: 'home', to: '/' },
-    { name: 'clients', to: '/clients' },
-    { name: 'invoice', to: '/invoice' },
-    { name: 'editor', to: '/editor' },
+  { name: 'home', to: '/' },
+  { name: 'clients', to: '/clients' },
+  { name: 'invoice', to: '/invoice' },
+  { name: 'editor', to: '/editor' },
 ]
 </script>
 
 <template>
-    <nav class="absolute top-3 left-3 z-50 sm:top-4 sm:left-4">
-        <div
-            class="flex items-center gap-1 rounded-2xl border border-zinc-200 bg-white p-3 shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+  <nav
+    class="pointer-events-none fixed bottom-3 left-1/2 z-50 -translate-x-1/2 sm:top-4 sm:left-3 sm:translate-x-0 md:top-3 md:left-4"
+  >
+    <div
+      class="pointer-events-auto flex items-center gap-1 rounded-2xl border border-zinc-200 bg-white/90 p-2 shadow-lg backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/90"
+    >
+      <RouterLink
+        v-for="link in navLinks"
+        :key="link.name"
+        :to="link.to"
+        v-slot="{ isActive, navigate }"
+      >
+        <a
+          @click="navigate"
+          :href="link.to"
+          class="relative block rounded-xl"
         >
-            <RouterLink
-                v-for="link in navLinks"
-                :key="link.name"
-                :to="link.to"
-                v-slot="{ isActive }"
-            >
-                <span
-                    :class="[
-                        'rounded-xl px-3 py-1.5 text-sm font-medium transition-colors',
-                        isActive
-                            ? 'bg-zinc-100 text-sky-600 dark:bg-zinc-800 dark:text-emerald-400'
-                            : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100',
-                    ]"
-                >
-                    {{ link.name }}
-                </span>
-            </RouterLink>
-        </div>
-    </nav>
+          <span
+            :class="[
+              'absolute inset-0 rounded-xl transition-all duration-200 ease-out',
+              isActive
+                ? 'scale-100 bg-zinc-100 shadow-sm dark:bg-zinc-800'
+                : 'scale-95 bg-transparent',
+            ]"
+          />
+
+          <span
+            :class="[
+              'relative z-10 block rounded-xl px-3 py-1.5 text-sm font-medium transition-colors duration-200',
+              isActive
+                ? 'text-sky-600 dark:text-emerald-400'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100',
+            ]"
+          >
+            {{ link.name }}
+          </span>
+        </a>
+      </RouterLink>
+    </div>
+  </nav>
 </template>

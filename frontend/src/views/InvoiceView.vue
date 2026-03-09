@@ -64,7 +64,7 @@ const infoLines = [
 </script>
 
 <template>
-  <main class="mx-auto w-full max-w-4xl px-4">
+  <main class="mx-auto w-full max-w-4xl px-4 pb-16 sm:pb-0">
     <InvoiceHeader />
 
     <section

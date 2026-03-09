@@ -168,6 +168,7 @@ async function saveEdit() {
 async function removeClient(id: number) {
   await clientStore.remove(id)
   emitToastInfo('Client removed')
+  emitToastError({ message: 'Client removed' })
   if (openId.value === id) openId.value = null
   if (editingId.value === id) {
     cancelEdit()
@@ -262,7 +263,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
 
       <div class="relative p-4">
         <!-- title row -->
-        <div class="flex items-start justify-between gap-3">
+        <div class="flex flex-col items-start justify-between gap-3 sm:flex-row">
           <div class="flex items-center gap-3">
             <div class="min-w-0">
               <div class="flex items-center gap-2">

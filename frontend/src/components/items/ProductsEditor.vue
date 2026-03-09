@@ -263,7 +263,7 @@ useEscape(
                     </h2>
 
                     <span
-                      class="rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+                      class="hidden rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:block dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
                     >
                       {{ tab === 'style' ? 'Styles' : 'Samples' }}
                     </span>
@@ -445,7 +445,7 @@ useEscape(
               </div>
             </div>
 
-            <div class="mt-4 space-y-4">
+            <div class="mt-4 space-y-4 pb-12 sm:pb-0">
               <TheInput
                 v-model="form.productName"
                 :label="tab + ' name'"

@@ -100,7 +100,7 @@ function onBlur() {
 
     <p
       class="mt-1 min-h-5 text-xs"
-      :class="showError ? 'text-rose-600 dark:text-rose-400' : 'text-transparent'"
+      :class="showError ? 'text-rose-600 dark:text-rose-300' : 'text-transparent'"
     >
       {{ showError ? error : '•' }}
     </p>

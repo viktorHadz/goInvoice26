@@ -41,9 +41,9 @@ useShortcuts(shortcuts)
 </script>
 
 <template>
-  <div class="absolute top-0 right-3 z-50 sm:right-4">
+  <div class="fixed top-0 right-1/2 z-50 translate-x-1/2 sm:right-4 sm:translate-x-0">
     <div
-      class="relative w-80 overflow-visible transition-transform duration-200 ease-out"
+      class="relative w-72 overflow-visible transition-transform duration-200 ease-out sm:w-80"
       :class="show ? 'translate-y-0' : '-translate-y-[calc(100%-33px)]'"
     >
       <div

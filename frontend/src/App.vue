@@ -33,7 +33,7 @@ onBeforeUnmount(() => {
     class="flex min-h-screen w-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100"
   >
     <main class="relative min-h-screen w-full">
-      <div class="mt-26 px-4 py-4 sm:py-8 md:px-6">
+      <div class="mt-26 px-4 pb-16 sm:py-8 sm:pb-8 md:px-6">
         <RouterView />
       </div>
       <NavMain />

@@ -242,7 +242,7 @@ function applyVat() {
         class="mt-1 min-h-5 text-xs"
         :class="
           inv.getFieldError('note') && (noteTouched || inv.showAllValidation)
-            ? 'text-rose-600 dark:text-rose-400'
+            ? 'text-rose-600 dark:text-rose-300'
             : 'text-transparent'
         "
       >

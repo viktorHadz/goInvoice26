@@ -27,7 +27,7 @@ const features = [
 ]
 </script>
 <template>
-  <main class="mx-auto w-full max-w-6xl">
+  <main class="mx-auto w-full max-w-4xl 2xl:max-w-5xl">
     <!-- Hero -->
     <section class="grid items-center gap-8 lg:grid-cols-2">
       <div>
@@ -42,7 +42,7 @@ const features = [
         </p>
 
         <!-- quick points -->
-        <div class="mt-8 grid gap-3 sm:grid-cols-3">
+        <div class="mt-8 grid gap-3 sm:grid-cols-2">
           <ul
             v-for="feature in features"
             :key="feature.body"
