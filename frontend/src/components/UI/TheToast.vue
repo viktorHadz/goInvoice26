@@ -76,7 +76,7 @@ const toneMap: Record<ToastNotice['level'], ToneConfig> = {
   },
 
   error: {
-    wrapper: 'border-red-200 bg-red-50 dark:border-rose-400/30 dark:bg-rose-900/20',
+    wrapper: 'border-red-200 bg-red-50 dark:border-rose-400/30 dark:bg-rose-950/80',
     iconColor: 'text-red-500 dark:text-rose-300',
     titleColor: 'text-red-900 dark:text-rose-200',
     codeColor: 'text-red-700 dark:text-rose-300/90',

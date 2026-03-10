@@ -79,7 +79,7 @@ func validateOverview(o models.InvoiceCreateIn) (models.InvoiceCreateIn, []res.F
 	// text fields
 	clientName, textErrs := validate.Text(o.ClientName, validate.TextRules{
 		Field:      "clientName",
-		Required:   false,
+		Required:   true,
 		Min:        0,
 		Max:        100,
 		SingleLine: true,
@@ -215,11 +215,12 @@ func validateLines(lines []models.LineCreateIn) ([]models.LineCreateIn, []res.Fi
 		}
 
 		// cross-field rules
-		if pricingMode == "hourly" {
+		switch pricingMode {
+		case "hourly":
 			if ln.MinutesWorked == nil {
 				errs = append(errs, res.Required(prefix("minutesWorked")))
 			}
-		} else if pricingMode == "flat" {
+		case "flat":
 			// DB CHECK requires minutes_worked IS NULL for flat lines
 			if ln.MinutesWorked != nil {
 				errs = append(errs, res.Invalid(prefix("minutesWorked"), "must be null for flat pricing"))
@@ -284,16 +285,34 @@ func validateTotals(t models.TotalsCreateIn) (models.TotalsCreateIn, []res.Field
 		errs = append(errs, res.Invalid("totals.discountType", "must be one of: none, percent, fixed"))
 	}
 
+	if t.DepositRate < 0 || t.DepositRate > 10000 {
+		errs = append(errs, res.Invalid("totals.depositRate", "must be between 0 and 10000"))
+	} else {
+		out.DepositRate = t.DepositRate
+	}
 	if t.DepositMinor < 0 {
 		errs = append(errs, res.Invalid("totals.depositMinor", "must be 0 or greater"))
 	} else {
 		out.DepositMinor = t.DepositMinor
 	}
 
+	if t.DiscountRate < 0 || t.DiscountRate > 10000 {
+		errs = append(errs, res.Invalid("totals.discountRate", "must be between 0 and 10000"))
+	} else {
+		out.DiscountRate = t.DiscountRate
+	}
 	if t.DiscountMinor < 0 {
 		errs = append(errs, res.Invalid("totals.discountMinor", "must be 0 or greater"))
 	} else {
 		out.DiscountMinor = t.DiscountMinor
+	}
+
+	if out.DepositType != "percent" && out.DepositRate != 0 {
+		errs = append(errs, res.Invalid("totals.depositRate", "must be 0 unless depositType is percent"))
+	}
+
+	if out.DiscountType != "percent" && out.DiscountRate != 0 {
+		errs = append(errs, res.Invalid("totals.discountRate", "must be 0 unless discountType is percent"))
 	}
 
 	if t.PaidMinor < 0 {

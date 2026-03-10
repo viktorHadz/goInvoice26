@@ -1,9 +1,10 @@
 export type DiscountType = 'none' | 'percent' | 'fixed'
-export type DepositType = 'none' | 'fixed' | 'percent'
+export type DepositType = 'none' | 'percent' | 'fixed'
 export type LineType = 'style' | 'sample' | 'custom'
 export type PricingMode = 'flat' | 'hourly'
 
 export type MoneyMinor = number // integer minor units (pence)
+export type BasisPoints = number // 1000 = 10%, 10000 = 100%
 
 export type Totals = {
     subtotalMinor: MoneyMinor
@@ -15,11 +16,9 @@ export type Totals = {
 
 export type InvoiceLine = {
     productId?: number | null
-
     name: string
     lineType: LineType
     pricingMode: PricingMode
-
     quantity: number
     unitPriceMinor: MoneyMinor
     minutesWorked?: number | null
@@ -29,7 +28,6 @@ export type InvoiceLine = {
 export type Invoice = {
     invoiceId?: number
     baseNumber: number
-
     clientId: number
 
     issueDate: string
@@ -45,16 +43,16 @@ export type Invoice = {
     lines: InvoiceLine[]
 
     discountType: DiscountType
-    // fixed price => minor units | percent => 0..10000 (basis points)
-    discountValue: number
+    discountMinor: MoneyMinor
+    discountRate: BasisPoints
 
-    vatRate: number // 2000 => 20.00%
+    vatRate: BasisPoints
 
     paidMinor: MoneyMinor
 
     depositType: DepositType
-    // fixed price => minor units | percent => 0..10000 (basis points)
-    depositValue: number
+    depositMinor: MoneyMinor
+    depositRate: BasisPoints
 
     note?: string
 }

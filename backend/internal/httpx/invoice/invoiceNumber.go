@@ -10,7 +10,8 @@ import (
 
 func getNextInvoiceNumber(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		maxNum, err := invoiceTx.GetNextBaseNumber(r.Context(), a)
+		// Return suggested next number (no allocation); number is "used" only on successful create.
+		maxNum, err := invoiceTx.GetSuggestedNextBaseNumber(r.Context(), a)
 		if err != nil {
 			res.Error(w, res.Database(err))
 			return

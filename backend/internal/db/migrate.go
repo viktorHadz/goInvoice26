@@ -146,15 +146,20 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			
 			note TEXT,
 
-			vat_rate INTEGER NOT NULL DEFAULT 2000 CHECK (vat_rate >= 0),
+			vat_rate INTEGER NOT NULL DEFAULT 2000 CHECK (vat_rate BETWEEN 0 AND 10000),
 
+			-- disc/depo type - 'none', 'percent', 'fixed'
+			-- rate fields are basis points: 1000 = 10%, 10000 = 100%
+			-- minor fields are currency minor units: 1000 = £10.00
 			discount_type TEXT NOT NULL DEFAULT 'none'
 				CHECK (discount_type IN ('none','percent','fixed')),
+			discount_rate INTEGER NOT NULL DEFAULT 0 CHECK (discount_rate BETWEEN 0 AND 10000),
 			discount_minor INTEGER NOT NULL DEFAULT 0 CHECK (discount_minor >= 0),
 
-			 deposit_type TEXT NOT NULL DEFAULT 'none'
-       			 CHECK (deposit_type IN ('none','percent','fixed')),
-   			 deposit_minor INTEGER NOT NULL DEFAULT 0 CHECK (deposit_minor >= 0),
+			deposit_type TEXT NOT NULL DEFAULT 'none'
+				CHECK (deposit_type IN ('none','percent','fixed')),
+			deposit_rate INTEGER NOT NULL DEFAULT 0 CHECK (deposit_rate BETWEEN 0 AND 10000),
+			deposit_minor INTEGER NOT NULL DEFAULT 0 CHECK (deposit_minor >= 0),
 
 			subtotal_minor INTEGER NOT NULL CHECK (subtotal_minor >= 0),
 			vat_amount_minor INTEGER NOT NULL CHECK (vat_amount_minor >= 0),
@@ -166,14 +171,14 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			UNIQUE (invoice_id, revision_no),
 
 			CHECK (
-				(discount_type = 'none'    AND discount_minor = 0) OR
-				(discount_type = 'percent' AND discount_minor BETWEEN 0 AND 10000) OR
-				(discount_type = 'fixed'   AND discount_minor >= 0)
+				(discount_type = 'none' AND discount_rate = 0 AND discount_minor = 0) OR
+				(discount_type = 'percent' AND discount_rate BETWEEN 0 AND 10000) OR
+				(discount_type = 'fixed' AND discount_rate = 0)
 			),
 			CHECK (
-				(deposit_type = 'none'    AND deposit_minor = 0) OR
-				(deposit_type = 'percent' AND deposit_minor BETWEEN 0 AND 10000) OR
-				(deposit_type = 'fixed'   AND deposit_minor >= 0)
+				(deposit_type = 'none' AND deposit_rate = 0 AND deposit_minor = 0) OR
+				(deposit_type = 'percent' AND deposit_rate BETWEEN 0 AND 10000) OR
+				(deposit_type = 'fixed' AND deposit_rate = 0)
 			)
 		);`,
 

@@ -40,8 +40,10 @@ type InvoicePayload = {
         vatRate: number
         vatMinor: number
         depositType: string
+        depositRate: number
         depositMinor: number
         discountType: string
+        discountRate: number
         discountMinor: number
         paidMinor: number
         subtotalAfterDiscountMinor: number
@@ -200,6 +202,15 @@ export function validateProductForm(input: ProductFormInput): Record<string, str
     return errors
 }
 
+function calcExpectedLineTotalMinor(line: InvoicePayload['lines'][number]): number {
+    if (line.pricingMode === 'hourly') {
+        const minutes = line.minutesWorked ?? 0
+        return Math.round((line.quantity * line.unitPriceMinor * minutes) / 60)
+    }
+
+    return line.quantity * line.unitPriceMinor
+}
+
 export function validateInvoicePayload(payload: InvoicePayload): Record<string, string> {
     const errors: Record<string, string> = {}
 
@@ -223,6 +234,7 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     if (noteErr) errors.note = noteErr
 
     const clientNameErr = validateText(payload.overview.clientName, {
+        required: true,
         max: 100,
         singleLine: true,
         trim: true,
@@ -296,8 +308,15 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
 
         if (line.lineTotalMinor < 0) {
             errors[prefix('lineTotalMinor')] = 'must be 0 or greater'
-        } else if (line.lineTotalMinor !== line.quantity * line.unitPriceMinor) {
-            errors[prefix('lineTotalMinor')] = 'does not match quantity * unitPriceMinor'
+        } else {
+            const expected = calcExpectedLineTotalMinor(line)
+
+            if (line.lineTotalMinor !== expected) {
+                errors[prefix('lineTotalMinor')] =
+                    line.pricingMode === 'hourly'
+                        ? 'does not match rounded(quantity * unitPriceMinor * minutesWorked / 60)'
+                        : 'does not match quantity * unitPriceMinor'
+            }
         }
     })
 
@@ -318,6 +337,20 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     }
 
     if (totals.depositMinor < 0) errors['totals.depositMinor'] = 'must be 0 or greater'
+    if (totals.depositRate < 0 || totals.depositRate > 10000) {
+        errors['totals.depositRate'] = 'must be between 0 and 10000'
+    }
+
+    if (totals.depositType !== 'percent' && totals.depositRate !== 0) {
+        errors['totals.depositRate'] = 'must be 0 unless depositType is percent'
+    }
+    if (totals.discountType !== 'percent' && totals.discountRate !== 0) {
+        errors['totals.discountRate'] = 'must be 0 unless discountType is percent'
+    }
+
+    if (totals.discountRate < 0 || totals.discountRate > 10000) {
+        errors['totals.discountRate'] = 'must be between 0 and 10000'
+    }
     if (totals.discountMinor < 0) errors['totals.discountMinor'] = 'must be 0 or greater'
 
     if (totals.paidMinor < 0) errors['totals.paidMinor'] = 'must be 0 or greater'

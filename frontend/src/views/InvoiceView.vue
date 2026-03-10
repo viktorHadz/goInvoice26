@@ -18,39 +18,54 @@ const invStore = useInvoiceStore()
 const selected = computed(() => clients.selectedClient)
 
 // Initialises or resets the invoice whenever the selected client changes
-// initInvoiceFromServer fetches the invoice number itself
 watch(
   selected,
-  (c) => {
+  async (c, _prev, onCleanup) => {
     if (!c?.id) return
 
-    // Dont wipe progress of invoice if re-selecting the same client
+    // do not wipe current invoice if re-selecting same client
     if (invStore.invoice?.clientId === c.id) return
 
-    invStore.initInvoiceFromServer({
-      clientId: c.id,
-      issueDate: '',
-      dueByDate: undefined,
-      clientSnapshot: {
-        name: c.name ?? '',
-        companyName: c.companyName ?? '',
-        address: c.address ?? '',
-        email: c.email ?? '',
-      },
-
-      note: '',
-
-      vatRate: 2000,
-      discountType: 'none',
-      discountValue: 0,
-
-      lines: [],
-
-      paidMinor: 0,
-
-      depositType: 'none',
-      depositValue: 0,
+    let cancelled = false
+    onCleanup(() => {
+      cancelled = true
     })
+
+    try {
+      await invStore.initInvoiceFromServer({
+        clientId: c.id,
+        issueDate: '',
+        dueByDate: undefined,
+
+        clientSnapshot: {
+          name: c.name ?? '',
+          companyName: c.companyName ?? '',
+          address: c.address ?? '',
+          email: c.email ?? '',
+        },
+
+        note: '',
+
+        vatRate: 2000,
+
+        discountType: 'none',
+        discountRate: 0,
+        discountMinor: 0,
+
+        lines: [],
+
+        paidMinor: 0,
+
+        depositType: 'none',
+        depositRate: 0,
+        depositMinor: 0,
+      })
+
+      if (cancelled) return
+    } catch (err) {
+      if (cancelled) return
+      console.error('Failed to initialise invoice', err)
+    }
   },
   { immediate: true },
 )

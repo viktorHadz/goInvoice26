@@ -2,26 +2,8 @@
 import { useInvoiceStore } from '@/stores/invoice'
 import { DocumentArrowDownIcon, DocumentIcon } from '@heroicons/vue/24/outline'
 import TheButton from '../UI/TheButton.vue'
-import { computed } from 'vue'
 
 const invStore = useInvoiceStore()
-
-const verifyLabel = computed(() => {
-  switch (invStore.verifyStatus) {
-    case 'checking':
-      return 'Checking with server…'
-    case 'ok':
-      return 'Server-verified'
-    case 'mismatch':
-      return 'Mismatch vs server totals'
-    case 'invalid':
-      return 'Server validation failed'
-    case 'error':
-      return 'Server check unavailable'
-    default:
-      return ''
-  }
-})
 
 async function createDraft() {
   if (!invStore.invoice) return
@@ -46,18 +28,6 @@ async function createDraft() {
     v-else
     class="min-w-0 space-y-3 text-base"
   >
-    <div
-      v-if="verifyLabel"
-      class="text-sm"
-      :class="{
-        'text-zinc-500 dark:text-zinc-400': invStore.verifyStatus === 'checking' || invStore.verifyStatus === 'ok',
-        'text-amber-700 dark:text-amber-300': invStore.verifyStatus === 'mismatch',
-        'text-rose-700 dark:text-rose-300': invStore.verifyStatus === 'invalid' || invStore.verifyStatus === 'error',
-      }"
-    >
-      {{ verifyLabel }}
-    </div>
-
     <div class="flex min-w-0 items-center justify-between gap-3">
       <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Subtotal</div>
       <div
@@ -94,13 +64,6 @@ async function createDraft() {
       >
         {{ invStore.fmtGBPMinor(invStore.totals.totalMinor) }}
       </div>
-    </div>
-
-    <div
-      v-if="invStore.verifyStatus === 'mismatch' && invStore.serverCanonicalTotals"
-      class="text-sm text-amber-700 dark:text-amber-300"
-    >
-      Server total: {{ invStore.fmtGBPMinor(invStore.serverCanonicalTotals.totalMinor) }}
     </div>
 
     <div

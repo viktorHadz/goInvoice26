@@ -14,8 +14,11 @@ import {
     verifyInvoiceHandler,
 } from '@/utils/invoiceHttpHandler'
 import { useClientStore } from './clients'
-import { isApiError, toFieldErrorMap } from '@/utils/apiErrors'
+import { isApiError, hasFieldErrors, isSupportOnlyApiError, toFieldErrorMap } from '@/utils/apiErrors'
 import { validateInvoicePayload } from '@/utils/frontendValidation'
+import { emitToastError, emitToastSuccess } from '@/utils/toast'
+import { NetworkError } from '@/utils/fetchHelper'
+import type { Client } from '@/utils/clientHttpHandler'
 
 // Primitives
 type Int = number
@@ -68,10 +71,9 @@ export function calcTotals(inv: Invoice): Totals {
     const discountMinor: MoneyMinor = (() => {
         if (inv.discountType === 'none') return 0 as MoneyMinor
         if (inv.discountType === 'fixed') {
-            return clamp(asNum(inv.discountValue, 0), 0, subtotalMinor) as MoneyMinor
+            return clamp(asNum(inv.discountMinor, 0), 0, subtotalMinor) as MoneyMinor
         }
-        // percent (basis points)
-        return clamp(mulBpsRound(subtotalMinor, inv.discountValue), 0, subtotalMinor) as MoneyMinor
+        return clamp(mulBpsRound(subtotalMinor, inv.discountRate), 0, subtotalMinor) as MoneyMinor
     })()
 
     const subtotalAfterDiscountMinor = Math.max(0, subtotalMinor - discountMinor) as MoneyMinor
@@ -84,10 +86,9 @@ export function calcTotals(inv: Invoice): Totals {
 export function calcDepositMinor(inv: Invoice, totalMinor: MoneyMinor): MoneyMinor {
     if (inv.depositType === 'none') return 0 as MoneyMinor
     if (inv.depositType === 'fixed') {
-        return clamp(asNum(inv.depositValue, 0), 0, totalMinor) as MoneyMinor
+        return clamp(asNum(inv.depositMinor, 0), 0, totalMinor) as MoneyMinor
     }
-    // percent (basis points)
-    return clamp(mulBpsRound(totalMinor, asNum(inv.depositValue, 0)), 0, totalMinor) as MoneyMinor
+    return clamp(mulBpsRound(totalMinor, inv.depositRate), 0, totalMinor) as MoneyMinor
 }
 
 function calcBalanceDueMinor(
@@ -103,7 +104,7 @@ function fmtPrettyInvoiceNumber(prefix: string, baseNumber?: number): string {
     return `${prefix} - ${baseNumber}`
 }
 
-// Store
+// INVOICE STORE
 export const useInvoiceStore = defineStore('invoice', () => {
     const invoice = ref<Invoice | null>(null)
     const serverFieldErrors = ref<Record<string, string>>({})
@@ -113,9 +114,34 @@ export const useInvoiceStore = defineStore('invoice', () => {
     const lastVerifyAt = ref<number | null>(null)
     const serverCanonicalTotals = ref<Totals | null>(null)
     const serverCanonicalLineTotals = ref<Record<number, MoneyMinor>>({})
+    const lastVerifyFailureToastedAt = ref<number | null>(null)
 
     // Called inside functions only never at module scope
     const getClientStore = () => useClientStore()
+
+    function buildFreshInvoiceTemplate(c: Client): Omit<Invoice, 'baseNumber'> {
+        return {
+            clientId: c.id,
+            issueDate: '',
+            dueByDate: undefined,
+            clientSnapshot: {
+                name: c.name ?? '',
+                companyName: c.companyName ?? '',
+                address: c.address ?? '',
+                email: c.email ?? '',
+            },
+            note: '',
+            vatRate: 2000,
+            discountType: 'none',
+            discountRate: 0,
+            discountMinor: 0,
+            lines: [],
+            paidMinor: 0,
+            depositType: 'none',
+            depositRate: 0,
+            depositMinor: 0,
+        }
+    }
 
     function ensure(): Invoice {
         if (!invoice.value) throw new Error('Invoice not initialised')
@@ -143,6 +169,9 @@ export const useInvoiceStore = defineStore('invoice', () => {
         }
     }
 
+    /**
+     * ! Verifies server totals - essential for optimistic updates
+     */
     async function runServerVerify() {
         const inv = invoice.value
         const { lsClientId } = getClientStore()
@@ -222,33 +251,48 @@ export const useInvoiceStore = defineStore('invoice', () => {
             }
 
             verifyStatus.value = mismatch ? 'mismatch' : 'ok'
+            if (verifyStatus.value === 'ok') lastVerifyFailureToastedAt.value = null
         } catch (err: unknown) {
-            // background verification should not spam toasts
-            if (
-                (err as any)?.name === 'NetworkError' &&
-                (err as any)?.message === 'Request aborted'
-            ) {
-                return
-            }
+            if (err instanceof NetworkError) return
+
             if (isApiError(err) && err.code === 'VALIDATION_FAILED') {
-                serverFieldErrors.value = toFieldErrorMap(err.fields)
                 verifyStatus.value = 'invalid'
+                if (hasFieldErrors(err)) {
+                    serverFieldErrors.value = toFieldErrorMap(err.fields)
+                }
                 return
             }
 
             verifyStatus.value = 'error'
-            console.error(err)
+            if (isApiError(err) && isSupportOnlyApiError(err) && lastVerifyFailureToastedAt.value == null) {
+                lastVerifyFailureToastedAt.value = Date.now()
+                emitToastError({
+                    id: err.id,
+                    title: 'Server error',
+                    message: err.id
+                        ? `Something went wrong. Please quote error ID: ${err.id}`
+                        : 'Something went wrong. Please try again later.',
+                })
+            }
+            console.error('[invoice verify]', err)
         }
     }
 
-    function scheduleServerVerify() {
+    /**
+     * Calls server verification on crud ops. Debounced to guard against keystrokes and races
+     * - ignored until initial date is set
+     */
+    function scheduleServerVerify(debounceDur: number = 1000) {
         if (typeof window === 'undefined') return
         if (!invoice.value) return
+        if (invoice.value.lines.length <= 0) return // abort on first load
+        if (!invoice.value.issueDate) return // abort if missing as server throws
 
         clearVerifyTimer()
+        // debouncer
         verifyTimer = window.setTimeout(() => {
             runServerVerify()
-        }, 450)
+        }, debounceDur)
     }
 
     // Single computed that derives all pricing in one pass
@@ -285,7 +329,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
                 serverFieldErrors.value = {}
             }
             showAllValidation.value = false
-            scheduleServerVerify()
         },
         { deep: true },
     )
@@ -303,6 +346,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
     // Lines CRUD
     function addLine(line: Omit<InvoiceLine, 'sortOrder'>) {
         const inv = ensure()
+        scheduleServerVerify()
 
         const canMerge = line.lineType !== 'custom' && line.productId != null
         const existingLine = canMerge
@@ -326,11 +370,15 @@ export const useInvoiceStore = defineStore('invoice', () => {
         const inv = ensure()
         const line = inv.lines.find((l) => l.sortOrder === sortOrder)
         if (!line) return
+        scheduleServerVerify()
+
         assignDefined(line, patch)
     }
 
     function removeLine(sortOrder: number): void {
         const inv = ensure()
+        scheduleServerVerify()
+
         inv.lines = inv.lines
             .filter((l) => l.sortOrder !== sortOrder)
             .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -344,71 +392,119 @@ export const useInvoiceStore = defineStore('invoice', () => {
 
     function setDueByDate(v: string): void {
         ensure().dueByDate = String(v ?? '')
+        scheduleServerVerify()
     }
 
     function setNote(note: string): void {
         ensure().note = String(note ?? '')
+        scheduleServerVerify()
     }
 
     function setVatRateBps(v: number): void {
         ensure().vatRate = clamp(round0(asNum(v, 0)), 0, 10000)
+        scheduleServerVerify()
     }
 
     function setDiscountType(t: DiscountType): void {
         const inv = ensure()
+        scheduleServerVerify()
+
         inv.discountType = t
-        if (t === 'none') inv.discountValue = 0
-        if (t === 'percent')
-            inv.discountValue = clamp(round0(asNum(inv.discountValue, 0)), 0, 10000)
-        if (t === 'fixed') inv.discountValue = Math.max(0, round0(asNum(inv.discountValue, 0)))
+
+        if (t === 'none') {
+            inv.discountMinor = 0
+            inv.discountRate = 0
+        }
+
+        if (t === 'percent') {
+            inv.discountRate = clamp(round0(asNum(inv.discountRate, 0)), 0, 10000)
+            inv.discountMinor = 0
+        }
+
+        if (t === 'fixed') {
+            inv.discountMinor = Math.max(0, round0(asNum(inv.discountMinor, 0)))
+            inv.discountRate = 0
+        }
     }
 
     function setDiscountFixedGBP(gbp: number): void {
         const inv = ensure()
+        scheduleServerVerify()
+
         inv.discountType = 'fixed'
-        inv.discountValue = Math.max(0, toMinor(gbp))
+        inv.discountMinor = Math.max(0, toMinor(gbp))
+        inv.discountRate = 0
     }
 
     function setDiscountPercent(percent: number): void {
         const inv = ensure()
+        scheduleServerVerify()
+
         inv.discountType = 'percent'
-        inv.discountValue = clamp(round0(asNum(percent, 0) * 100), 0, 10000)
+        inv.discountRate = clamp(round0(asNum(percent, 0) * 100), 0, 10000)
+        inv.discountMinor = 0
     }
 
     function clearDiscount(): void {
         const inv = ensure()
-        inv.discountType = 'none'
-        inv.discountValue = 0
-    }
+        scheduleServerVerify()
 
+        inv.discountType = 'none'
+        inv.discountMinor = 0
+        inv.discountRate = 0
+    }
     function setDepositType(t: DepositType): void {
         const inv = ensure()
+        scheduleServerVerify()
+
         inv.depositType = t
-        if (t === 'none') inv.depositValue = 0
-        if (t === 'percent') inv.depositValue = clamp(round0(asNum(inv.depositValue, 0)), 0, 10000)
-        if (t === 'fixed') inv.depositValue = Math.max(0, round0(asNum(inv.depositValue, 0)))
+
+        if (t === 'none') {
+            inv.depositMinor = 0
+            inv.depositRate = 0
+        }
+
+        if (t === 'percent') {
+            inv.depositRate = clamp(round0(asNum(inv.depositRate, 0)), 0, 10000)
+            inv.depositMinor = 0
+        }
+
+        if (t === 'fixed') {
+            inv.depositMinor = Math.max(0, round0(asNum(inv.depositMinor, 0)))
+            inv.depositRate = 0
+        }
     }
 
     function setDepositFixedGBP(gbp: number): void {
         const inv = ensure()
+        scheduleServerVerify()
+
         inv.depositType = 'fixed'
-        inv.depositValue = Math.max(0, toMinor(gbp))
+        inv.depositMinor = Math.max(0, toMinor(gbp))
+        inv.depositRate = 0
     }
 
     function setDepositPercent(percent: number): void {
         const inv = ensure()
+        scheduleServerVerify()
+
         inv.depositType = 'percent'
-        inv.depositValue = clamp(round0(asNum(percent, 0) * 100), 0, 10000)
+        inv.depositRate = clamp(round0(asNum(percent, 0) * 100), 0, 10000)
+        inv.depositMinor = 0
     }
 
     function clearDeposit(): void {
         const inv = ensure()
+        scheduleServerVerify()
+
         inv.depositType = 'none'
-        inv.depositValue = 0
+        inv.depositMinor = 0
+        inv.depositRate = 0
     }
 
     function setPaidGBP(gbp: number): void {
         ensure().paidMinor = Math.max(0, toMinor(gbp))
+        scheduleServerVerify()
     }
 
     // API DTO
@@ -440,9 +536,11 @@ export const useInvoiceStore = defineStore('invoice', () => {
             })),
             totals: {
                 depositType: inv.depositType,
+                depositRate: inv.depositRate,
                 depositMinor: prices?.depositMinor ?? 0,
 
                 discountType: inv.discountType,
+                discountRate: inv.discountRate,
                 discountMinor: prices?.totals.discountMinor ?? 0,
 
                 vatRate: inv.vatRate,
@@ -459,22 +557,71 @@ export const useInvoiceStore = defineStore('invoice', () => {
     }
 
     async function newDraftInvoice(inv: Invoice) {
-        const { lsClientId } = getClientStore()
+        const clientStore = getClientStore()
+        const { lsClientId, selectedClient } = clientStore
         if (!lsClientId) throw new Error('No client selected')
 
         const dto = apiDTO(inv)
         showAllValidation.value = true
         serverFieldErrors.value = {}
         try {
-            const result = await newInvoiceHandler(dto.overview.clientId, inv.baseNumber, dto)
+            await newInvoiceHandler(dto.overview.clientId, inv.baseNumber, dto)
             showAllValidation.value = false
-            console.log(result)
-            return result
-        } catch (err: unknown) {
-            if (isApiError(err)) {
-                serverFieldErrors.value = toFieldErrorMap(err.fields)
+
+            clearVerifyTimer()
+            abortVerify()
+            lastVerifyFailureToastedAt.value = null
+
+            emitToastSuccess(
+                `Invoice ${fmtPrettyInvoiceNumber(invoicePrefix, inv.baseNumber)} saved as draft.`,
+            )
+
+            if (selectedClient) {
+                const template = buildFreshInvoiceTemplate(selectedClient)
+                await initInvoiceFromServer(template)
             }
-            throw err
+        } catch (err: unknown) {
+            if (isApiError(err) && hasFieldErrors(err)) {
+                serverFieldErrors.value = toFieldErrorMap(err.fields)
+                return
+            }
+
+            showAllValidation.value = false
+
+            if (isApiError(err) && isSupportOnlyApiError(err)) {
+                emitToastError({
+                    id: err.id,
+                    title: 'Could not create invoice',
+                    message: err.id
+                        ? `Something went wrong. Please quote error ID: ${err.id}`
+                        : 'Something went wrong. Please try again later.',
+                })
+                console.error('[invoice create]', err)
+                return
+            }
+
+            if (isApiError(err)) {
+                emitToastError({
+                    id: err.id,
+                    title: 'Could not create invoice',
+                    message: err.message || 'Please check your data and try again.',
+                })
+                return
+            }
+
+            if (err instanceof NetworkError) {
+                emitToastError({
+                    title: 'Network error',
+                    message: 'Could not reach the server. Please check your connection.',
+                })
+                return
+            }
+
+            emitToastError({
+                title: 'Could not create invoice',
+                message: 'An unexpected error occurred. Please try again.',
+            })
+            console.error('[invoice create]', err)
         }
     }
 

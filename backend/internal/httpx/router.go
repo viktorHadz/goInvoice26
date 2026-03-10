@@ -6,6 +6,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/httpx/clients"
 )
 
+// TODO: Combine all services into 1 file. Will make more sense
 // Registers all service specific routers
 func RegisterAllRouters(r chi.Router, a *app.App) {
 	clients.Router(r, a)
