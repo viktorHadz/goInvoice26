@@ -1,6 +1,7 @@
 package products
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -11,22 +12,38 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/transaction/productsTx"
 )
 
-func listItems(a *app.App) http.HandlerFunc {
+func ListItems(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := params.GetParam(w, r, "clientID")
+		id, ok := params.ValidateParam(w, r, "clientID")
 		if !ok {
 			return
 		}
 
-		if err := clientsTx.VerifyClientID(r.Context(), a, id, "client not found"); err != nil {
-			res.Error(w, err)
+		if err := clientsTx.VerifyClientID(r.Context(), a, id); err != nil {
+			if errors.Is(err, clientsTx.ErrClientNotFound) {
+				res.NotFound(w, "client not found")
+				return
+			}
+
+			slog.ErrorContext(r.Context(),
+				"verify client failed",
+				"client_id", id,
+				"err", err,
+			)
+
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 
 		products, err := productsTx.ListAll(a, r.Context(), id)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "DB ERRORED", "err", err)
-			res.Error(w, res.Database(err))
+			slog.ErrorContext(r.Context(),
+				"list products failed",
+				"client_id", id,
+				"err", err,
+			)
+
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 

@@ -1,6 +1,8 @@
 package products
 
 import (
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/viktorHadz/goInvoice26/internal/app"
@@ -11,39 +13,50 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/transaction/productsTx"
 )
 
-func createProduct(a *app.App) http.HandlerFunc {
+func CreateProduct(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		clientID, ok := params.GetParam(w, r, "clientID") // validate route param
+		clientID, ok := params.ValidateParam(w, r, "clientID")
 		if !ok {
 			return
 		}
 
-		// verify client exists
-		if err := clientsTx.VerifyClientID(r.Context(), a, clientID, "client not found"); err != nil {
-			res.Error(w, err)
+		if err := clientsTx.VerifyClientID(r.Context(), a, clientID); err != nil {
+			if errors.Is(err, clientsTx.ErrClientNotFound) {
+				res.NotFound(w, "client not found")
+				return
+			}
+
+			slog.ErrorContext(r.Context(),
+				"verify client failed",
+				"client_id", clientID,
+				"err", err,
+			)
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 
-		// Unpack r body
 		var in models.ProductCreateIn
 		if ok := res.DecodeJSON(w, r, &in); !ok {
 			return
 		}
 
-		// validate and normalize DB struct into models.productCreate
 		product, errs := ValidateCreate(in, clientID)
 		if len(errs) > 0 {
-			res.Error(w, res.Validation(errs...))
+			res.Validation(w, errs...)
 			return
 		}
 
-		// insert in DB
 		created, err := productsTx.InsertTx(a, r.Context(), product)
 		if err != nil {
-			res.Error(w, err)
+			slog.ErrorContext(r.Context(),
+				"create product failed",
+				"client_id", clientID,
+				"err", err,
+			)
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 
-		res.JSON(w, http.StatusCreated, created) // respond to FE
+		res.JSON(w, http.StatusCreated, created)
 	}
 }

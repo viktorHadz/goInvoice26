@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/viktorHadz/goInvoice26/internal/app"
@@ -9,21 +10,27 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/transaction/clientsTx"
 )
 
-func deleteClient(a *app.App) http.HandlerFunc {
+func DeleteClient(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		clientID, ok := params.GetParam(w, r, "clientID")
+		clientID, ok := params.ValidateParam(w, r, "clientID")
 		if !ok {
 			return
 		}
 
 		affected, err := clientsTx.DeleteClient(a, r.Context(), clientID)
 		if err != nil {
-			res.Error(w, res.Database(err))
+			slog.ErrorContext(r.Context(),
+				"delete client failed",
+				"client_id", clientID,
+				"err", err,
+			)
+
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 
 		if affected == 0 {
-			res.Error(w, res.NotFound("client not found"))
+			res.NotFound(w, "client not found")
 			return
 		}
 

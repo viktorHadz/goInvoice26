@@ -11,8 +11,8 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/config"
 )
 
-// InitLogger builds the application logger and the matching httplog options
-// Dev/localhost => colored console logs + DEBUG
+// InitLogger builds the application logger and matching httplog options.
+// Dev/localhost => colored console logs + DEBUG + max request/response body logs
 // Prod          => JSON logs + INFO
 func InitLogger(cfg config.Config) (*slog.Logger, *httplog.Options) {
 	isDev := cfg.Env == "localhost" || cfg.Env == "dev"
@@ -32,21 +32,17 @@ func InitLogger(cfg config.Config) (*slog.Logger, *httplog.Options) {
 		},
 	}
 
-	logger := slog.New(newHandler(isDev, handlerOpts))
-	// Will attach if debuging env
-	// .With(
-	// slog.String("env", cfg.Env),
-	// )
-
-	if !isDev {
-		logger = logger.With(
-			slog.String("app", "invoicer"),
-			slog.String("version", "v1.4.0"),
-		)
-	}
+	logger := slog.New(newHandler(isDev, handlerOpts)).With(
+		slog.String("app", "invoicer"),
+		slog.String("version", "v1.4.0"),
+	)
 
 	slog.SetDefault(logger)
 	slog.SetLogLoggerLevel(level)
+
+	logBodies := func(_ *http.Request) bool {
+		return isDev
+	}
 
 	httpLogOpts := &httplog.Options{
 		Level:         level,
@@ -60,8 +56,8 @@ func InitLogger(cfg config.Config) (*slog.Logger, *httplog.Options) {
 		LogRequestHeaders:  []string{"Origin"},
 		LogResponseHeaders: nil,
 
-		LogRequestBody:  isDebugHeaderSet,
-		LogResponseBody: isDebugHeaderSet,
+		LogRequestBody:  logBodies,
+		LogResponseBody: logBodies,
 
 		LogExtraAttrs: func(req *http.Request, reqBody string, status int) []slog.Attr {
 			if status == http.StatusBadRequest || status == http.StatusUnprocessableEntity {
@@ -90,8 +86,4 @@ func newHandler(isDev bool, opts *slog.HandlerOptions) slog.Handler {
 
 	base := slog.NewJSONHandler(os.Stdout, opts)
 	return traceid.LogHandler(base)
-}
-
-func isDebugHeaderSet(r *http.Request) bool {
-	return r.Header.Get("Debug") == "reveal-body-logs"
 }

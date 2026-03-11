@@ -54,3 +54,37 @@ type TotalsCreateIn struct {
 	TotalMinor        int64 `json:"totalMinor"`
 	BalanceDue        int64 `json:"balanceDueMinor"`
 }
+
+// TODO: Option: FOR BASE NUMBER  pull out like a string from DB
+// --> Allow user to set their own prefix in options (e.g. S.A.M., or whatever they want)
+// TODO: Option: have the user add their own information if they want to have it display on the invoice
+
+type Issuer struct {
+	Name    string
+	Address *string
+	Email   *string
+}
+
+type InvoicePDFItem struct {
+	Name      string
+	LineType  string
+	Quantity  string
+	ItemPrice string
+	ItemTotal string
+	SortOrder int64
+}
+
+type InvoicePDFData struct {
+	BaseNumber     int64  // Base number
+	RevisionNumber string // Which edit of base number (for first 1)
+
+	IssueAt string
+	DueDate *string
+
+	Issuer Issuer
+	Client CreateClient
+
+	Lines []InvoicePDFItem
+
+	Totals TotalsCreateIn
+}

@@ -3,10 +3,8 @@ package invoice
 import (
 	"log/slog"
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/viktorHadz/goInvoice26/internal/app"
+	"github.com/viktorHadz/goInvoice26/internal/httpx/params"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
@@ -16,20 +14,14 @@ type verifyResponse struct {
 }
 
 // Ensures frontend calculations are consistent. Called on FE for optimistic invoice update
-func verifyInvoice(a *app.App) http.HandlerFunc {
+func VerifyInvoice() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		clientIDParam := chi.URLParam(r, "clientID")
-		baseNumberParam := chi.URLParam(r, "baseNumber")
-
-		clientID, err := strconv.ParseInt(clientIDParam, 10, 64)
-		if err != nil || clientID < 1 {
-			res.Error(w, res.Validation(res.Invalid("clientId", "invalid route param")))
+		clientID, ok := params.ValidateParam(w, r, "clientID")
+		if !ok {
 			return
 		}
-
-		baseNumber, err := strconv.ParseInt(baseNumberParam, 10, 64)
-		if err != nil || baseNumber < 1 {
-			res.Error(w, res.Validation(res.Invalid("baseNumber", "invalid route param")))
+		baseNumber, ok := params.ValidateParam(w, r, "baseNumber")
+		if !ok {
 			return
 		}
 
@@ -47,18 +39,18 @@ func verifyInvoice(a *app.App) http.HandlerFunc {
 			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route param"))
 		}
 		if len(routeErrs) > 0 {
-			res.Error(w, res.Validation(routeErrs...))
+			res.Validation(w, routeErrs...)
 			return
 		}
 
 		validInvoice, errs := ValidateInvoiceCreate(invoice)
 		if len(errs) > 0 {
-			res.Error(w, res.Validation(errs...))
+			res.Validation(w, errs...)
 			return
 		}
 
 		canonical := RecalcInvoice(validInvoice)
-		slog.Debug("invoice verified", "clientID", clientID, "baseNumber", baseNumber)
+		slog.DebugContext(r.Context(), "invoice verified", "client_id", clientID, "base_number", baseNumber)
 
 		res.JSON(w, http.StatusOK, verifyResponse{Invoice: canonical})
 	}

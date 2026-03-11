@@ -2,6 +2,7 @@
 import { useInvoiceStore } from '@/stores/invoice'
 import { DocumentArrowDownIcon, DocumentIcon } from '@heroicons/vue/24/outline'
 import TheButton from '../UI/TheButton.vue'
+import TheTooltip from '../UI/TheTooltip.vue'
 
 const invStore = useInvoiceStore()
 
@@ -100,22 +101,31 @@ async function createDraft() {
     </div>
 
     <div class="flex flex-col gap-y-2 sm:flex-row sm:gap-x-4">
-      <TheButton
-        class="flex w-full items-center gap-2"
-        title="Generate PDF"
+      <TheTooltip
+        text="Generate a quick pdf without saving invoice."
+        class="w-full"
       >
-        <DocumentArrowDownIcon class="size-4" />
-        Print / PDF
-      </TheButton>
-
-      <TheButton
-        class="flex w-full items-center gap-2"
-        title="Generate Draft"
-        @click="createDraft"
+        <TheButton
+          class="flex w-full items-center gap-2"
+          title="Generate PDF"
+        >
+          <DocumentArrowDownIcon class="size-4" />
+          Print / PDF
+        </TheButton>
+      </TheTooltip>
+      <TheTooltip
+        text="Save invoice and generate a PDF"
+        class="w-full"
       >
-        <DocumentIcon class="size-4" />
-        Create Draft
-      </TheButton>
+        <TheButton
+          class="flex w-full items-center gap-2"
+          title="Generate Draft"
+          @click="createDraft"
+        >
+          <DocumentIcon class="size-4" />
+          Create Draft
+        </TheButton>
+      </TheTooltip>
     </div>
   </div>
 </template>

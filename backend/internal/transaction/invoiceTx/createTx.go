@@ -1,3 +1,13 @@
+/*
+The invoiceTx package exposes methods for:
+  - Invoice creation
+
+And allows retrieval of:
+  - next invoice number,
+  - totals,
+  - line items,
+  - client details
+*/
 package invoiceTx
 
 import (
@@ -11,7 +21,9 @@ import (
 )
 
 // Create inserts a new invoice with one revision (revision_no 1) and all line items in a single transaction.
+//
 // The canonical invoice must already be validated and recalculated (use RecalcInvoice output).
+//
 // Returns (invoiceID, revisionID, error). On success, invoices.current_revision_id is set to the new revision.
 func Create(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn) (invoiceID, revisionID int64, err error) {
 	tx, err := a.DB.BeginTx(ctx, &sql.TxOptions{})
@@ -37,7 +49,7 @@ func Create(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn) (inv
 	}
 
 	// 2. Insert revision (revision_no = 1)
-	var dueBy, note interface{}
+	var dueBy, note any
 	if ov.DueByDate != nil {
 		dueBy = *ov.DueByDate
 	} else {

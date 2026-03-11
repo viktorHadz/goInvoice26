@@ -3,6 +3,7 @@ package products
 import (
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/viktorHadz/goInvoice26/internal/app"
@@ -13,21 +14,32 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/transaction/productsTx"
 )
 
-func updateProduct(a *app.App) http.HandlerFunc {
+func UpdateProduct(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		clientID, ok := params.GetParam(w, r, "clientID")
+		clientID, ok := params.ValidateParam(w, r, "clientID")
 		if !ok {
 			return
 		}
 
-		productID, ok := params.GetParam(w, r, "productID")
+		productID, ok := params.ValidateParam(w, r, "productID")
 		if !ok {
 			return
 		}
 
 		// Verify client exists
-		if err := clientsTx.VerifyClientID(r.Context(), a, clientID, "client not found"); err != nil {
-			res.Error(w, err)
+		if err := clientsTx.VerifyClientID(r.Context(), a, clientID); err != nil {
+			if errors.Is(err, clientsTx.ErrClientNotFound) {
+				res.NotFound(w, "client not found")
+				return
+			}
+
+			slog.ErrorContext(r.Context(),
+				"verify client failed",
+				"client_id", clientID,
+				"err", err,
+			)
+
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 
@@ -40,17 +52,25 @@ func updateProduct(a *app.App) http.HandlerFunc {
 		// Validate and normalize into DB payload
 		cmd, errs := ValidateCreate(in, clientID)
 		if len(errs) > 0 {
-			res.Error(w, res.Validation(errs...))
+			res.Validation(w, errs...)
 			return
 		}
 
 		updated, err := productsTx.UpdateTx(a, r.Context(), productID, cmd)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				res.Error(w, res.NotFound("product not found"))
+				res.NotFound(w, "product not found")
 				return
 			}
-			res.Error(w, res.Database(err))
+
+			slog.ErrorContext(r.Context(),
+				"update product failed",
+				"client_id", clientID,
+				"product_id", productID,
+				"err", err,
+			)
+
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 

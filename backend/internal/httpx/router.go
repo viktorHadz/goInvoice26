@@ -4,14 +4,42 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/clients"
+	"github.com/viktorHadz/goInvoice26/internal/httpx/invoice"
+	"github.com/viktorHadz/goInvoice26/internal/httpx/midware"
+	"github.com/viktorHadz/goInvoice26/internal/httpx/products"
 )
 
-// TODO: Combine all services into 1 file. Will make more sense
-// Registers all service specific routers
 func RegisterAllRouters(r chi.Router, a *app.App) {
-	clients.Router(r, a)
-	// products mounted inside clients for sane name convention
-	// e.g. /api/clients/{clientID}/products....
-	// editor.Router(r)
-	// invoice.Router(r)
+	r.Use(midware.LimitBodyMaxSize(2 << 20))
+
+	r.Route("/api/clients", func(r chi.Router) {
+		r.Post("/", clients.Create(a))
+		r.Get("/", clients.ListAll(a))
+
+		r.Route("/{clientID}", func(r chi.Router) {
+			r.Patch("/", clients.UpdateClient(a))
+			r.Delete("/", clients.DeleteClient(a))
+
+			// /api/clients/{clientID}/products/...
+			r.Route("/products", func(r chi.Router) {
+				r.Get("/", products.ListItems(a))
+				r.Post("/", products.CreateProduct(a))
+				r.Route("/{productID}", func(r chi.Router) {
+					r.Patch("/", products.UpdateProduct(a))
+					r.Delete("/", products.DeleteProduct(a))
+				})
+			})
+
+			// /api/clients/{clientID}/invoice/...
+			r.Route("/invoice", func(r chi.Router) {
+				r.Get("/", invoice.GetNextInvoiceNumber(a))
+				r.Route("/{baseNumber}", func(r chi.Router) {
+					r.Post("/", invoice.CreateInvoice(a))
+					r.Post("/verify", invoice.VerifyInvoice())
+					// /api/clients/{clientID}/invoice/{baseNumber}/{revisionNO}pdf
+					r.Get("/{revisionNo}/pdf", invoice.GeneratePDF(a))
+				})
+			})
+		})
+	})
 }

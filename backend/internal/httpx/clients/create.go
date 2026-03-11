@@ -11,7 +11,7 @@ import (
 )
 
 // Create - establishes context | validates reqest body | calls DB Transaction
-func create(a *app.App) http.HandlerFunc {
+func Create(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var client models.CreateClient
 		if ok := res.DecodeJSON(w, r, &client); !ok {
@@ -21,21 +21,22 @@ func create(a *app.App) http.HandlerFunc {
 		var errs []res.FieldError
 		client, errs = ValidateCreate(client)
 		if len(errs) > 0 {
-			res.Error(w, res.Validation(errs...))
+			slog.DebugContext(r.Context(), "client validation failed", "errs", errs)
+			res.Validation(w, errs...)
 			return
 		}
 
 		id, err := clientsTx.Insert(r.Context(), a, &client)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "Insert client failed", "err", err)
-			res.Error(w, res.Database(err))
+			slog.Error("Database transaction failed", "err", err)
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 
 		created, err := clientsTx.GetByID(r.Context(), a, id)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "Fetch created client failed", "id", id, "err", err)
-			res.Error(w, res.Database(err))
+			slog.Error("Failed to retrieve created client", "id", id, "err", err)
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 
