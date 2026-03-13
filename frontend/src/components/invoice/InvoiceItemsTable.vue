@@ -7,8 +7,7 @@ const inv = useInvoiceStore()
 
 const lines = computed(() => {
   const list = inv.invoice?.lines ?? []
-  // stable render + defensive ordering
-  return [...list].sort((a, b) => a.sortOrder - b.sortOrder)
+  return [...list].sort((a, b) => (b.sortOrder ?? 0) - (a.sortOrder ?? 0))
 })
 </script>
 

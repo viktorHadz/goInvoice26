@@ -8,6 +8,7 @@ import { ChevronUpDownIcon, UserIcon } from '@heroicons/vue/24/outline'
 import { useShortcuts, type ShortcutDefinition } from '@/composables/keyHandlers'
 import { useProductStore } from '@/stores/products'
 import { useTheme } from '@/composables/theme'
+import TheSettings from './TheSettings.vue'
 
 const show = ref(localStorage.getItem('topBarShow') === 'true')
 
@@ -50,7 +51,7 @@ useShortcuts(shortcuts)
         class="rounded-b-2xl border-x border-b border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
       >
         <!-- top row -->
-        <div class="grid grid-cols-5 items-center gap-3 px-2 pt-2">
+        <div class="grid grid-cols-6 items-center px-2 pt-2">
           <div class="col-span-3 min-w-0 overflow-x-clip px-0.5">
             <TheDropdown
               v-model="clientStore.selectedClient"
@@ -71,6 +72,10 @@ useShortcuts(shortcuts)
           <div class="col-span-1 flex justify-center">
             <ProductsEditor />
           </div>
+
+          <div class="col-span-1 flex justify-center">
+            <TheSettings />
+          </div>
         </div>
 
         <!-- bottom handle-->
@@ -78,11 +83,9 @@ useShortcuts(shortcuts)
           type="button"
           @click="toggleTopBar()"
           :aria-expanded="show"
-          class="mt-2 grid h-8 w-full grid-cols-[3fr_1fr_1fr_auto] items-center rounded-b-2xl border-t border-zinc-200 px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-zinc-900/10 focus-visible:outline-none dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+          class="text-mini mt-2 h-8 w-full rounded-b-2xl border-t border-zinc-200 px-2 font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-zinc-900/10 focus-visible:outline-none dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
         >
-          <span class="truncate">Client select</span>
-          <span class="justify-self-center truncate">Theme</span>
-          <span class="justify-self-end truncate pr-2">Items</span>
+          <span class="truncate">Quick Menu</span>
         </button>
       </div>
     </div>

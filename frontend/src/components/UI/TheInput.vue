@@ -18,6 +18,7 @@ const props = withDefaults(
     type?: string
     error?: string | null
 
+    inputMaxLength?: number
     // to reserves space even when no no error - prevents layout jump
     reserveErrorSpace?: boolean
     forceShowError?: boolean
@@ -28,6 +29,7 @@ const props = withDefaults(
     classNames: '',
     inputClass: '',
     error: null,
+    inputMaxLength: 400,
     reserveErrorSpace: true,
     forceShowError: false,
   },
@@ -139,6 +141,7 @@ function onBlur() {
       :class="[props.inputClass, showError ? 'input-error' : 'input-accent']"
       :aria-invalid="showError ? 'true' : 'false'"
       :aria-describedby="showError ? errId : undefined"
+      :maxlength="props.inputMaxLength"
       @focus="onFocus"
       @blur="onBlur"
     />

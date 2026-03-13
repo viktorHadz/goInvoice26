@@ -1,6 +1,8 @@
 package httpx
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/clients"
@@ -10,9 +12,16 @@ import (
 )
 
 func RegisterAllRouters(r chi.Router, a *app.App) {
-	r.Use(midware.LimitBodyMaxSize(2 << 20))
+	fileServer := http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads")))
+	r.Handle("/uploads/*", fileServer)
+
+	r.Route("/api/image", func(r chi.Router) {
+		r.Use(midware.LimitBodyMaxSize(5 << 20)) // 5MB
+		r.Post("/", app.LogoUpload())
+	})
 
 	r.Route("/api/clients", func(r chi.Router) {
+		r.Use(midware.LimitBodyMaxSize(2 << 20)) // 2MB
 		r.Post("/", clients.Create(a))
 		r.Get("/", clients.ListAll(a))
 
@@ -36,7 +45,7 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 				r.Route("/{baseNumber}", func(r chi.Router) {
 					r.Post("/", invoice.CreateInvoice(a))
 					r.Post("/verify", invoice.VerifyInvoice())
-					// /api/clients/{clientID}/invoice/{baseNumber}/{revisionNO}pdf
+					// /api/clients/{clientID}/invoice/{baseNumber}/{revisionNO}/pdf
 					r.Get("/{revisionNo}/pdf", invoice.GeneratePDFHandler(a))
 					r.Post("/{revisionNo}/pdf/quick", invoice.QuickPDFHandler(a))
 				})

@@ -21,6 +21,7 @@ import { formatDisplay } from '@/utils/dates'
 import { validateProductForm } from '@/utils/frontendValidation'
 import { emitToastSuccess } from '@/utils/toast'
 import { handleActionError } from '@/utils/errors/handleActionError'
+import DecorGradient from '../UI/DecorGradient.vue'
 
 const store = useProductStore()
 const clientStore = useClientStore()
@@ -240,16 +241,24 @@ useEscape(
     align="end"
   >
     <template #content>
-      <span class="mr-1 text-sky-600 dark:text-emerald-400">Shortcut:</span>
-      <kbd>Ctrl</kbd>
-      +
-      <kbd>i</kbd>
+      <span class="mr-1 text-sky-600 dark:text-emerald-400">Products Shortcut:</span>
+      <br />
+      <div class="mt-1">
+        <kbd>Ctrl</kbd>
+        +
+        <kbd>I</kbd>
+      </div>
     </template>
-    <SquaresPlusIcon
+    <button
       v-if="iconOnly"
-      class="size-8 cursor-pointer stroke-1 text-zinc-600 hover:text-sky-600 dark:text-zinc-300 dark:hover:text-emerald-400"
-      @click="store.open = true"
-    />
+      type="button"
+      class="flex cursor-pointer rounded-lg p-1 text-zinc-600 shadow-sm hover:text-sky-600 hover:shadow-md dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
+    >
+      <SquaresPlusIcon
+        class="size-6 stroke-1"
+        @click="store.open = true"
+      />
+    </button>
     <TheButton
       v-else
       @click="store.open = true"
@@ -281,12 +290,8 @@ useEscape(
           class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70"
         >
           <div class="relative overflow-hidden px-4 py-3">
-            <div
-              class="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_0%,rgba(56,189,248,0.10),transparent_55%)] opacity-100 dark:bg-[radial-gradient(900px_circle_at_15%_0%,rgba(16,185,129,0.18),transparent_55%)]"
-            />
-            <div
-              class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-size-[36px_36px] opacity-[0.55] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)]"
-            />
+            <DecorGradient></DecorGradient>
+            <DecorGradient></DecorGradient>
 
             <!-- CONTENT -->
             <div class="relative z-10 flex items-center justify-between gap-4">
@@ -313,7 +318,7 @@ useEscape(
                     </span>
                   </div>
 
-                  <div class="text-sm tracking-tight text-zinc-500 dark:text-zinc-400">
+                  <div class="text-sm tracking-tight text-zinc-500 dark:text-zinc-300">
                     Manage client services, pricing and work units
                   </div>
                 </div>

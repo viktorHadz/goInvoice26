@@ -36,6 +36,24 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 		);`,
 
+		`CREATE TABLE IF NOT EXISTS user_settings (
+			id INTEGER PRIMARY KEY CHECK (id = 1),
+			company_name TEXT NOT NULL DEFAULT '',
+			email TEXT NOT NULL DEFAULT '',
+			phone TEXT NOT NULL DEFAULT '',
+			company_address TEXT NOT NULL DEFAULT '',
+			invoice_prefix TEXT NOT NULL DEFAULT 'INV-',
+			currency TEXT NOT NULL DEFAULT 'GBP'
+				CHECK (currency IN ('GBP', 'EUR', 'USD')),
+			date_format TEXT NOT NULL DEFAULT 'dd/mm/yyyy'
+				CHECK (date_format IN ('dd/mm/yyyy', 'mm/dd/yyyy', 'yyyy-mm-dd')),
+			custom_items_prefix TEXT NOT NULL DEFAULT 'custom',
+			payment_terms TEXT NOT NULL DEFAULT 'Please make payment within 14 days.',
+			payment_details TEXT NOT NULL DEFAULT '',
+			notes_footer TEXT NOT NULL DEFAULT '',
+			logo_url TEXT NOT NULL DEFAULT ''
+		);`,
+
 		// -----------------------
 		// Clients
 		// -----------------------

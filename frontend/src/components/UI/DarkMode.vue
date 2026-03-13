@@ -6,34 +6,37 @@ import { useTheme } from '@/composables/theme'
 const { mode } = useTheme()
 </script>
 <template>
-  <TheTooltip side="bottom">
+  <TheTooltip
+    side="bottom"
+    class=""
+  >
     <template #content>
-      <span class="mr-1 text-sky-600 dark:text-emerald-400">Shortcut:</span>
-
-      <kbd>Ctrl</kbd>
-      +
-      <kbd>Shift</kbd>
-      +
-      <kbd>m</kbd>
+      <span class="text-sky-600 dark:text-emerald-400">Toggle Theme Shortcut:</span>
+      <br />
+      <div class="mt-1">
+        <kbd>Ctrl</kbd>
+        +
+        <kbd>Shift</kbd>
+        +
+        <kbd>M</kbd>
+      </div>
     </template>
     <div v-if="mode === 'light'">
       <button
         type="button"
-        class="flex cursor-pointer flex-col items-center"
+        class="flex cursor-pointer rounded-lg p-1 shadow-sm hover:text-sky-600 hover:shadow-md"
         @click="mode = 'dark'"
       >
-        <SunIcon
-          class="size-8 stroke-1 transition-all duration-300 hover:text-sky-600 dark:hover:text-emerald-400"
-        ></SunIcon>
+        <SunIcon class="size-6 stroke-1"></SunIcon>
       </button>
     </div>
     <div v-if="mode === 'dark'">
       <button
         type="button"
-        class="flex cursor-pointer flex-col items-center align-text-top"
+        class="flex cursor-pointer rounded-lg p-1 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
         @click="((mode = 'light'), console.log(mode))"
       >
-        <MoonIcon class="hover:text-acc size-8 stroke-1"></MoonIcon>
+        <MoonIcon class="size-6 stroke-1"></MoonIcon>
       </button>
     </div>
   </TheTooltip>

@@ -1,20 +1,23 @@
 package app
 
-import (
-	"database/sql"
-)
+import "database/sql"
 
-type UserConfig struct {
-	Name        string
-	Address     string
-	Email       string
-	Phone       string
-	CompanyName string
-	Logo        string
+type UserSettings struct {
+	CompanyName       string
+	Email             *string
+	Phone             *string
+	CompanyAddress    *string
+	InvoicePrefix     string
+	Currency          string
+	DateFormat        string
+	CustomItemsPrefix string
+	PaymentTerms      *string
+	PaymentDetails    *string
+	NotesFooter       *string
+	LogoURL           *string
 }
 
-// Provides dependencies to the application
 type App struct {
-	DB         *sql.DB // DB mounted in main
-	UserConfig UserConfig
+	DB     *sql.DB
+	UsrCfg *UserSettings
 }

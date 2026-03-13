@@ -14,11 +14,11 @@ func ValidateCreate(client models.CreateClient) (models.CreateClient, []res.Fiel
 	}, errs)
 
 	client.CompanyName, errs = text(client.CompanyName, validate.TextRules{
-		Field: "companyName", Max: 70, SingleLine: true, Trim: true,
+		Field: "companyName", Max: 80, SingleLine: true, Trim: true,
 	}, errs)
 
 	client.Address, errs = text(client.Address, validate.TextRules{
-		Field: "address", Max: 70, SingleLine: true, Trim: true,
+		Field: "address", Max: 80, SingleLine: true, Trim: true,
 	}, errs)
 
 	client.Email, errs = email(client.Email, "email", 50, errs)
@@ -34,11 +34,11 @@ func ValidateUpdate(client models.UpdateClient) (models.UpdateClient, []res.Fiel
 	}, errs)
 
 	client.CompanyName, errs = textPtr(client.CompanyName, validate.TextRules{
-		Field: "companyName", Max: 70, SingleLine: true, Trim: true,
+		Field: "companyName", Max: 80, SingleLine: true, Trim: true,
 	}, errs)
 
 	client.Address, errs = textPtr(client.Address, validate.TextRules{
-		Field: "address", Max: 70, SingleLine: true, Trim: true,
+		Field: "address", Max: 80, SingleLine: true, Trim: true,
 	}, errs)
 
 	client.Email, errs = emailPtr(client.Email, "email", 50, errs)
