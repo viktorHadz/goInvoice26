@@ -43,17 +43,43 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			phone TEXT NOT NULL DEFAULT '',
 			company_address TEXT NOT NULL DEFAULT '',
 			invoice_prefix TEXT NOT NULL DEFAULT 'INV-',
-			currency TEXT NOT NULL DEFAULT 'GBP'
-				CHECK (currency IN ('GBP', 'EUR', 'USD')),
-			date_format TEXT NOT NULL DEFAULT 'dd/mm/yyyy'
-				CHECK (date_format IN ('dd/mm/yyyy', 'mm/dd/yyyy', 'yyyy-mm-dd')),
+			currency TEXT NOT NULL DEFAULT 'GBP',
+			date_format TEXT NOT NULL DEFAULT 'dd/mm/yyyy',
 			custom_items_prefix TEXT NOT NULL DEFAULT 'custom',
 			payment_terms TEXT NOT NULL DEFAULT 'Please make payment within 14 days.',
 			payment_details TEXT NOT NULL DEFAULT '',
 			notes_footer TEXT NOT NULL DEFAULT '',
 			logo_url TEXT NOT NULL DEFAULT ''
 		);`,
-
+		`INSERT OR IGNORE INTO user_settings (
+			id,
+			company_name,
+			email,
+			phone,
+			company_address,
+			invoice_prefix,
+			currency,
+			date_format,
+			custom_items_prefix,
+			payment_terms,
+			payment_details,
+			notes_footer,
+			logo_url
+		) VALUES (
+			1,
+			'',
+			'',
+			'',
+			'',
+			'INV-',
+			'GBP',
+			'dd/mm/yyyy',
+			'custom',
+			'Please make payment within 14 days.',
+			'',
+			'',
+			''
+		);`,
 		// -----------------------
 		// Clients
 		// -----------------------

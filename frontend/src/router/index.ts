@@ -30,8 +30,10 @@ const router = createRouter({
     ],
     linkActiveClass: 'router-active',
 })
+
 router.beforeEach(async (to) => {
     const clientStore = useClientStore()
+
     clientStore.syncClientIdWithLS()
 
     if ((to.meta.requiresClients || to.meta.requiresSelectedClient) && !clientStore.hasLoaded) {
@@ -48,4 +50,5 @@ router.beforeEach(async (to) => {
 
     return true
 })
+
 export default router

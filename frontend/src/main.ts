@@ -6,14 +6,18 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { useClientStore } from '@/stores/clients'
+import { useSettingsStore } from '@/stores/settings'
 
 const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
+
 const clientStore = useClientStore()
 await clientStore.load()
 
-app.use(router)
+const settingsStore = useSettingsStore()
+await settingsStore.fetchSettings()
 
+app.use(router)
 app.mount('#app')

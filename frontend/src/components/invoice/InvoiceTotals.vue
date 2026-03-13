@@ -18,8 +18,9 @@ async function createDraft() {
 
   isCreatingDraft.value = true
   try {
-    const created = await invStore.newDraftInvoice(inv)
-    // revisionNumber passed as 1 as this is the first time an invoice gets created
+    const ok = await invStore.newDraftInvoice(inv)
+    if (!ok) return
+
     await pdfStore.generateAndPersistPdf(inv.clientId, inv.baseNumber, 1)
   } finally {
     isCreatingDraft.value = false

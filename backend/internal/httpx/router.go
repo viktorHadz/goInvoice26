@@ -9,15 +9,20 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/httpx/invoice"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/midware"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/products"
+	"github.com/viktorHadz/goInvoice26/internal/httpx/settings"
 )
 
 func RegisterAllRouters(r chi.Router, a *app.App) {
-	fileServer := http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads")))
-	r.Handle("/uploads/*", fileServer)
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
 	r.Route("/api/image", func(r chi.Router) {
-		r.Use(midware.LimitBodyMaxSize(5 << 20)) // 5MB
-		r.Post("/", app.LogoUpload())
+		r.Use(midware.LimitBodyMaxSize(5 << 20))
+		r.Post("/", settings.LogoUpload())
+	})
+
+	r.Route("/api/settings", func(r chi.Router) {
+		r.Get("/", settings.Get(a))
+		r.Put("/", settings.Put(a))
 	})
 
 	r.Route("/api/clients", func(r chi.Router) {

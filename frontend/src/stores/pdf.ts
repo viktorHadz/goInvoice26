@@ -8,6 +8,26 @@ import { defineStore } from 'pinia'
 import { useInvoiceStore } from './invoice'
 import { apiDTO } from '@/utils/invoiceDto'
 
+export function flattenValidationErrors(
+    errors: Record<string, string | string[] | undefined>,
+): string {
+    const parts: string[] = []
+
+    for (const [field, value] of Object.entries(errors)) {
+        if (!value) continue
+
+        if (Array.isArray(value)) {
+            for (const msg of value) {
+                parts.push(`${field}: ${msg}`)
+            }
+        } else {
+            parts.push(`${field}: ${value}`)
+        }
+    }
+
+    return parts.join(', ')
+}
+
 export const usePdfStore = defineStore('pdf', () => {
     const inv = useInvoiceStore()
 
@@ -85,25 +105,7 @@ export const usePdfStore = defineStore('pdf', () => {
             true,
         )
     }
-    function flattenValidationErrors(
-        errors: Record<string, string | string[] | undefined>,
-    ): string {
-        const parts: string[] = []
 
-        for (const [field, value] of Object.entries(errors)) {
-            if (!value) continue
-
-            if (Array.isArray(value)) {
-                for (const msg of value) {
-                    parts.push(`${field}: ${msg}`)
-                }
-            } else {
-                parts.push(`${field}: ${value}`)
-            }
-        }
-
-        return parts.join(', ')
-    }
     return {
         generateAndPersistPdf,
         quickGeneratePDF,

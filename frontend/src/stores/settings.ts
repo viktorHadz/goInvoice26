@@ -1,6 +1,5 @@
-import { handleImageUpload, type UploadLogoResponse } from '@/utils/imageHandler'
 import { defineStore } from 'pinia'
-import { reactive } from 'vue'
+import { computed, ref } from 'vue'
 
 export type CurrencyCode = 'GBP' | 'EUR' | 'USD'
 export type DateFormat = 'dd/mm/yyyy' | 'mm/dd/yyyy' | 'yyyy-mm-dd'
@@ -20,42 +19,62 @@ export type Settings = {
     logoUrl: string
 }
 
-function createDefaultSettings(): Settings {
-    return {
-        companyName: '',
-        email: '',
-        phone: '',
-        companyAddress: '',
-        invoicePrefix: 'INV-',
-        currency: 'GBP',
-        dateFormat: 'dd/mm/yyyy',
-        customItemsPrefix: 'custom',
-        paymentTerms: 'Please make payment within 14 days.',
-        paymentDetails: '',
-        notesFooter: '',
-        logoUrl: '',
-    }
+function isSettingsComplete(s: Settings): boolean {
+    return (
+        s.companyName.trim().length > 0 &&
+        s.invoicePrefix.trim().length > 0 &&
+        s.currency.trim().length > 0 &&
+        s.dateFormat.trim().length > 0
+    )
 }
 
 export const useSettingsStore = defineStore('settings', () => {
-    const settings = reactive<Settings>(createDefaultSettings())
+    const settings = ref<Settings | null>(null)
+    const isLoading = ref(false)
+    const needsSetup = ref(false)
 
-    function setSettings(payload: Settings) {
-        Object.assign(settings, payload)
+    const hasSettings = computed(() => settings.value !== null)
+
+    async function fetchSettings() {
+        isLoading.value = true
+        try {
+            const res = await fetch('/api/settings')
+            if (!res.ok) throw new Error(`Failed to fetch settings (${res.status})`)
+
+            const data = (await res.json()) as Settings
+            settings.value = data
+            needsSetup.value = !isSettingsComplete(data)
+
+            return data
+        } finally {
+            isLoading.value = false
+        }
     }
 
-    function resetSettings() {
-        Object.assign(settings, createDefaultSettings())
-    }
+    async function saveSettings(payload: Settings) {
+        const res = await fetch('/api/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
 
-    function uploadLogo(file: File): Promise<UploadLogoResponse> {
-        return handleImageUpload(file)
+        if (!res.ok) {
+            throw new Error(`Failed to save settings (${res.status})`)
+        }
+
+        const data = (await res.json()) as Settings
+        settings.value = data
+        needsSetup.value = !isSettingsComplete(data)
+
+        return data
     }
 
     return {
         settings,
-        setSettings,
-        resetSettings,
-        uploadLogo,
+        isLoading,
+        needsSetup,
+        hasSettings,
+        fetchSettings,
+        saveSettings,
     }
 })

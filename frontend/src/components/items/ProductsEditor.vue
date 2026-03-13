@@ -180,7 +180,7 @@ async function save() {
       emitToastSuccess('Created successfully.', {
         title: `${labelForTab(tab.value)} ${created.productName}`,
       })
-      pick(created)
+      // pick(created) - prefer new style menu
     } else {
       const updated = await store.update(form.id!, payload)
       emitToastSuccess('Updated successfully.', {

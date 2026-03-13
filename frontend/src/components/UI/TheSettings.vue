@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   Cog6ToothIcon,
   XMarkIcon,
@@ -9,7 +9,6 @@ import {
   DocumentTextIcon,
   BanknotesIcon,
 } from '@heroicons/vue/24/outline'
-import { useCloned } from '@vueuse/core'
 
 import TheTooltip from './TheTooltip.vue'
 import TheButton from './TheButton.vue'
@@ -18,17 +17,22 @@ import TheDropdown from './TheDropdown.vue'
 import DecorGradient from '@/components/UI/DecorGradient.vue'
 import { useEscape } from '@/composables/keyHandlers'
 import SettingsPreview from './SettingsPreview.vue'
-import { useSettingsStore, type CurrencyCode, type DateFormat } from '@/stores/settings'
+import {
+  useSettingsStore,
+  type Settings,
+  type CurrencyCode,
+  type DateFormat,
+} from '@/stores/settings'
 import { emitToastError, emitToastSuccess } from '@/utils/toast'
+import { handleImageUpload, readImagePreview } from '@/utils/settingHandlers'
 
 const settingsStore = useSettingsStore()
 
 const settingsOpen = ref(false)
+const form = ref<Settings | null>(null)
 const logoPreview = ref<string | null>(null)
 const logoFile = ref<File | null>(null)
 const isSaving = ref(false)
-
-const { cloned: form, sync } = useCloned(settingsStore.settings)
 
 const title = 'Invoice Settings'
 const subtitle = 'Manage business identity, invoice defaults and PDF display options'
@@ -39,8 +43,6 @@ const dateFormatOptions: DateFormat[] = ['dd/mm/yyyy', 'mm/dd/yyyy', 'yyyy-mm-dd
 const PAYMENT_TERMS_MAX = 400
 const PAYMENT_DETAILS_MAX = 250
 const FOOTER_NOTE_MAX = 180
-const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024
-const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
 const hasLogo = computed(() => Boolean(logoPreview.value))
 
@@ -48,67 +50,59 @@ function getErrorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback
 }
 
-function openSettings() {
-  sync()
-  logoFile.value = null
-  logoPreview.value = form.value.logoUrl || null
-  settingsOpen.value = true
+function cloneSettings(settings: Settings): Settings {
+  return { ...settings }
 }
 
-function closeSettings(force = false) {
-  if (isSaving.value && !force) return
+async function openSettings() {
+  try {
+    const settings = settingsStore.settings ?? (await settingsStore.fetchSettings())
+    if (!settings) throw new Error('Settings not found')
+
+    form.value = cloneSettings(settings)
+    logoPreview.value = form.value.logoUrl || null
+    logoFile.value = null
+    settingsOpen.value = true
+  } catch (err) {
+    emitToastError({ message: getErrorMessage(err, 'Failed to load settings.') })
+  }
+}
+
+function closeSettings() {
+  if (isSaving.value) return
   settingsOpen.value = false
 }
 
-function onLogoChange(e: Event) {
+function forceCloseSettings() {
+  settingsOpen.value = false
+}
+
+async function onLogoChange(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
+  input.value = ''
 
-  if (!file) {
-    input.value = ''
-    return
-  }
+  if (!file || !form.value) return
 
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    emitToastError({ message: 'Unsupported image type. Please upload PNG, JPG, or WebP.' })
-    input.value = ''
-    return
-  }
-
-  if (file.size > MAX_LOGO_SIZE_BYTES) {
-    emitToastError({ message: 'Image is too large. Maximum size is 5MB.' })
-    input.value = ''
-    return
-  }
-
-  logoFile.value = file
-
-  const reader = new FileReader()
-
-  reader.onload = () => {
-    logoPreview.value = typeof reader.result === 'string' ? reader.result : null
-  }
-
-  reader.onerror = () => {
-    emitToastError({ message: 'Failed to read selected image.' })
+  try {
+    logoPreview.value = await readImagePreview(file)
+    logoFile.value = file
+  } catch (err) {
     logoFile.value = null
     logoPreview.value = form.value.logoUrl || null
+    emitToastError({ message: getErrorMessage(err, 'Failed to read selected image.') })
   }
-
-  reader.readAsDataURL(file)
-
-  // allow selecting same file again
-  input.value = ''
 }
 
 function removeLogo() {
+  if (!form.value) return
   logoPreview.value = null
   logoFile.value = null
   form.value.logoUrl = ''
 }
 
 async function save() {
-  if (isSaving.value) return
+  if (isSaving.value || !form.value) return
 
   isSaving.value = true
 
@@ -116,11 +110,11 @@ async function save() {
     let logoUrl = form.value.logoUrl
 
     if (logoFile.value) {
-      const uploaded = await settingsStore.uploadLogo(logoFile.value)
+      const uploaded = await handleImageUpload(logoFile.value)
       logoUrl = uploaded.logoUrl
     }
 
-    settingsStore.setSettings({
+    await settingsStore.saveSettings({
       ...form.value,
       logoUrl,
     })
@@ -129,7 +123,7 @@ async function save() {
     logoPreview.value = logoUrl || null
 
     emitToastSuccess('Settings saved.')
-    closeSettings(true)
+    forceCloseSettings()
   } catch (err) {
     emitToastError({ message: getErrorMessage(err, 'Failed to save settings.') })
   } finally {
@@ -137,11 +131,19 @@ async function save() {
   }
 }
 
-useEscape(() => closeSettings(), {
+watch(
+  () => settingsStore.needsSetup,
+  (needsSetup) => {
+    if (needsSetup && !settingsOpen.value) {
+      openSettings()
+    }
+  },
+  { immediate: true },
+)
+useEscape(closeSettings, {
   enabled: () => settingsOpen.value,
 })
 </script>
-
 <template>
   <TheTooltip
     side="bottom"
@@ -161,7 +163,7 @@ useEscape(() => closeSettings(), {
 
     <button
       type="button"
-      class="cursor-pointer rounded-lg p-1 text-zinc-600 transition hover:bg-zinc-100 hover:text-sky-600 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
+      class="flex cursor-pointer rounded-lg p-1 text-zinc-600 shadow-sm hover:text-sky-600 hover:shadow-md dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
       @click="() => openSettings()"
     >
       <Cog6ToothIcon class="size-6 stroke-1" />
@@ -229,7 +231,10 @@ useEscape(() => closeSettings(), {
         </header>
 
         <!-- Body -->
-        <div class="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-2">
+        <div
+          class="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-2"
+          v-if="form"
+        >
           <!-- Left -->
           <div
             class="min-h-0 overflow-y-auto border-b border-zinc-200 px-5 py-5 lg:border-r lg:border-b-0 dark:border-zinc-800"
@@ -492,7 +497,7 @@ useEscape(() => closeSettings(), {
                     >
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/png,image/jpeg,image/webp"
                         class="hidden"
                         @change="onLogoChange"
                       />

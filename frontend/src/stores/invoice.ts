@@ -34,6 +34,7 @@ import {
     toMinor,
 } from '@/utils/money'
 import { apiDTO } from '@/utils/invoiceDto'
+import { flattenValidationErrors } from './pdf'
 
 // Exported so components can import directly rather than always going through the store
 
@@ -275,17 +276,25 @@ export const useInvoiceStore = defineStore('invoice', () => {
         return validateInvoicePayload(dto)
     })
 
+    // watch(
+    //     invoice,
+    //     () => {
+    //         if (Object.keys(serverFieldErrors.value).length > 0) {
+    //             serverFieldErrors.value = {}
+    //         }
+    //         showAllValidation.value = false
+    //     },
+    //     { deep: true },
+    // )
     watch(
         invoice,
         () => {
             if (Object.keys(serverFieldErrors.value).length > 0) {
                 serverFieldErrors.value = {}
             }
-            showAllValidation.value = false
         },
         { deep: true },
     )
-
     async function initInvoiceFromServer(
         newInvoiceData: Omit<Invoice, 'baseNumber'>,
     ): Promise<void> {
@@ -299,7 +308,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
     // Lines CRUD
     function addLine(line: Omit<InvoiceLine, 'sortOrder'>) {
         const inv = ensure()
-        scheduleServerVerify()
 
         const canMerge = line.lineType !== 'custom' && line.productId != null
         const existingLine = canMerge
@@ -317,6 +325,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
             0,
         )
         inv.lines.push({ ...line, sortOrder: maxSort + 1 })
+        scheduleServerVerify()
     }
 
     function updateLine(sortOrder: number, patch: Partial<InvoiceLine>): void {
@@ -330,12 +339,13 @@ export const useInvoiceStore = defineStore('invoice', () => {
 
     function removeLine(sortOrder: number): void {
         const inv = ensure()
-        scheduleServerVerify()
 
         inv.lines = inv.lines
             .filter((l) => l.sortOrder !== sortOrder)
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map((l, i) => ({ ...l, sortOrder: i + 1 }))
+
+        scheduleServerVerify()
     }
 
     // Setters — all validated/clamped here so components stay dumb
@@ -382,33 +392,35 @@ export const useInvoiceStore = defineStore('invoice', () => {
 
     function setDiscountFixedGBP(gbp: number): void {
         const inv = ensure()
-        scheduleServerVerify()
 
         inv.discountType = 'fixed'
         inv.discountMinor = Math.max(0, toMinor(gbp))
         inv.discountRate = 0
+
+        scheduleServerVerify()
     }
 
     function setDiscountPercent(percent: number): void {
         const inv = ensure()
-        scheduleServerVerify()
 
         inv.discountType = 'percent'
         inv.discountRate = clamp(round0(asNum(percent, 0) * 100), 0, 10000)
         inv.discountMinor = 0
+
+        scheduleServerVerify()
     }
 
     function clearDiscount(): void {
         const inv = ensure()
-        scheduleServerVerify()
 
         inv.discountType = 'none'
         inv.discountMinor = 0
         inv.discountRate = 0
+
+        scheduleServerVerify()
     }
     function setDepositType(t: DepositType): void {
         const inv = ensure()
-        scheduleServerVerify()
 
         inv.depositType = t
 
@@ -426,33 +438,34 @@ export const useInvoiceStore = defineStore('invoice', () => {
             inv.depositMinor = Math.max(0, round0(asNum(inv.depositMinor, 0)))
             inv.depositRate = 0
         }
+        scheduleServerVerify()
     }
 
     function setDepositFixedGBP(gbp: number): void {
         const inv = ensure()
-        scheduleServerVerify()
 
         inv.depositType = 'fixed'
         inv.depositMinor = Math.max(0, toMinor(gbp))
         inv.depositRate = 0
+        scheduleServerVerify()
     }
 
     function setDepositPercent(percent: number): void {
         const inv = ensure()
-        scheduleServerVerify()
 
         inv.depositType = 'percent'
         inv.depositRate = clamp(round0(asNum(percent, 0) * 100), 0, 10000)
         inv.depositMinor = 0
+        scheduleServerVerify()
     }
 
     function clearDeposit(): void {
         const inv = ensure()
-        scheduleServerVerify()
 
         inv.depositType = 'none'
         inv.depositMinor = 0
         inv.depositRate = 0
+        scheduleServerVerify()
     }
 
     function setPaidGBP(gbp: number): void {
@@ -460,16 +473,28 @@ export const useInvoiceStore = defineStore('invoice', () => {
         scheduleServerVerify()
     }
 
-    // API DTO
-
-    async function newDraftInvoice(inv: Invoice) {
+    async function newDraftInvoice(inv: Invoice): Promise<boolean> {
         const clientStore = getClientStore()
         const { lsClientId, selectedClient } = clientStore
         if (!lsClientId) throw new Error('No client selected')
 
         const dto = apiDTO(inv)
+
         showAllValidation.value = true
         serverFieldErrors.value = {}
+
+        const errors = validateInvoicePayload(dto)
+        if (Object.keys(errors).length > 0) {
+            clearVerifyTimer()
+            abortVerify()
+
+            emitToastError({
+                title: 'Invalid invoice data',
+                message: flattenValidationErrors(errors),
+            })
+            return false
+        }
+
         try {
             await newInvoiceHandler(dto.overview.clientId, inv.baseNumber, dto)
             showAllValidation.value = false
@@ -485,10 +510,12 @@ export const useInvoiceStore = defineStore('invoice', () => {
                 const template = buildFreshInvoiceTemplate(selectedClient)
                 await initInvoiceFromServer(template)
             }
+
+            return true
         } catch (err: unknown) {
             if (isApiError(err) && hasFieldErrors(err)) {
                 serverFieldErrors.value = toFieldErrorMap(err.fields)
-                return
+                return false
             }
 
             showAllValidation.value = false
@@ -502,7 +529,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
                         : 'Something went wrong. Please try again later.',
                 })
                 console.error('[invoice create]', err)
-                return
+                return false
             }
 
             if (isApiError(err)) {
@@ -511,7 +538,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
                     title: 'Could not create invoice',
                     message: err.message || 'Please check your data and try again.',
                 })
-                return
+                return false
             }
 
             if (err instanceof NetworkError) {
@@ -519,7 +546,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
                     title: 'Network error',
                     message: 'Could not reach the server. Please check your connection.',
                 })
-                return
+                return false
             }
 
             emitToastError({
@@ -527,6 +554,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
                 message: 'An unexpected error occurred. Please try again.',
             })
             console.error('[invoice create]', err)
+            return false
         }
     }
 
