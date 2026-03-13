@@ -276,16 +276,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
         return validateInvoicePayload(dto)
     })
 
-    // watch(
-    //     invoice,
-    //     () => {
-    //         if (Object.keys(serverFieldErrors.value).length > 0) {
-    //             serverFieldErrors.value = {}
-    //         }
-    //         showAllValidation.value = false
-    //     },
-    //     { deep: true },
-    // )
     watch(
         invoice,
         () => {
