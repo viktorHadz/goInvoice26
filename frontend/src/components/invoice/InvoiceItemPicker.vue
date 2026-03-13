@@ -9,6 +9,8 @@ import TheInput from '@/components/UI/TheInput.vue'
 import { useProductStore } from '@/stores/products'
 import { useInvoiceStore } from '@/stores/invoice'
 import type { Product, ProductType } from '@/utils/productHttpHandler'
+import TheTooltip from '../UI/TheTooltip.vue'
+import { fmtGBPMinor } from '@/utils/money'
 
 const prod = useProductStore()
 const invStore = useInvoiceStore()
@@ -38,8 +40,8 @@ const filtered = computed(() => {
 })
 
 function priceLabel(p: Product) {
-  if (p.pricingMode === 'hourly') return `${invStore.fmtGBPMinor(p.hourlyRateMinor ?? 0)}/hr`
-  return invStore.fmtGBPMinor(p.flatPriceMinor ?? 0)
+  if (p.pricingMode === 'hourly') return `${fmtGBPMinor(p.hourlyRateMinor ?? 0)}/hr`
+  return fmtGBPMinor(p.flatPriceMinor ?? 0)
 }
 
 function safeQty(): number {
@@ -208,7 +210,7 @@ function addCustomItem() {
                 </div>
 
                 <TheButton
-                  class="shrink-0"
+                  class="shrink-0 cursor-pointer"
                   @click.stop="addFromProduct(p)"
                 >
                   <SquaresPlusIcon class="size-4" />
@@ -221,7 +223,7 @@ function addCustomItem() {
       </div>
 
       <!-- Qty -->
-      <div class="w-full md:w-12">
+      <div class="w-full md:w-16">
         <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Qty</div>
         <TheInput
           v-model="form.qty"
@@ -232,7 +234,7 @@ function addCustomItem() {
       </div>
 
       <!-- Minutes -->
-      <div class="w-full md:w-13">
+      <div class="w-full md:w-16">
         <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Mins</div>
         <TheInput
           v-model="form.minutes"
@@ -245,13 +247,17 @@ function addCustomItem() {
 
       <!-- Custom item -->
       <div class="w-full md:w-auto md:shrink-0">
-        <TheButton
-          class="w-full py-2 text-sm md:w-auto"
-          @click="addCustomItem"
+        <TheTooltip
+          text="Custom items do not get saved to a client's items but display on invoice as custom."
         >
-          <SquaresPlusIcon class="size-5" />
-          Add Custom Item
-        </TheButton>
+          <TheButton
+            class="w-full cursor-pointer py-2 text-sm md:w-auto"
+            @click="addCustomItem"
+          >
+            <SquaresPlusIcon class="size-5" />
+            Custom Item
+          </TheButton>
+        </TheTooltip>
       </div>
     </div>
   </div>

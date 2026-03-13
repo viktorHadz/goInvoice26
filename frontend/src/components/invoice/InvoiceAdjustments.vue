@@ -6,6 +6,7 @@ import TheDropdown from '@/components/UI/TheDropdown.vue'
 import { useInvoiceStore } from '@/stores/invoice'
 import TheTooltip from '../UI/TheTooltip.vue'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import { fromMinor } from '@/utils/money'
 
 const inv = useInvoiceStore()
 
@@ -47,12 +48,12 @@ function syncFromInvoice() {
   const v = inv.invoice
   if (!v) return
 
-  paid.value = inv.fromMinor(v.paidMinor)
+  paid.value = fromMinor(v.paidMinor)
 
   depositMode.value = v.depositType
   deposit.value =
     v.depositType === 'fixed'
-      ? inv.fromMinor(v.depositMinor)
+      ? fromMinor(v.depositMinor)
       : v.depositType === 'percent'
         ? v.depositRate / 100
         : 0
@@ -60,7 +61,7 @@ function syncFromInvoice() {
   discountMode.value = v.discountType
   discount.value =
     v.discountType === 'fixed'
-      ? inv.fromMinor(v.discountMinor)
+      ? fromMinor(v.discountMinor)
       : v.discountType === 'percent'
         ? v.discountRate / 100
         : 0

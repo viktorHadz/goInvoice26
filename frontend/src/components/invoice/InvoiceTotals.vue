@@ -3,16 +3,38 @@ import { useInvoiceStore } from '@/stores/invoice'
 import { DocumentArrowDownIcon, DocumentIcon } from '@heroicons/vue/24/outline'
 import TheButton from '../UI/TheButton.vue'
 import TheTooltip from '../UI/TheTooltip.vue'
+import { ref } from 'vue'
+import { usePdfStore } from '@/stores/pdf'
+import { fmtGBPMinor } from '@/utils/money'
 
 const invStore = useInvoiceStore()
+const pdfStore = usePdfStore()
+const isCreatingDraft = ref(false)
+const isGeneratingPdf = ref(false)
 
 async function createDraft() {
-  if (!invStore.invoice) return
+  const inv = invStore.invoice
+  if (!inv || isCreatingDraft.value) return
 
+  isCreatingDraft.value = true
   try {
-    await invStore.newDraftInvoice(invStore.invoice)
-  } catch {
-    // errors are handled via toast + field errors in store
+    const created = await invStore.newDraftInvoice(inv)
+    // revisionNumber passed as 1 as this is the first time an invoice gets created
+    await pdfStore.generateAndPersistPdf(inv.clientId, inv.baseNumber, 1)
+  } finally {
+    isCreatingDraft.value = false
+  }
+}
+
+async function generatePdfOnly() {
+  const inv = invStore.invoice
+  if (!inv || isGeneratingPdf.value) return
+
+  isGeneratingPdf.value = true
+  try {
+    await pdfStore.quickGeneratePDF(inv)
+  } finally {
+    isGeneratingPdf.value = false
   }
 }
 </script>
@@ -34,7 +56,7 @@ async function createDraft() {
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        {{ invStore.fmtGBPMinor(invStore.totals.subtotalMinor) }}
+        {{ fmtGBPMinor(invStore.totals.subtotalMinor) }}
       </div>
     </div>
 
@@ -43,7 +65,7 @@ async function createDraft() {
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        -{{ invStore.fmtGBPMinor(invStore.totals.discountMinor) }}
+        -{{ fmtGBPMinor(invStore.totals.discountMinor) }}
       </div>
     </div>
 
@@ -52,7 +74,7 @@ async function createDraft() {
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        {{ invStore.fmtGBPMinor(invStore.totals.vatMinor) }}
+        {{ fmtGBPMinor(invStore.totals.vatMinor) }}
       </div>
     </div>
 
@@ -63,7 +85,7 @@ async function createDraft() {
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
       >
-        {{ invStore.fmtGBPMinor(invStore.totals.totalMinor) }}
+        {{ fmtGBPMinor(invStore.totals.totalMinor) }}
       </div>
     </div>
 
@@ -75,7 +97,7 @@ async function createDraft() {
         <div
           class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
         >
-          -{{ invStore.fmtGBPMinor(invStore.depositMinor) }}
+          -{{ fmtGBPMinor(invStore.depositMinor) }}
         </div>
       </div>
 
@@ -84,7 +106,7 @@ async function createDraft() {
         <div
           class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
         >
-          -{{ invStore.fmtGBPMinor(invStore.invoice.paidMinor) }}
+          -{{ fmtGBPMinor(invStore.invoice.paidMinor) }}
         </div>
       </div>
 
@@ -95,19 +117,20 @@ async function createDraft() {
         <div
           class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
         >
-          {{ invStore.fmtGBPMinor(invStore.balanceDueMinor) }}
+          {{ fmtGBPMinor(invStore.balanceDueMinor) }}
         </div>
       </div>
     </div>
 
     <div class="flex flex-col gap-y-2 sm:flex-row sm:gap-x-4">
       <TheTooltip
-        text="Generate a quick pdf without saving invoice."
+        text="Generate a PDF without saving invoice."
         class="w-full"
       >
         <TheButton
           class="flex w-full items-center gap-2"
-          title="Generate PDF"
+          :disabled="isGeneratingPdf || isCreatingDraft"
+          @click="generatePdfOnly"
         >
           <DocumentArrowDownIcon class="size-4" />
           Print / PDF
@@ -119,7 +142,7 @@ async function createDraft() {
       >
         <TheButton
           class="flex w-full items-center gap-2"
-          title="Generate Draft"
+          :disabled="isCreatingDraft || isGeneratingPdf"
           @click="createDraft"
         >
           <DocumentIcon class="size-4" />

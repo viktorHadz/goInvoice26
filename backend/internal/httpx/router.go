@@ -37,7 +37,8 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 					r.Post("/", invoice.CreateInvoice(a))
 					r.Post("/verify", invoice.VerifyInvoice())
 					// /api/clients/{clientID}/invoice/{baseNumber}/{revisionNO}pdf
-					r.Get("/{revisionNo}/pdf", invoice.GeneratePDF(a))
+					r.Get("/{revisionNo}/pdf", invoice.GeneratePDFHandler(a))
+					r.Post("/{revisionNo}/pdf/quick", invoice.QuickPDFHandler(a))
 				})
 			})
 		})

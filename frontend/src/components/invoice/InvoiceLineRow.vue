@@ -4,19 +4,22 @@ import { TrashIcon } from '@heroicons/vue/24/outline'
 import TheInput from '@/components/UI/TheInput.vue'
 import { useInvoiceStore } from '@/stores/invoice'
 import type { InvoiceLine } from '@/components/invoice/invoiceTypes'
+import { fmtGBPMinor, fromMinor } from '@/utils/money'
 
 const props = defineProps<{ line: InvoiceLine; lineIndex: number }>()
 
 const inv = useInvoiceStore()
 
 const totalMinor = computed(() => inv.lineTotalMinor(props.line))
-const serverTotalMinor = computed(() => inv.serverCanonicalLineTotals?.[props.line.sortOrder] ?? null)
+const serverTotalMinor = computed(
+  () => inv.serverCanonicalLineTotals?.[props.line.sortOrder] ?? null,
+)
 const serverMismatch = computed(
   () => typeof serverTotalMinor.value === 'number' && serverTotalMinor.value !== totalMinor.value,
 )
 const minutesDisabled = computed(() => props.line.pricingMode !== 'hourly')
 
-const unitPounds = computed(() => inv.fromMinor(props.line.unitPriceMinor))
+const unitPounds = computed(() => fromMinor(props.line.unitPriceMinor))
 
 function fieldError(field: string) {
   return inv.getFieldError(`lines[${props.lineIndex}].${field}`)
@@ -104,7 +107,7 @@ function setUnitPounds(v: unknown) {
         :error="fieldError('unitPriceMinor')"
       />
       <div class="truncate text-sm text-zinc-500 dark:text-zinc-400">
-        {{ inv.fmtGBPMinor(line.unitPriceMinor) }}{{ line.pricingMode === 'hourly' ? '/hr' : '' }}
+        {{ fmtGBPMinor(line.unitPriceMinor) }}{{ line.pricingMode === 'hourly' ? '/hr' : '' }}
       </div>
     </div>
 
@@ -116,12 +119,19 @@ function setUnitPounds(v: unknown) {
           'text-zinc-900 dark:text-zinc-100': !serverMismatch,
           'text-amber-700 dark:text-amber-300': serverMismatch,
         }"
-        :title="serverMismatch && serverTotalMinor != null ? `Server: ${inv.fmtGBPMinor(serverTotalMinor)}` : ''"
+        :title="
+          serverMismatch && serverTotalMinor != null
+            ? `Server: ${fmtGBPMinor(serverTotalMinor)}`
+            : ''
+        "
       >
-        {{ inv.fmtGBPMinor(totalMinor) }}
+        {{ fmtGBPMinor(totalMinor) }}
       </div>
-      <div v-if="serverMismatch && serverTotalMinor != null" class="text-xs text-amber-700 dark:text-amber-300">
-        Server: {{ inv.fmtGBPMinor(serverTotalMinor) }}
+      <div
+        v-if="serverMismatch && serverTotalMinor != null"
+        class="text-xs text-amber-700 dark:text-amber-300"
+      >
+        Server: {{ fmtGBPMinor(serverTotalMinor) }}
       </div>
     </div>
 

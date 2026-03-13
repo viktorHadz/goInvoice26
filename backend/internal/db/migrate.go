@@ -313,7 +313,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 
 	for i, stmt := range stmts {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("migration step %d failed: %w\nSQL: %s", i+1, err, stmt)
+			return fmt.Errorf("migration step %d failed: %w\nSQL: %s,\nctx: %v,", i+1, err, stmt, ctx)
 		}
 	}
 

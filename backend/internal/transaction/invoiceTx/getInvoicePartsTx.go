@@ -33,7 +33,7 @@ type InvoiceOverviewTotals struct {
 
 // Retrieves overview and totals for a specific invoice revision in a single query.
 // PaidMinor is aggregated from the payments table.
-func GetInvoiceOverviewTotals(
+func QueryInvoiceSummary(
 	ctx context.Context,
 	db *sql.DB,
 	clientID int64,
@@ -83,7 +83,7 @@ func GetInvoiceOverviewTotals(
 		&o.PaidMinor,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("get overview+totals: %w", err)
+		return nil, fmt.Errorf("GetInvoiceOverviewTotals() => %w,\nrevisionNumber: %v,\nbaseNumber: %v,\nclientID: %v", err, revisionNo, baseNumber, clientID)
 	}
 	return &o, nil
 }
@@ -98,7 +98,7 @@ type ItemLine struct {
 }
 
 // Retrieves all revision items for an invoice
-func GetInvoiceItems(
+func QueryInvoiceLines(
 	ctx context.Context,
 	db *sql.DB,
 	clientID int64,
@@ -124,7 +124,7 @@ func GetInvoiceItems(
 
 	rows, err := db.QueryContext(ctx, query, revisionNo, baseNumber, clientID)
 	if err != nil {
-		return nil, fmt.Errorf("query items: %w", err)
+		return nil, fmt.Errorf("QueryInvoiceItems()=> %w\nctx: %v,\nquery: %v,\nrevisionNumber: %v,\nbaseNumber: %v,\nclientID: %v,", err, ctx, query, revisionNo, baseNumber, clientID)
 	}
 	defer rows.Close()
 

@@ -14,30 +14,28 @@ import {
     verifyInvoiceHandler,
 } from '@/utils/invoiceHttpHandler'
 import { useClientStore } from './clients'
-import { isApiError, hasFieldErrors, isSupportOnlyApiError, toFieldErrorMap } from '@/utils/apiErrors'
+import {
+    isApiError,
+    hasFieldErrors,
+    isSupportOnlyApiError,
+    toFieldErrorMap,
+} from '@/utils/apiErrors'
 import { validateInvoicePayload } from '@/utils/frontendValidation'
 import { emitToastError, emitToastSuccess } from '@/utils/toast'
 import { NetworkError } from '@/utils/fetchHelper'
 import type { Client } from '@/utils/clientHttpHandler'
-
-// Primitives
-type Int = number
-
-const isFiniteNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n)
-const asNum = (n: unknown, fallback = 0) => (isFiniteNum(n) ? n : fallback)
-const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
-const round0 = (n: number): Int => Math.round(n)
-
-const mulBpsRound = (baseMinor: MoneyMinor, bps: number): MoneyMinor => {
-    const b = clamp(round0(asNum(bps, 0)), 0, 10000)
-    return round0((baseMinor * b) / 10000) as MoneyMinor
-}
+import { asNum, multiplyAndRoundBps, round0 } from '@/utils/numbers'
+import { clamp } from '@vueuse/core'
+import {
+    calcBalanceDueMinor,
+    calcDepositMinor,
+    calcTotals,
+    lineTotalMinor,
+    toMinor,
+} from '@/utils/money'
+import { apiDTO } from '@/utils/invoiceDto'
 
 // Exported so components can import directly rather than always going through the store
-export const toMinor = (gbp: number): MoneyMinor => round0(asNum(gbp, 0) * 100) as MoneyMinor
-export const fromMinor = (minor: MoneyMinor): number => (asNum(minor, 0) as number) / 100
-export const fmtGBPMinor = (minor: MoneyMinor): string =>
-    new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(fromMinor(minor))
 
 function assignDefined<T extends object>(target: T, patch: Partial<T>) {
     for (const k in patch) {
@@ -49,55 +47,6 @@ function assignDefined<T extends object>(target: T, patch: Partial<T>) {
 
 // Pure pricing functions
 // Exported to test independently of the store (sometime in the future)
-export function lineTotalMinor(l: InvoiceLine): MoneyMinor {
-    const qty = asNum(l.quantity, 0)
-    const unit = asNum(l.unitPriceMinor, 0)
-
-    if (l.pricingMode === 'hourly') {
-        const minutes = asNum(l.minutesWorked, 0)
-        // integer-style: round(qty * unit * minutes / 60)
-        return round0((qty * unit * minutes) / 60) as MoneyMinor
-    }
-
-    return round0(qty * unit) as MoneyMinor
-}
-
-export function calcTotals(inv: Invoice): Totals {
-    const subtotalMinor = inv.lines.reduce(
-        (sum, l) => (sum + lineTotalMinor(l)) as MoneyMinor,
-        0 as MoneyMinor,
-    )
-
-    const discountMinor: MoneyMinor = (() => {
-        if (inv.discountType === 'none') return 0 as MoneyMinor
-        if (inv.discountType === 'fixed') {
-            return clamp(asNum(inv.discountMinor, 0), 0, subtotalMinor) as MoneyMinor
-        }
-        return clamp(mulBpsRound(subtotalMinor, inv.discountRate), 0, subtotalMinor) as MoneyMinor
-    })()
-
-    const subtotalAfterDiscountMinor = Math.max(0, subtotalMinor - discountMinor) as MoneyMinor
-    const vatMinor = mulBpsRound(subtotalAfterDiscountMinor, asNum(inv.vatRate, 0))
-    const totalMinor = (subtotalAfterDiscountMinor + vatMinor) as MoneyMinor
-
-    return { subtotalMinor, discountMinor, subtotalAfterDiscountMinor, vatMinor, totalMinor }
-}
-
-export function calcDepositMinor(inv: Invoice, totalMinor: MoneyMinor): MoneyMinor {
-    if (inv.depositType === 'none') return 0 as MoneyMinor
-    if (inv.depositType === 'fixed') {
-        return clamp(asNum(inv.depositMinor, 0), 0, totalMinor) as MoneyMinor
-    }
-    return clamp(mulBpsRound(totalMinor, inv.depositRate), 0, totalMinor) as MoneyMinor
-}
-
-function calcBalanceDueMinor(
-    totalMinor: MoneyMinor,
-    depositMinor: MoneyMinor,
-    paidMinor: MoneyMinor,
-): MoneyMinor {
-    return Math.max(0, totalMinor - depositMinor - asNum(paidMinor, 0)) as MoneyMinor
-}
 
 function fmtPrettyInvoiceNumber(prefix: string, baseNumber?: number): string {
     if (!baseNumber || baseNumber <= 0) return ''
@@ -264,7 +213,11 @@ export const useInvoiceStore = defineStore('invoice', () => {
             }
 
             verifyStatus.value = 'error'
-            if (isApiError(err) && isSupportOnlyApiError(err) && lastVerifyFailureToastedAt.value == null) {
+            if (
+                isApiError(err) &&
+                isSupportOnlyApiError(err) &&
+                lastVerifyFailureToastedAt.value == null
+            ) {
                 lastVerifyFailureToastedAt.value = Date.now()
                 emitToastError({
                     id: err.id,
@@ -508,53 +461,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
     }
 
     // API DTO
-    function apiDTO(inv: Invoice) {
-        const prices = pricing.value
-
-        return {
-            overview: {
-                clientId: inv.clientId,
-                baseNumber: inv.baseNumber,
-                clientName: inv.clientSnapshot.name,
-                clientCompanyName: inv.clientSnapshot.companyName,
-                clientAddress: inv.clientSnapshot.address,
-                clientEmail: inv.clientSnapshot.email,
-                note: inv.note,
-                issueDate: inv.issueDate,
-                ...(inv.dueByDate ? { dueByDate: inv.dueByDate } : {}),
-            },
-            lines: inv.lines.map((l) => ({
-                productId: l.productId ?? null,
-                name: l.name,
-                lineType: l.lineType ?? 'custom',
-                pricingMode: l.pricingMode,
-                quantity: asNum(l.quantity, 1),
-                minutesWorked: l.pricingMode === 'hourly' ? asNum(l.minutesWorked, 0) : null,
-                unitPriceMinor: asNum(l.unitPriceMinor, 0),
-                lineTotalMinor: lineTotalMinor(l),
-                sortOrder: l.sortOrder,
-            })),
-            totals: {
-                depositType: inv.depositType,
-                depositRate: inv.depositRate,
-                depositMinor: prices?.depositMinor ?? 0,
-
-                discountType: inv.discountType,
-                discountRate: inv.discountRate,
-                discountMinor: prices?.totals.discountMinor ?? 0,
-
-                vatRate: inv.vatRate,
-                vatMinor: prices?.totals.vatMinor ?? 0,
-
-                paidMinor: inv.paidMinor,
-
-                subtotalMinor: prices?.totals.subtotalMinor ?? 0,
-                subtotalAfterDiscountMinor: prices?.totals.subtotalAfterDiscountMinor ?? 0,
-                totalMinor: prices?.totals.totalMinor ?? 0,
-                balanceDueMinor: prices?.balanceDueMinor ?? 0,
-            },
-        }
-    }
 
     async function newDraftInvoice(inv: Invoice) {
         const clientStore = getClientStore()
@@ -570,11 +476,10 @@ export const useInvoiceStore = defineStore('invoice', () => {
 
             clearVerifyTimer()
             abortVerify()
-            lastVerifyFailureToastedAt.value = null
-
             emitToastSuccess(
                 `Invoice ${fmtPrettyInvoiceNumber(invoicePrefix, inv.baseNumber)} saved as draft.`,
             )
+            lastVerifyFailureToastedAt.value = null
 
             if (selectedClient) {
                 const template = buildFreshInvoiceTemplate(selectedClient)
@@ -681,11 +586,8 @@ export const useInvoiceStore = defineStore('invoice', () => {
         // helpers exported(again) for components
         lineTotalMinor,
         toMinor,
-        fromMinor,
-        fmtGBPMinor,
 
         // API
-        apiDTO,
         newDraftInvoice,
     }
 })
