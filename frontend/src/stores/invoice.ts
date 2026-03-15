@@ -24,7 +24,7 @@ import { validateInvoicePayload } from '@/utils/frontendValidation'
 import { emitToastError, emitToastSuccess } from '@/utils/toast'
 import { NetworkError } from '@/utils/fetchHelper'
 import type { Client } from '@/utils/clientHttpHandler'
-import { asNum, multiplyAndRoundBps, round0 } from '@/utils/numbers'
+import { asNum, round0 } from '@/utils/numbers'
 import { clamp } from '@vueuse/core'
 import {
     calcBalanceDueMinor,
@@ -46,9 +46,6 @@ function assignDefined<T extends object>(target: T, patch: Partial<T>) {
     return target
 }
 
-// Pure pricing functions
-// Exported to test independently of the store (sometime in the future)
-
 function fmtPrettyInvoiceNumber(prefix: string, baseNumber?: number): string {
     if (!baseNumber || baseNumber <= 0) return ''
     return `${prefix} - ${baseNumber}`
@@ -68,6 +65,24 @@ export const useInvoiceStore = defineStore('invoice', () => {
 
     // Called inside functions only never at module scope
     const getClientStore = () => useClientStore()
+
+    function getInvoiceClient(): Client | null {
+        const inv = invoice.value
+        if (!inv) return null
+
+        const clientStore = getClientStore()
+        return clientStore.clients.find((c) => c.id === inv.clientId) ?? null
+    }
+    function setClientSnapshot(c: Client): void {
+        const inv = ensure()
+
+        inv.clientSnapshot = {
+            name: c.name ?? '',
+            companyName: c.companyName ?? '',
+            address: c.address ?? '',
+            email: c.email ?? '',
+        }
+    }
 
     function buildFreshInvoiceTemplate(c: Client): Omit<Invoice, 'baseNumber'> {
         return {
@@ -285,6 +300,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
         },
         { deep: true },
     )
+
     async function initInvoiceFromServer(
         newInvoiceData: Omit<Invoice, 'baseNumber'>,
     ): Promise<void> {
@@ -295,7 +311,8 @@ export const useInvoiceStore = defineStore('invoice', () => {
         invoice.value = { ...newInvoiceData, baseNumber: bNum }
     }
 
-    // Lines CRUD
+    // * -------- LINES CRUD -------- * //
+
     function addLine(line: Omit<InvoiceLine, 'sortOrder'>) {
         const inv = ensure()
 
@@ -565,6 +582,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
         getFieldError,
         clearServerFieldErrors,
         prettyBaseNumber,
+        buildFreshInvoiceTemplate,
 
         // init
         initInvoiceFromServer,
@@ -600,6 +618,8 @@ export const useInvoiceStore = defineStore('invoice', () => {
         setDepositPercent,
         clearDeposit,
         setPaidGBP,
+        getInvoiceClient,
+        setClientSnapshot,
 
         // helpers exported(again) for components
         lineTotalMinor,

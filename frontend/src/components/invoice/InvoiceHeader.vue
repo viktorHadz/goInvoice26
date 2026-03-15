@@ -99,27 +99,27 @@ const dueByDate = computed<string | null>({
               <div class="grid grid-cols-[84px_1fr] items-start gap-2">
                 <div class="text-zinc-500 dark:text-zinc-400">Name</div>
                 <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ invStore.invoice?.clientSnapshot.name || client?.name || '—' }}
+                  {{ client?.name || invStore.invoice?.clientSnapshot.name || '—' }}
                 </div>
               </div>
 
               <div class="grid grid-cols-[84px_1fr] items-start gap-2">
                 <div class="text-zinc-500 dark:text-zinc-400">Company</div>
                 <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ invStore.invoice?.clientSnapshot.companyName || client?.companyName || '—' }}
+                  {{ client?.companyName || invStore.invoice?.clientSnapshot.companyName || '—' }}
                 </div>
               </div>
 
               <div class="grid grid-cols-[84px_1fr] items-start gap-2">
                 <div class="text-zinc-500 dark:text-zinc-400">Address</div>
                 <div class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ invStore.invoice?.clientSnapshot.address || client?.address || '—' }}
+                  {{ client?.address || invStore.invoice?.clientSnapshot.address || '—' }}
                 </div>
               </div>
               <div class="grid grid-cols-[84px_1fr] items-start gap-2">
                 <div class="text-zinc-500 dark:text-zinc-400">Email</div>
                 <div class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ invStore.invoice?.clientSnapshot.email || client?.email || '—' }}
+                  {{ client?.email || invStore.invoice?.clientSnapshot.email || '—' }}
                 </div>
               </div>
             </div>

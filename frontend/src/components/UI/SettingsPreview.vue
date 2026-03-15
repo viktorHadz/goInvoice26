@@ -105,14 +105,6 @@ function lineOrFallback(value: string, fallback: string) {
               <div class="text-zinc-700 dark:text-zinc-300">sample</div>
               <div class="font-medium text-zinc-900 dark:text-zinc-100">120.00</div>
             </div>
-
-            <div class="text-mini grid grid-cols-[1fr_1fr_auto] gap-3">
-              <div class="text-zinc-700 dark:text-zinc-300">Custom Item</div>
-              <div class="text-zinc-700 dark:text-zinc-300">
-                {{ lineOrFallback(form.customItemsPrefix, 'custom') }}
-              </div>
-              <div class="font-medium text-zinc-900 dark:text-zinc-100">80.00</div>
-            </div>
           </div>
         </div>
 

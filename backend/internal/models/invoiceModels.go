@@ -7,11 +7,8 @@ type FEInvoiceIn struct {
 }
 
 type InvoiceCreateIn struct {
-	ClientID int64 `json:"clientId"`
-	// CurrentRevisionID int64   `json:"currentRevisionId"` ---> Set by server
-	BaseNumber int64 `json:"baseNumber"`
-	// Status            string  `json:"status"` ---> Set by server
-	// CreatedAt         string  `json:"createdAt"`
+	ClientID          int64   `json:"clientId"`
+	BaseNumber        int64   `json:"baseNumber"`
 	IssueDate         string  `json:"issueDate"`
 	DueByDate         *string `json:"dueByDate"`
 	ClientName        string  `json:"clientName"`
@@ -22,28 +19,26 @@ type InvoiceCreateIn struct {
 }
 
 type LineCreateIn struct {
-	// RevisionID     int64  `json:"revisionId"` ---> Set by server
-	ProductID      *int64 `json:"productId"` // NULLABLE
+	ProductID      *int64 `json:"productId"`
 	Name           string `json:"name"`
-	LineType       string `json:"lineType"`       // custom(default), style, sample,
-	PricingMode    string `json:"pricingMode"`    // flat(default) hourly
-	Quantity       int64  `json:"quantity"`       // default 1
-	MinutesWorked  *int64 `json:"minutesWorked"`  // >= 0 || NULL
-	UnitPriceMinor int64  `json:"unitPriceMinor"` // >= 0
-	LineTotalMinor int64  `json:"lineTotalMinor"` // qty * unite price minor
+	LineType       string `json:"lineType"`
+	PricingMode    string `json:"pricingMode"`
+	Quantity       int64  `json:"quantity"`
+	MinutesWorked  *int64 `json:"minutesWorked"`
+	UnitPriceMinor int64  `json:"unitPriceMinor"`
+	LineTotalMinor int64  `json:"lineTotalMinor"`
 	SortOrder      int64  `json:"sortOrder"`
 }
 
-// Can use to doublecheck if they match
 type TotalsCreateIn struct {
-	VATRate        int64 `json:"vatRate"`  // VAT RATE, percent based units  2000 = 20%
-	VatAmountMinor int64 `json:"vatMinor"` // VAT ammount in minor
+	VATRate        int64 `json:"vatRate"`
+	VatAmountMinor int64 `json:"vatMinor"`
 
-	DepositType  string `json:"depositType"` // none(default), percent, fixed
+	DepositType  string `json:"depositType"`
 	DepositRate  int64  `json:"depositRate"`
 	DepositMinor int64  `json:"depositMinor"`
 
-	DiscountType  string `json:"discountType"` // none(default), percent, fixed
+	DiscountType  string `json:"discountType"`
 	DiscountRate  int64  `json:"discountRate"`
 	DiscountMinor int64  `json:"discountMinor"`
 
@@ -55,14 +50,12 @@ type TotalsCreateIn struct {
 	BalanceDue        int64 `json:"balanceDueMinor"`
 }
 
-// TODO: Option: FOR BASE NUMBER  pull out like a string from DB
-// --> Allow user to set their own prefix in options (e.g. S.A.M., or whatever they want)
-// TODO: Option: have the user add their own information if they want to have it display on the invoice
-
-type Issuer struct {
-	Name    string
-	Address *string
-	Email   *string
+type InvoicePDFIssuer struct {
+	CompanyName    string
+	Email          string
+	Phone          string
+	CompanyAddress string
+	LogoURL        string
 }
 
 type InvoicePDFItem struct {
@@ -75,16 +68,22 @@ type InvoicePDFItem struct {
 }
 
 type InvoicePDFData struct {
-	BaseNumber     int64  // Base number
-	RevisionNumber string // Which edit of base number (for first 1)
+	Title              string
+	InvoiceNumberLabel string
+	Currency           string
 
 	IssueAt string
 	DueDate *string
+	Note    *string
 
-	Issuer Issuer
+	Issuer InvoicePDFIssuer
 	Client CreateClient
 
 	Lines []InvoicePDFItem
 
 	Totals TotalsCreateIn
+
+	PaymentTerms   string
+	PaymentDetails string
+	NotesFooter    string
 }

@@ -321,13 +321,6 @@ useEscape(closeSettings, {
                     :options="dateFormatOptions"
                     select-title="Date format"
                   />
-
-                  <TheInput
-                    v-model="form.customItemsPrefix"
-                    label="Custom items"
-                    :input-max-length="50"
-                    placeholder="Custom item prefix"
-                  />
                 </div>
               </section>
 

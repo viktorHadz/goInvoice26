@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, onActivated, onMounted, watch } from 'vue'
 import { useClientStore } from '@/stores/clients'
 import { useInvoiceStore } from '@/stores/invoice'
 
@@ -17,13 +17,23 @@ const invStore = useInvoiceStore()
 
 const selected = computed(() => clients.selectedClient)
 
+function refreshInvoiceClientSnapshot() {
+  const c = clients.selectedClient
+  const inv = invStore.invoice
+
+  if (!c?.id) return
+  if (!inv) return
+  if (inv.clientId !== c.id) return
+
+  invStore.setClientSnapshot(c)
+}
+
 // Initialises or resets the invoice whenever the selected client changes
 watch(
   selected,
   async (c, _prev, onCleanup) => {
     if (!c?.id) return
 
-    // do not wipe current invoice if re-selecting same client
     if (invStore.invoice?.clientId === c.id) return
 
     let cancelled = false
@@ -32,34 +42,8 @@ watch(
     })
 
     try {
-      await invStore.initInvoiceFromServer({
-        clientId: c.id,
-        issueDate: '',
-        dueByDate: undefined,
-
-        clientSnapshot: {
-          name: c.name ?? '',
-          companyName: c.companyName ?? '',
-          address: c.address ?? '',
-          email: c.email ?? '',
-        },
-
-        note: '',
-
-        vatRate: 2000,
-
-        discountType: 'none',
-        discountRate: 0,
-        discountMinor: 0,
-
-        lines: [],
-
-        paidMinor: 0,
-
-        depositType: 'none',
-        depositRate: 0,
-        depositMinor: 0,
-      })
+      const template = invStore.buildFreshInvoiceTemplate(c)
+      await invStore.initInvoiceFromServer(template)
 
       if (cancelled) return
     } catch (err) {
@@ -69,6 +53,8 @@ watch(
   },
   { immediate: true },
 )
+onMounted(refreshInvoiceClientSnapshot)
+onActivated(refreshInvoiceClientSnapshot)
 
 const infoLines = [
   { id: 1, text: 'Amount paid - calculated after VAT' },

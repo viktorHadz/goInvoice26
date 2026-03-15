@@ -18,7 +18,6 @@ func Get(ctx context.Context, db *sql.DB) (models.Settings, error) {
 			invoice_prefix,
 			currency,
 			date_format,
-			custom_items_prefix,
 			payment_terms,
 			payment_details,
 			notes_footer,
@@ -37,7 +36,6 @@ func Get(ctx context.Context, db *sql.DB) (models.Settings, error) {
 		&s.InvoicePrefix,
 		&s.Currency,
 		&s.DateFormat,
-		&s.CustomItemsPrefix,
 		&s.PaymentTerms,
 		&s.PaymentDetails,
 		&s.NotesFooter,
@@ -61,12 +59,11 @@ func Upsert(ctx context.Context, db *sql.DB, s models.Settings) error {
 			invoice_prefix,
 			currency,
 			date_format,
-			custom_items_prefix,
 			payment_terms,
 			payment_details,
 			notes_footer,
 			logo_url
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			company_name = excluded.company_name,
 			email = excluded.email,
@@ -75,7 +72,6 @@ func Upsert(ctx context.Context, db *sql.DB, s models.Settings) error {
 			invoice_prefix = excluded.invoice_prefix,
 			currency = excluded.currency,
 			date_format = excluded.date_format,
-			custom_items_prefix = excluded.custom_items_prefix,
 			payment_terms = excluded.payment_terms,
 			payment_details = excluded.payment_details,
 			notes_footer = excluded.notes_footer,
@@ -93,7 +89,6 @@ func Upsert(ctx context.Context, db *sql.DB, s models.Settings) error {
 		s.InvoicePrefix,
 		s.Currency,
 		s.DateFormat,
-		s.CustomItemsPrefix,
 		s.PaymentTerms,
 		s.PaymentDetails,
 		s.NotesFooter,

@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/params"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 	"github.com/viktorHadz/goInvoice26/internal/service/pdf"
+	"github.com/viktorHadz/goInvoice26/internal/transaction/settingsTx"
 )
 
 type pdfBuilder func() (models.InvoicePDFData, error)
@@ -57,7 +59,7 @@ func handlePdfGeneration(
 		return
 	}
 
-	filename := fmt.Sprintf("invoice-%d.%s.pdf", doc.BaseNumber, doc.RevisionNumber)
+	filename := buildPDFFilename(doc.InvoiceNumberLabel)
 
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
@@ -119,7 +121,6 @@ func QuickPDFHandler(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		// Verify route params match invoice data
 		var routeErrs []res.FieldError
 		if dtoInvoice.Overview.ClientID != clientID {
 			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route param"))
@@ -132,7 +133,6 @@ func QuickPDFHandler(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		// Recalculate to verify totals match
 		canonical := RecalcInvoice(dtoInvoice)
 		if errs := verifyTotalsMatch(dtoInvoice.Totals, canonical.Totals); len(errs) > 0 {
 			res.Validation(w, errs...)
@@ -140,9 +140,37 @@ func QuickPDFHandler(a *app.App) http.HandlerFunc {
 		}
 
 		builder := func() (models.InvoicePDFData, error) {
-			return pdf.BuildQuickInvoice(canonical, revisionNo), nil
+			settings, err := settingsTx.Get(r.Context(), a.DB)
+			if err != nil {
+				return models.InvoicePDFData{}, fmt.Errorf("get settings: %w", err)
+			}
+
+			return pdf.BuildQuickInvoice(canonical, settings, revisionNo), nil
 		}
 
 		handlePdfGeneration(w, r, clientID, baseNumber, revisionNo, builder)
 	}
+}
+
+func buildPDFFilename(invoiceNumber string) string {
+	name := strings.TrimSpace(invoiceNumber)
+	if name == "" {
+		return "invoice.pdf"
+	}
+
+	replacer := strings.NewReplacer(
+		"/", "-",
+		"\\", "-",
+		":", "-",
+		"*", "",
+		"?", "",
+		"\"", "",
+		"<", "",
+		">", "",
+		"|", "",
+		" ", "-",
+	)
+	name = replacer.Replace(name)
+
+	return name + ".pdf"
 }

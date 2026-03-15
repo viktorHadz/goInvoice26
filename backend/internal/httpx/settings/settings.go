@@ -44,9 +44,6 @@ func Put(a *app.App) http.HandlerFunc {
 		if in.DateFormat == "" {
 			in.DateFormat = "dd/mm/yyyy"
 		}
-		if in.CustomItemsPrefix == "" {
-			in.CustomItemsPrefix = "custom"
-		}
 		if in.PaymentTerms == "" {
 			in.PaymentTerms = "Please make payment within 14 days."
 		}

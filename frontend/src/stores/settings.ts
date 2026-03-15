@@ -12,7 +12,6 @@ export type Settings = {
     invoicePrefix: string
     currency: CurrencyCode
     dateFormat: DateFormat
-    customItemsPrefix: string
     paymentTerms: string
     paymentDetails: string
     notesFooter: string
