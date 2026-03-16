@@ -20,7 +20,7 @@ const selectionLabel = computed(() => {
   return `Revision #${activeNode.value.id}`
 })
 onMounted(() => {
-  editStore.getInvoiceBook()
+  editStore.fetchInvoiceBook()
 })
 </script>
 

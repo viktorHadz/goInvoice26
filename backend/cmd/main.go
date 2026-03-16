@@ -53,7 +53,7 @@ func main() {
 
 	// Rate limit
 	r.Use(httprate.Limit(
-		10,
+		50,
 		10*time.Second,
 		httprate.WithKeyFuncs(httprate.KeyByIP, httprate.KeyByEndpoint),
 		httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {

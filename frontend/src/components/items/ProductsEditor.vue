@@ -17,7 +17,7 @@ import TheButton from '../UI/TheButton.vue'
 import TheInput from '../UI/TheInput.vue'
 import { useEscape } from '@/composables/keyHandlers'
 import TheTooltip from '../UI/TheTooltip.vue'
-import { formatDisplay } from '@/utils/dates'
+import { fmtDisplayDate } from '@/utils/dates'
 import { validateProductForm } from '@/utils/frontendValidation'
 import { emitToastSuccess } from '@/utils/toast'
 import { handleActionError } from '@/utils/errors/handleActionError'
@@ -568,7 +568,7 @@ useEscape(
                       Created
                     </div>
                     <div class="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      {{ form.createdAt ? formatDisplay(new Date(form.createdAt)) : 'N/A' }}
+                      {{ form.createdAt ? fmtDisplayDate(new Date(form.createdAt)) : 'N/A' }}
                     </div>
                   </div>
 
@@ -581,7 +581,7 @@ useEscape(
                       Last updated
                     </div>
                     <div class="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      {{ form.updatedAt ? formatDisplay(new Date(form.updatedAt)) : 'N/A' }}
+                      {{ form.updatedAt ? fmtDisplayDate(new Date(form.updatedAt)) : 'N/A' }}
                     </div>
                   </div>
                 </div>

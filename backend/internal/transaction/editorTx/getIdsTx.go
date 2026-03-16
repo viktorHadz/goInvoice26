@@ -22,12 +22,27 @@ func QueryInvoiceBookPage(
 	if limit < 1 {
 		limit = 10
 	}
+	if limit > 100 {
+		limit = 100
+	}
 	if offset < 0 {
 		offset = 0
 	}
 
 	// --------------------------------------------------
-	// 1. Fetches paginated parent invoices by base number - 1, 2, 3...
+	// 0. Count total parent invoices for this client
+	// --------------------------------------------------
+	var total int
+	if err := a.DB.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM invoices
+		WHERE client_id = ?;
+	`, clientID).Scan(&total); err != nil {
+		return models.INVBookOut{}, fmt.Errorf("count invoices: %w", err)
+	}
+
+	// --------------------------------------------------
+	// 1. Fetch paginated parent invoices
 	// --------------------------------------------------
 	invoiceRows, err := a.DB.QueryContext(ctx, `
 		SELECT
@@ -46,8 +61,6 @@ func QueryInvoiceBookPage(
 
 	items := make([]models.INVBookInvoice, 0, limit)
 	invoiceIDs := make([]int64, 0, limit)
-
-	// map invoice_id -> index in items slice
 	itemIndexByInvoiceID := make(map[int64]int, limit)
 
 	for invoiceRows.Next() {
@@ -71,16 +84,23 @@ func QueryInvoiceBookPage(
 		return models.INVBookOut{}, fmt.Errorf("iterate paged invoice rows: %w", err)
 	}
 
-	// No invoices on this page
 	if len(items) == 0 {
-		return models.INVBookOut{Items: items}, nil
+		return models.INVBookOut{
+			Items:   []models.INVBookInvoice{},
+			Limit:   limit,
+			Offset:  offset,
+			Count:   0,
+			Total:   total,
+			HasMore: false,
+		}, nil
 	}
 
 	// --------------------------------------------------
-	// 2. Fetch all revisions for those invoices
+	// 2. Fetch all revisions for invoices on this page
 	// --------------------------------------------------
 	placeholders := make([]string, len(invoiceIDs))
 	args := make([]any, 0, len(invoiceIDs))
+
 	for i, id := range invoiceIDs {
 		placeholders[i] = "?"
 		args = append(args, id)
@@ -134,7 +154,14 @@ func QueryInvoiceBookPage(
 		return models.INVBookOut{}, fmt.Errorf("iterate invoice revision rows: %w", err)
 	}
 
+	count := len(items)
+
 	return models.INVBookOut{
-		Items: items,
+		Items:   items,
+		Limit:   limit,
+		Offset:  offset,
+		Count:   count,
+		Total:   total,
+		HasMore: offset+count < total,
 	}, nil
 }

@@ -4,7 +4,7 @@ import { useStorage } from '@vueuse/core'
 import { CalendarIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
-import { formatDisplay } from '@/utils/dates'
+import { fmtDisplayDate } from '@/utils/dates'
 
 const props = withDefaults(
   defineProps<{
@@ -67,7 +67,7 @@ function onBlur() {
       :dark="isDark"
       :auto-apply="false"
       :teleport="true"
-      :format="formatDisplay"
+      :format="fmtDisplayDate"
       :time-config="{ enableTimePicker: false }"
     >
       <template #trigger>
@@ -80,7 +80,7 @@ function onBlur() {
           <div class="flex gap-2">
             <CalendarIcon class="size-5 text-zinc-500 dark:text-zinc-400" />
             <p class="max-w-36 truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              {{ pickerValue ? formatDisplay(pickerValue) : placeholder }}
+              {{ pickerValue ? fmtDisplayDate(pickerValue) : placeholder }}
             </p>
           </div>
           <XMarkIcon
