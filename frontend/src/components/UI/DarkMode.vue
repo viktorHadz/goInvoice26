@@ -11,7 +11,7 @@ const { mode } = useTheme()
     class=""
   >
     <template #content>
-      <span class="text-sky-600 dark:text-emerald-400">Toggle Theme Shortcut:</span>
+      <span class="text-sky-600 dark:text-emerald-400">Toggle Theme:</span>
       <br />
       <div class="mt-1">
         <kbd>Ctrl</kbd>
@@ -24,7 +24,7 @@ const { mode } = useTheme()
     <div v-if="mode === 'light'">
       <button
         type="button"
-        class="flex cursor-pointer rounded-lg p-1 shadow-sm hover:text-sky-600 hover:shadow-md"
+        class="flex cursor-pointer rounded-lg border border-zinc-300 p-1 hover:text-sky-600"
         @click="mode = 'dark'"
       >
         <SunIcon class="size-6 stroke-1"></SunIcon>

@@ -15,7 +15,7 @@ import TheButton from './TheButton.vue'
 import TheInput from './TheInput.vue'
 import TheDropdown from './TheDropdown.vue'
 import DecorGradient from '@/components/UI/DecorGradient.vue'
-import { useEscape } from '@/composables/keyHandlers'
+import { useEscape, useShortcuts, type ShortcutDefinition } from '@/composables/keyHandlers'
 import SettingsPreview from './SettingsPreview.vue'
 import {
   useSettingsStore,
@@ -140,6 +140,11 @@ watch(
   },
   { immediate: true },
 )
+const shortcuts: ShortcutDefinition[] = [
+  { key: 's', modifiers: ['alt', 'shift'], action: () => openSettings() },
+]
+useShortcuts(shortcuts)
+
 useEscape(closeSettings, {
   enabled: () => settingsOpen.value,
 })
@@ -150,7 +155,7 @@ useEscape(closeSettings, {
     align="end"
   >
     <template #content>
-      <span class="text-sky-600 dark:text-emerald-400">Settings shortcut:</span>
+      <span class="text-sky-600 dark:text-emerald-400">Settings:</span>
       <br />
       <div class="mt-1">
         <kbd>Alt</kbd>
@@ -163,7 +168,7 @@ useEscape(closeSettings, {
 
     <button
       type="button"
-      class="flex cursor-pointer rounded-lg p-1 text-zinc-600 shadow-sm hover:text-sky-600 hover:shadow-md dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
+      class="flex cursor-pointer rounded-lg border border-zinc-300 p-1 text-zinc-600 hover:text-sky-600 dark:border-transparent dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
       @click="() => openSettings()"
     >
       <Cog6ToothIcon class="size-6 stroke-1" />
@@ -285,10 +290,14 @@ useEscape(closeSettings, {
                 </div>
 
                 <div class="mt-4">
-                  <label class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <label
+                    for="setts-c-addr"
+                    class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                  >
                     Company address
                   </label>
                   <textarea
+                    id="setts-c-addr"
                     v-model="form.companyAddress"
                     rows="4"
                     maxlength="160"
@@ -338,12 +347,14 @@ useEscape(closeSettings, {
                 <div class="space-y-4">
                   <div>
                     <label
+                      for="setts-payment-terms"
                       class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Payment terms
                     </label>
                     <textarea
                       v-model="form.paymentTerms"
+                      id="setts-payment-terms"
                       rows="3"
                       :maxlength="PAYMENT_TERMS_MAX"
                       class="input input-accent w-full resize-y rounded-xl px-3 py-2"
@@ -363,11 +374,13 @@ useEscape(closeSettings, {
 
                   <div>
                     <label
+                      for="setts-pmnt-details"
                       class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Payment details
                     </label>
                     <textarea
+                      id="setts-pmnt-details"
                       v-model="form.paymentDetails"
                       rows="4"
                       :maxlength="PAYMENT_DETAILS_MAX"
@@ -388,11 +401,13 @@ useEscape(closeSettings, {
 
                   <div>
                     <label
+                      for="setts-notes-footer"
                       class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Footer note
                     </label>
                     <textarea
+                      id="setts-notes-footer"
                       v-model="form.notesFooter"
                       rows="3"
                       :maxlength="FOOTER_NOTE_MAX"

@@ -139,7 +139,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			id INTEGER PRIMARY KEY,
 			client_id INTEGER NOT NULL,
 
-			-- stores latest invoice revision (if 1.1, 1.2, 1.3 it return 1.3)  
+			-- stores latest invoice revision (if 1.1, 1.2, 1.3 it returns 1.3)  
 			current_revision_id INTEGER
 				REFERENCES invoice_revisions(id)
 				ON DELETE SET NULL
@@ -163,7 +163,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			next_base_number INTEGER NOT NULL CHECK (next_base_number > 0)
 		);`,
 
-		// ensure the single row exists (initial value may be adjusted in allocator)
+		// ensures the single row exists - initial value cam be adjusted in allocator for migrations
 		`INSERT OR IGNORE INTO invoice_number_seq (id, next_base_number) VALUES (1, 1);`,
 
 		// -----------------------
@@ -309,6 +309,22 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			ON it.invoice_revision_id = r.id
 		ORDER BY i.id, it.sort_order;`,
 
+		// Initial invoice and revision number data
+		`CREATE VIEW IF NOT EXISTS invoice_book_rows AS
+			SELECT
+				i.id,
+				i.client_id,
+				i.base_number,
+				i.status,
+				i.current_revision_id,
+				r.revision_no,
+				r.issue_date,
+				r.due_by_date,
+				r.updated_at
+			FROM invoices i
+			JOIN invoice_revisions r
+			ON r.id = i.current_revision_id;`,
+
 		// items for a specific invoice revision
 		`CREATE VIEW IF NOT EXISTS invoice_revision_items AS
 		SELECT
@@ -334,9 +350,11 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		// Indexes
 		// -----------------------
 		`CREATE INDEX IF NOT EXISTS idx_invoices_client_id ON invoices(client_id);`,
+		// Invoice Book
+		`CREATE INDEX IF NOT EXISTS idx_invoices_client_base ON invoices(client_id, base_number DESC);`,
 		`CREATE INDEX IF NOT EXISTS idx_revisions_invoice_id ON invoice_revisions(invoice_id);`,
-		`CREATE INDEX IF NOT EXISTS idx_items_revision_id ON invoice_items(invoice_revision_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_revisions_invoice_id_revno ON invoice_revisions(invoice_id, revision_no);`,
+		`CREATE INDEX IF NOT EXISTS idx_items_revision_id ON invoice_items(invoice_revision_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_items_product_id ON invoice_items(product_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_products_client_id ON products(client_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);`,

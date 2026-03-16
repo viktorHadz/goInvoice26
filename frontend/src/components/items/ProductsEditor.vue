@@ -241,7 +241,7 @@ useEscape(
     align="end"
   >
     <template #content>
-      <span class="mr-1 text-sky-600 dark:text-emerald-400">Products Shortcut:</span>
+      <span class="mr-1 text-sky-600 dark:text-emerald-400">Products:</span>
       <br />
       <div class="mt-1">
         <kbd>Ctrl</kbd>
@@ -252,7 +252,7 @@ useEscape(
     <button
       v-if="iconOnly"
       type="button"
-      class="flex cursor-pointer rounded-lg p-1 text-zinc-600 shadow-sm hover:text-sky-600 hover:shadow-md dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
+      class="flex cursor-pointer rounded-lg border border-zinc-300 p-1 text-zinc-600 hover:text-sky-600 dark:border-transparent dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
     >
       <SquaresPlusIcon
         class="size-6 stroke-1"

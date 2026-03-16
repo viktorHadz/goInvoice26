@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/clients"
+	"github.com/viktorHadz/goInvoice26/internal/httpx/editor"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/invoice"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/midware"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/products"
@@ -33,6 +34,11 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 		r.Route("/{clientID}", func(r chi.Router) {
 			r.Patch("/", clients.UpdateClient(a))
 			r.Delete("/", clients.DeleteClient(a))
+
+			// /api/clients/{clientID}/edits/...
+			r.Route("/edits", func(r chi.Router) {
+				r.Get("/", editor.HandleINVBookData(a))
+			})
 
 			// /api/clients/{clientID}/products/...
 			r.Route("/products", func(r chi.Router) {
