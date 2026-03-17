@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { useClientStore } from './clients'
-import { getInvAndRevNums } from '@/utils/editorHttpHandler'
-import type { InvBookInvoice } from '@/components/editor/editorTypes'
+import { getInvAndRevNums, getInvoice } from '@/utils/editorHttpHandler'
+import type { InvBookInvoice, InvoiceResponse } from '@/components/editor/invBookTypes'
 
-export const useEditStore = defineStore('editStore', () => {
+export const useEditorStore = defineStore('editorStore', () => {
     const clientStore = useClientStore()
 
     const invoiceBook = ref<InvBookInvoice[]>([])
+    const activeInvoice = ref<InvoiceResponse>()
+
     const limit = ref(10)
     const offset = ref(0)
     const total = ref(0)
@@ -50,6 +52,17 @@ export const useEditStore = defineStore('editStore', () => {
             isLoading.value = false
         }
     }
+    async function fetchInvoice(baseNumber: number, revisionNumber: number) {
+        const clientId = clientStore.selectedClient?.id
+        if (!clientId) return
+
+        const data = await getInvoice(clientId, baseNumber, revisionNumber)
+        console.log(data)
+        console.log(data.lines)
+        console.log(data.totals)
+        activeInvoice.value = data
+        console.log(activeInvoice.value)
+    }
 
     async function nextPage() {
         if (!hasMore.value || isLoading.value) return
@@ -87,6 +100,7 @@ export const useEditStore = defineStore('editStore', () => {
         canGoPrev,
         canGoNext,
         fetchInvoiceBook,
+        fetchInvoice,
         nextPage,
         prevPage,
         goToFirstPage,

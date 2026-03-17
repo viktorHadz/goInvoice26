@@ -6,7 +6,25 @@ import (
 	"fmt"
 )
 
-// DB row for overview + totals, used to assemble models.InvoicePDFData model.
+// ItemLine is a DB/query row for invoice items.
+//
+// It is returned by [QueryInvoiceLines].
+// Do not return it directly in HTTP responses.
+// Map it to an API response model in the handler layer.
+type ItemLine struct {
+	Name         string
+	LineType     string
+	Quantity     int64
+	UnitPriceMin int64
+	LineTotalMin int64
+	SortOrder    int64
+}
+
+// InvoiceOverviewTotals is a DB/query row for invoice overview and totals.
+//
+// It is returned by [QueryInvoiceSummary].
+// Do not send it directly in JSON responses.
+// Map it to an API response model in the handler layer.
 type InvoiceOverviewTotals struct {
 	BaseNumber        int64
 	RevisionNo        int64
@@ -31,7 +49,11 @@ type InvoiceOverviewTotals struct {
 	PaidMinor     int64
 }
 
-// Retrieves overview and totals for a specific invoice revision in a single query.
+// QueryInvoiceSummary returns the DB/query row for one invoice revision.
+//
+// The returned value is an internal backend shape.
+// Handlers should map it to an API response model before sending via res.JSON.
+//
 // PaidMinor is aggregated from the payments table.
 func QueryInvoiceSummary(
 	ctx context.Context,
@@ -83,21 +105,15 @@ func QueryInvoiceSummary(
 		&o.PaidMinor,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("GetInvoiceOverviewTotals() => %w,\nrevisionNumber: %v,\nbaseNumber: %v,\nclientID: %v", err, revisionNo, baseNumber, clientID)
+		return nil, fmt.Errorf("GetInvoiceSummary() => %w,\nrevisionNumber: %v,\nbaseNumber: %v,\nclientID: %v", err, revisionNo, baseNumber, clientID)
 	}
 	return &o, nil
 }
 
-type ItemLine struct {
-	Name         string
-	LineType     string
-	Quantity     int64
-	UnitPriceMin int64
-	LineTotalMin int64
-	SortOrder    int64
-}
-
-// Retrieves all revision items for an invoice
+// QueryInvoiceLines returns the DB/query rows for one invoice revision.
+//
+// The returned lines are internal backend shapes.
+// Handlers should map them to API response models before sending via res.JSON.
 func QueryInvoiceLines(
 	ctx context.Context,
 	db *sql.DB,

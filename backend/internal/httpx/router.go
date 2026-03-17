@@ -38,6 +38,7 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 			// /api/clients/{clientID}/edits/...
 			r.Route("/edits", func(r chi.Router) {
 				r.Get("/", editor.HandleINVBookData(a))
+				r.Get("/get/{baseNo}/{revNo}", editor.GetInvoice(a))
 			})
 
 			// /api/clients/{clientID}/products/...

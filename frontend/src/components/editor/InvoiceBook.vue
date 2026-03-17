@@ -8,13 +8,13 @@ import {
   DocumentIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
-import type { ActiveEditorNode, InvBookInvoice, InvBookRevision } from './editorTypes'
+import type { ActiveEditorNode, InvBookInvoice, InvBookRevision } from './invBookTypes'
 import DecorGradient from '@/components/UI/DecorGradient.vue'
 import TheButton from '@/components/UI/TheButton.vue'
 import TheTooltip from '../UI/TheTooltip.vue'
 import { useEscape, useShortcuts, type ShortcutDefinition } from '@/composables/keyHandlers'
 import { useSettingsStore } from '@/stores/settings'
-import { useEditStore } from '@/stores/editor'
+import { useEditorStore } from '@/stores/editor'
 import { useClientStore } from '@/stores/clients'
 import { fmtStrDate } from '@/utils/dates'
 
@@ -37,10 +37,10 @@ const panelPos = ref({ top: 0, left: 0, width: 384 })
 
 const setStore = useSettingsStore()
 const clientStore = useClientStore()
-const editStore = useEditStore()
+const bookStore = useEditorStore()
 
 const { invoiceBook, isLoading, canGoPrev, canGoNext, offset, total, errorMessage } =
-  storeToRefs(editStore)
+  storeToRefs(bookStore)
 
 const invoices = computed<InvBookInvoice[]>(() => invoiceBook.value)
 
@@ -99,7 +99,7 @@ async function openDropdown() {
   placePanel()
 
   if (!invoiceBook.value.length && clientStore.selectedClient?.id) {
-    await editStore.fetchInvoiceBook(true)
+    await bookStore.fetchInvoiceBook(true)
   }
 }
 
@@ -121,13 +121,23 @@ function toggleInvoice(id: number, hasRevisions: boolean) {
 }
 
 function selectInvoice(invoice: InvBookInvoice) {
-  emit('select', { type: 'invoice', id: invoice.id })
+  emit('select', {
+    type: 'invoice',
+    id: invoice.id,
+    baseNo: invoice.baseNo,
+  })
   closeDropdown()
 }
 
 function selectRevision(invoice: InvBookInvoice, revision: InvBookRevision) {
   openId.value = invoice.id
-  emit('select', { type: 'revision', id: revision.id })
+  emit('select', {
+    type: 'revision',
+    id: revision.id,
+    invoiceId: invoice.id,
+    baseNo: invoice.baseNo,
+    revisionNo: revision.revisionNo,
+  })
   closeDropdown()
 }
 
@@ -160,12 +170,12 @@ function onWindowChange() {
 }
 
 async function handlePrevPage() {
-  await editStore.prevPage()
+  await bookStore.prevPage()
   openId.value = null
 }
 
 async function handleNextPage() {
-  await editStore.nextPage()
+  await bookStore.nextPage()
   openId.value = null
 }
 
@@ -176,12 +186,12 @@ watch(
     query.value = ''
 
     if (!newId) {
-      editStore.clearInvoiceBook()
+      bookStore.clearInvoiceBook()
       return
     }
 
     if (newId !== oldId && isOpen.value) {
-      await editStore.fetchInvoiceBook(true)
+      await bookStore.fetchInvoiceBook(true)
     }
   },
 )

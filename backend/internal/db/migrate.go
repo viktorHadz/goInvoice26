@@ -139,7 +139,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			id INTEGER PRIMARY KEY,
 			client_id INTEGER NOT NULL,
 
-			-- stores latest invoice revision (if 1.1, 1.2, 1.3 it returns 1.3)  
+			-- stores latest invoice revision (if 1.1, 1.2, 1.3 it returns 1.3's id)  
 			current_revision_id INTEGER
 				REFERENCES invoice_revisions(id)
 				ON DELETE SET NULL

@@ -121,84 +121,6 @@ func addFromTo(mr core.Maroto, doc models.InvoicePDFData) {
 	mr.AddRow(5)
 }
 
-// func addHeader(mr core.Maroto, doc models.InvoicePDFData) {
-// 	titleBlock := joinNonEmpty(doc.Title, doc.InvoiceNumberLabel)
-// 	metaBlock := joinNonEmpty("Issue date: "+doc.IssueAt, formatDueLabel(doc.DueDate))
-// 	issuerLines := collectNonEmptyLines(
-// 		doc.Issuer.CompanyName,
-// 		doc.Issuer.CompanyAddress,
-// 		doc.Issuer.Email,
-// 		doc.Issuer.Phone,
-// 	)
-// 	firstIssuerLine := ""
-// 	if len(issuerLines) > 0 {
-// 		firstIssuerLine = issuerLines[0]
-// 	}
-
-// 	logoPath, hasLogo := resolveLocalLogoPath(doc.Issuer.LogoURL)
-// 	if hasLogo {
-// 		mr.AddRow(24,
-// 			image.NewFromFileCol(3, logoPath, props.Rect{Center: false, Percent: 100}),
-// 			text.NewCol(5, firstIssuerLine, props.Text{Size: 9, Top: 1, Align: align.Left}),
-// 			text.NewCol(4, titleBlock, props.Text{Size: 17, Style: fontstyle.Bold, Align: align.Right}),
-// 		)
-
-// 		for _, ln := range issuerLines[1:] {
-// 			mr.AddRow(5,
-// 				text.NewCol(3, "", props.Text{}),
-// 				text.NewCol(5, ln, props.Text{Size: 9, Align: align.Left}),
-// 				text.NewCol(4, "", props.Text{}),
-// 			)
-// 		}
-// 	} else {
-// 		mr.AddRow(18,
-// 			text.NewCol(8, firstIssuerLine, props.Text{Size: 9, Top: 1, Align: align.Left}),
-// 			text.NewCol(4, titleBlock, props.Text{Size: 17, Style: fontstyle.Bold, Align: align.Right}),
-// 		)
-// 		for _, ln := range issuerLines[1:] {
-// 			mr.AddRow(5,
-// 				text.NewCol(8, ln, props.Text{Size: 9, Align: align.Left}),
-// 				text.NewCol(4, "", props.Text{}),
-// 			)
-// 		}
-// 	}
-
-// 	mr.AddRow(maxFloat(10, estimateBlockHeight(metaBlock, 24, 4.2)),
-// 		text.NewCol(8, "", props.Text{}),
-// 		text.NewCol(4, metaBlock, props.Text{Size: 9, Align: align.Right}),
-// 	)
-// 	mr.AddRow(1, line.NewCol(12, props.Line{Color: gray300}))
-// 	mr.AddRow(5)
-// }
-
-// func addPartySection(mr core.Maroto, doc models.InvoicePDFData) {
-// 	leftTitle := "BILL TO"
-// 	leftLines := collectNonEmptyLines(
-// 		doc.Client.Name,
-// 		doc.Client.CompanyName,
-// 		doc.Client.Address,
-// 		doc.Client.Email,
-// 	)
-
-// 	rightTitle := "NOTE"
-// 	rightLines := collectNonEmptyLines(trimmedPtr(doc.Note))
-// 	if len(rightLines) == 0 {
-// 		rightTitle = "DETAILS"
-// 		rightLines = collectNonEmptyLines(
-// 			doc.InvoiceNumberLabel,
-// 			"Issue date: "+doc.IssueAt,
-// 			formatDueLabel(doc.DueDate),
-// 		)
-// 	}
-
-// 	addTwoColumnLinesCard(
-// 		mr,
-// 		leftTitle, leftLines, 9.5,
-// 		rightTitle, rightLines, 9,
-// 	)
-// 	mr.AddRow(7)
-// }
-
 func addItemsSections(mr core.Maroto, doc models.InvoicePDFData) {
 	if len(doc.Lines) == 0 {
 		addSectionTitle(mr, "Items")
@@ -418,28 +340,10 @@ func normalizeLineType(v string) string {
 	}
 }
 
-func trimmedPtr(v *string) string {
-	if v == nil {
-		return ""
-	}
-	return strings.TrimSpace(*v)
-}
-
-func joinNonEmpty(parts ...string) string {
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			out = append(out, p)
-		}
-	}
-	return strings.Join(out, "\n")
-}
-
 func collectNonEmptyLines(parts ...string) []string {
 	out := make([]string, 0, len(parts))
 	for _, part := range parts {
-		for _, line := range strings.Split(part, "\n") {
+		for line := range strings.SplitSeq(part, "\n") {
 			line = strings.TrimSpace(line)
 			if line != "" {
 				out = append(out, line)

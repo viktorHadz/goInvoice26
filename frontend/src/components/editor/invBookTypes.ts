@@ -14,8 +14,18 @@ export type InvBookInvoice = {
 }
 
 export type ActiveEditorNode =
-    | { type: 'invoice'; id: number }
-    | { type: 'revision'; id: number }
+    | {
+          type: 'invoice'
+          id: number
+          baseNo: number
+      }
+    | {
+          type: 'revision'
+          id: number
+          invoiceId: number
+          baseNo: number
+          revisionNo: number
+      }
     | null
 
 export type InvoiceBookResponse = {
@@ -25,4 +35,9 @@ export type InvoiceBookResponse = {
     count: number
     total: number
     hasMore: boolean
+}
+
+export type InvoiceResponse = {
+    lines: []
+    totals: []
 }

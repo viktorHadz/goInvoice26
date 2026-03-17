@@ -1,32 +1,34 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import InvoiceBook from '@/components/editor/InvoiceBook.vue'
-import type { ActiveEditorNode } from '@/components/editor/editorTypes'
+import type { ActiveEditorNode } from '@/components/editor/invBookTypes'
 import DecorGradient from '@/components/UI/DecorGradient.vue'
 import { DocumentIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
-import { useEditStore } from '@/stores/editor'
+import { useEditorStore } from '@/stores/editor'
+import { useSettingsStore } from '@/stores/settings'
 
-const editStore = useEditStore()
-
+const setsStore = useSettingsStore()
 const activeNode = ref<ActiveEditorNode>(null)
+const editStore = useEditorStore()
 
 const selectionLabel = computed(() => {
-  if (!activeNode.value) return 'Nothing selected'
+  const node = activeNode.value
+  if (!node) return 'Nothing selected'
 
-  if (activeNode.value.type === 'invoice') {
-    return `Invoice #${activeNode.value.id}`
+  if (node.type === 'invoice') {
+    return `${setsStore.settings?.invoicePrefix}-${node.baseNo}`
   }
 
-  return `Revision #${activeNode.value.id}`
+  return `${setsStore.settings?.invoicePrefix}-${node.baseNo}.${node.revisionNo}`
 })
 onMounted(() => {
   editStore.fetchInvoiceBook()
+  editStore.fetchInvoice(1, 1)
 })
 </script>
 
 <template>
   <main class="mx-auto w-full max-w-4xl 2xl:max-w-5xl">
-    {{ editStore.invoiceBook }}
     <!-- Header -->
     <section class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div class="flex items-center gap-2">

@@ -1,5 +1,5 @@
-import type { InvoiceBookResponse } from '@/components/editor/editorTypes'
 import { request } from './fetchHelper'
+import type { InvoiceBookResponse, InvoiceResponse } from '@/components/editor/invBookTypes'
 
 export async function getInvAndRevNums(
     clientId: number,
@@ -8,4 +8,13 @@ export async function getInvAndRevNums(
 ): Promise<InvoiceBookResponse> {
     const url = `/api/clients/${clientId}/edits?limit=${limit}&offset=${offset}`
     return await request<InvoiceBookResponse>(url)
+}
+
+export async function getInvoice(
+    clientId: number,
+    baseNumber: number,
+    revisionNumber: number,
+): Promise<InvoiceResponse> {
+    const url = `/api/clients/${clientId}/edits/get/${baseNumber}/${revisionNumber}`
+    return await request<InvoiceResponse>(url)
 }
