@@ -11,6 +11,7 @@ import InvoiceTotals from '@/components/invoice/InvoiceTotals.vue'
 
 import TheTooltip from '@/components/UI/TheTooltip.vue'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import InvoiceNote from '@/components/invoice/InvoiceNote.vue'
 
 const clients = useClientStore()
 const invStore = useInvoiceStore()
@@ -55,13 +56,6 @@ watch(
 )
 onMounted(refreshInvoiceClientSnapshot)
 onActivated(refreshInvoiceClientSnapshot)
-
-const infoLines = [
-  { id: 1, text: 'Amount paid - calculated after VAT' },
-  { id: 2, text: 'Discount - calculated before VAT' },
-  { id: 3, text: 'Deposit - calculated after VAT' },
-  { id: 4, text: 'VAT Rate - set to 0% to exclude VAT' },
-]
 </script>
 
 <template>
@@ -119,11 +113,6 @@ const infoLines = [
               Paid, deposit, discount, VAT and note
             </div>
           </div>
-          <TheTooltip
-            :icon="InformationCircleIcon"
-            :lines="infoLines"
-            side="top"
-          />
         </div>
 
         <div class="p-3 md:p-4">
@@ -132,7 +121,7 @@ const infoLines = [
       </section>
 
       <section
-        class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+        class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
         <div class="flex justify-between border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
           <div>
@@ -141,11 +130,13 @@ const infoLines = [
           </div>
 
           <TheTooltip
-            :icon="InformationCircleIcon"
-            text="Create a draft to save in invoice book. This lets you free edit invoice."
+            text="Create a draft to save in invoice book. This lets you free edit invoice later."
             side="top"
             align="center"
-          />
+            class="hover:text-sky-600 dark:hover:text-emerald-400"
+          >
+            <InformationCircleIcon class="size-5" />
+          </TheTooltip>
         </div>
 
         <div class="p-3 md:p-4">
@@ -153,5 +144,6 @@ const infoLines = [
         </div>
       </section>
     </section>
+    <InvoiceNote />
   </main>
 </template>

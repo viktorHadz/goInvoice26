@@ -290,8 +290,7 @@ useEscape(
           class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70"
         >
           <div class="relative overflow-hidden px-4 py-3">
-            <DecorGradient></DecorGradient>
-            <DecorGradient></DecorGradient>
+            <DecorGradient variant="gradientAndGrid"></DecorGradient>
 
             <!-- CONTENT -->
             <div class="relative z-10 flex items-center justify-between gap-4">

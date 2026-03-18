@@ -50,12 +50,15 @@ func toEditorLines(in []invoiceTx.ItemLine) []models.InvoiceEditorLine {
 	out := make([]models.InvoiceEditorLine, 0, len(in))
 	for _, line := range in {
 		out = append(out, models.InvoiceEditorLine{
-			Name:         line.Name,
-			LineType:     line.LineType,
-			Quantity:     line.Quantity,
-			UnitPriceMin: line.UnitPriceMin,
-			LineTotalMin: line.LineTotalMin,
-			SortOrder:    line.SortOrder,
+			ProductID:     line.ProductID,
+			PricingMode:   line.PricingMode,
+			MinutesWorked: line.MinutesWorked,
+			Name:          line.Name,
+			LineType:      line.LineType,
+			Quantity:      line.Quantity,
+			UnitPriceMin:  line.UnitPriceMin,
+			LineTotalMin:  line.LineTotalMin,
+			SortOrder:     line.SortOrder,
 		})
 	}
 	return out

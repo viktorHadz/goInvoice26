@@ -1,29 +1,61 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import InvoiceBook from '@/components/editor/InvoiceBook.vue'
 import type { ActiveEditorNode } from '@/components/editor/invBookTypes'
 import DecorGradient from '@/components/UI/DecorGradient.vue'
 import { DocumentIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
+import { useClientStore } from '@/stores/clients'
+import EditorSurface from '@/components/editor/EditorSurface.vue'
 
 const setsStore = useSettingsStore()
-const activeNode = ref<ActiveEditorNode>(null)
+const clientStore = useClientStore()
 const editStore = useEditorStore()
+
+const activeNode = ref<ActiveEditorNode>(null)
 
 const selectionLabel = computed(() => {
   const node = activeNode.value
+  const prefix = setsStore.settings?.invoicePrefix ?? 'INV'
+
   if (!node) return 'Nothing selected'
 
   if (node.type === 'invoice') {
-    return `${setsStore.settings?.invoicePrefix}-${node.baseNo}`
+    return `${prefix}-${node.baseNo}`
   }
 
-  return `${setsStore.settings?.invoicePrefix}-${node.baseNo}.${node.revisionNo}`
+  return `${prefix}-${node.baseNo}.${node.revisionNo}`
 })
-onMounted(() => {
-  editStore.fetchInvoiceBook()
-  editStore.fetchInvoice(1, 1)
+
+watch(
+  () => clientStore.selectedClient?.id,
+  async (newClientId, oldClientId) => {
+    if (newClientId === oldClientId) return
+
+    activeNode.value = null
+    editStore.clearActiveInvoice()
+    editStore.clearInvoiceBook()
+
+    if (!newClientId) return
+
+    await editStore.fetchInvoiceBook(true)
+  },
+  { immediate: true },
+)
+
+watch(activeNode, async (node) => {
+  if (!node) {
+    editStore.clearActiveInvoice()
+    return
+  }
+
+  if (node.type === 'invoice') {
+    await editStore.fetchInvoice(node.baseNo, 1)
+    return
+  }
+
+  await editStore.fetchInvoice(node.baseNo, node.revisionNo)
 })
 </script>
 
@@ -49,15 +81,14 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Top action/title panel -->
+    <!-- Top Pannel -->
     <section class="relative mb-4 overflow-visible">
       <div
         class="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
+        <DecorGradient variant="gradientAndGrid" />
         <div class="relative p-4">
           <div class="flex flex-col items-start justify-between gap-3 sm:flex-row">
-            <DecorGradient />
-
             <div class="flex items-center gap-3">
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
@@ -133,16 +164,7 @@ onMounted(() => {
             </div>
           </div>
         </div>
-
-        <div
-          v-else
-          class="rounded-2xl border border-dashed border-zinc-200 px-4 py-10 dark:border-zinc-800"
-        >
-          <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Editing surface</div>
-          <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Render the selected invoice or revision here.
-          </div>
-        </div>
+        <EditorSurface v-else></EditorSurface>
       </div>
     </section>
   </main>

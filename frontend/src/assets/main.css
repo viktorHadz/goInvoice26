@@ -90,9 +90,9 @@
     /* Base input */
     .input {
         @apply block w-full rounded-md px-2 py-2 text-base font-normal transition-all duration-150 outline-none sm:text-sm/6;
-        @apply bg-zinc-50/40 text-zinc-900 placeholder:text-zinc-500;
+        @apply bg-white text-zinc-900 placeholder:text-zinc-500;
         @apply ring-1 ring-zinc-300;
-        @apply hover:bg-zinc-50/20 focus:bg-white;
+        @apply focus:bg-white;
         @apply focus:ring-2 disabled:cursor-not-allowed;
 
         /* invalid styling */

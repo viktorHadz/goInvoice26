@@ -17,7 +17,7 @@ type InvoiceEditorTotals struct {
 	Note              *string `json:"note,omitempty"`
 
 	VATRate       int64  `json:"vatRate"`
-	VATAmountMin  int64  `json:"vatAmountMin"`
+	VATAmountMin  int64  `json:"vatAmountMinor"`
 	DiscountType  string `json:"discountType"`
 	DiscountRate  int64  `json:"discountRate"`
 	DiscountMinor int64  `json:"discountMinor"`
@@ -30,10 +30,13 @@ type InvoiceEditorTotals struct {
 }
 
 type InvoiceEditorLine struct {
-	Name         string `json:"name"`
-	LineType     string `json:"lineType"`
-	Quantity     int64  `json:"quantity"`
-	UnitPriceMin int64  `json:"unitPriceMin"`
-	LineTotalMin int64  `json:"lineTotalMin"`
-	SortOrder    int64  `json:"sortOrder"`
+	ProductID     *int64  `json:"productId,omitempty"`
+	PricingMode   *string `json:"pricingMode,omitempty"`
+	MinutesWorked *int64  `json:"minutesWorked,omitempty"`
+	Name          string  `json:"name"`
+	LineType      string  `json:"lineType"`
+	Quantity      int64   `json:"quantity"`
+	UnitPriceMin  int64   `json:"unitPriceMinor"`
+	LineTotalMin  int64   `json:"lineTotalMinor"`
+	SortOrder     int64   `json:"sortOrder"`
 }

@@ -3,22 +3,37 @@ import { computed, ref } from 'vue'
 import { useClientStore } from './clients'
 import { getInvAndRevNums, getInvoice } from '@/utils/editorHttpHandler'
 import type { InvBookInvoice, InvoiceResponse } from '@/components/editor/invBookTypes'
+import { handleActionError } from '@/utils/errors/handleActionError'
+import { getApiErrorMessage, isApiError } from '@/utils/apiErrors'
+import type {
+    DepositType,
+    DiscountType,
+    Invoice,
+    LineType,
+    PricingMode,
+} from '@/components/invoice/invoiceTypes'
 
 export const useEditorStore = defineStore('editorStore', () => {
     const clientStore = useClientStore()
 
     const invoiceBook = ref<InvBookInvoice[]>([])
-    const activeInvoice = ref<InvoiceResponse>()
+    const activeInvoice = ref<InvoiceResponse | undefined>(undefined)
+    const fmtActiveInv = ref<Invoice | undefined>(undefined)
 
     const limit = ref(10)
     const offset = ref(0)
     const total = ref(0)
     const hasMore = ref(false)
-    const isLoading = ref(false)
-    const errorMessage = ref('')
+
+    const isLoadingBook = ref(false)
+    const isLoadingInvoice = ref(false)
+
+    const bookError = ref('')
 
     const canGoPrev = computed(() => offset.value > 0)
     const canGoNext = computed(() => hasMore.value)
+
+    let lastBookRequestId = 0
 
     async function fetchInvoiceBook(reset = false) {
         const clientId = clientStore.selectedClient?.id
@@ -32,11 +47,16 @@ export const useEditorStore = defineStore('editorStore', () => {
             offset.value = 0
         }
 
-        isLoading.value = true
-        errorMessage.value = ''
+        const requestId = ++lastBookRequestId
+
+        isLoadingBook.value = true
+        bookError.value = ''
 
         try {
             const data = await getInvAndRevNums(clientId, limit.value, offset.value)
+
+            if (requestId !== lastBookRequestId) return
+            if (clientStore.selectedClient?.id !== clientId) return
 
             invoiceBook.value = data.items
             total.value = data.total
@@ -44,34 +64,109 @@ export const useEditorStore = defineStore('editorStore', () => {
             limit.value = data.limit
             offset.value = data.offset
         } catch (error) {
-            clearInvoiceBook()
-            errorMessage.value =
-                error instanceof Error ? error.message : 'Failed to load invoice book'
-            throw error
+            if (requestId !== lastBookRequestId) return
+
+            invoiceBook.value = []
+            total.value = 0
+            hasMore.value = false
+
+            bookError.value = isApiError(error)
+                ? getApiErrorMessage(error)
+                : error instanceof Error && error.message.trim().length > 0
+                  ? error.message
+                  : 'Failed to load invoice book'
+
+            handleActionError(error, {
+                toastTitle: 'Failed to load invoice book',
+                supportMessage: 'Please contact support',
+                mapFields: false,
+            })
         } finally {
-            isLoading.value = false
+            if (requestId === lastBookRequestId) {
+                isLoadingBook.value = false
+            }
         }
     }
+
+    let lastInvoiceRequestId = 0
+
     async function fetchInvoice(baseNumber: number, revisionNumber: number) {
         const clientId = clientStore.selectedClient?.id
-        if (!clientId) return
+        if (!clientId) {
+            clearActiveInvoice()
+            return
+        }
 
-        const data = await getInvoice(clientId, baseNumber, revisionNumber)
-        console.log(data)
-        console.log(data.lines)
-        console.log(data.totals)
-        activeInvoice.value = data
-        console.log(activeInvoice.value)
+        const requestId = ++lastInvoiceRequestId
+
+        isLoadingInvoice.value = true
+
+        try {
+            const data = await getInvoice(clientId, baseNumber, revisionNumber)
+
+            if (requestId !== lastInvoiceRequestId) return
+            if (clientStore.selectedClient?.id !== clientId) return
+
+            activeInvoice.value = data
+            fmtActiveInv.value = fmtActive(data, clientId)
+        } catch (error) {
+            if (requestId !== lastInvoiceRequestId) return
+
+            clearActiveInvoice()
+
+            handleActionError(error, {
+                toastTitle: 'Failed to fetch invoice',
+                supportMessage: 'Please contact support',
+                mapFields: false,
+            })
+        } finally {
+            if (requestId === lastInvoiceRequestId) {
+                isLoadingInvoice.value = false
+            }
+        }
     }
-
+    function fmtActive(resp: InvoiceResponse, clientId: number): Invoice {
+        const t = resp.totals
+        return {
+            baseNumber: t.baseNumber,
+            clientId,
+            issueDate: t.issueDate,
+            dueByDate: t.dueByDate ?? undefined,
+            clientSnapshot: {
+                name: t.clientName,
+                companyName: t.clientCompanyName,
+                address: t.clientAddress,
+                email: t.clientEmail,
+            },
+            lines: resp.lines.map((l) => ({
+                productId: l.productId ?? null,
+                name: l.name,
+                lineType: l.lineType as LineType,
+                pricingMode: (l.pricingMode ?? 'flat') as PricingMode,
+                quantity: l.quantity,
+                unitPriceMinor: l.unitPriceMinor,
+                minutesWorked: l.minutesWorked ?? null,
+                sortOrder: l.sortOrder,
+            })),
+            discountType: t.discountType as DiscountType,
+            discountMinor: t.discountMinor,
+            discountRate: t.discountRate,
+            vatRate: t.vatRate,
+            paidMinor: t.paidMinor,
+            depositType: t.depositType as DepositType,
+            depositMinor: t.depositMinor,
+            depositRate: t.depositRate,
+            note: t.note ?? undefined,
+        }
+    }
     async function nextPage() {
-        if (!hasMore.value || isLoading.value) return
+        if (!hasMore.value || isLoadingBook.value) return
         offset.value += limit.value
         await fetchInvoiceBook()
     }
 
     async function prevPage() {
-        if (offset.value === 0 || isLoading.value) return
+        if (offset.value === 0 || isLoadingBook.value) return
         offset.value = Math.max(0, offset.value - limit.value)
         await fetchInvoiceBook()
     }
@@ -82,28 +177,43 @@ export const useEditorStore = defineStore('editorStore', () => {
     }
 
     function clearInvoiceBook() {
+        lastBookRequestId++
         invoiceBook.value = []
         offset.value = 0
         total.value = 0
         hasMore.value = false
-        errorMessage.value = ''
+        bookError.value = ''
+    }
+
+    function clearActiveInvoice() {
+        lastInvoiceRequestId++
+        activeInvoice.value = undefined
     }
 
     return {
         invoiceBook,
+        activeInvoice,
+        fmtActiveInv,
+
         limit,
         offset,
         total,
         hasMore,
-        isLoading,
-        errorMessage,
+
+        isLoadingBook,
+        isLoadingInvoice,
+        errorMessage: bookError,
+
         canGoPrev,
         canGoNext,
+
         fetchInvoiceBook,
         fetchInvoice,
         nextPage,
         prevPage,
         goToFirstPage,
         clearInvoiceBook,
+        clearActiveInvoice,
+        fmtActive,
     }
 })

@@ -29,7 +29,7 @@ const base = [
   'touch-manipulation',
 ].join(' ')
 
-const disabledCls = 'opacity-60 cursor-not-allowed pointer-events-none'
+const disabledCls = 'opacity-60 cursor-not-allowed '
 
 const variants: Record<Variant, string> = {
   primary: [
@@ -43,11 +43,11 @@ const variants: Record<Variant, string> = {
   ].join(' '),
 
   secondary: [
-    'border-zinc-200 bg-white text-zinc-700',
+    'border-zinc-200 bg-white text-zinc-800',
     'hover:border-zinc-400 hover:bg-zinc-50',
     'active:bg-zinc-100 active:border-zinc-400',
-    'dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200',
-    'dark:hover:border-zinc-800 dark:hover:bg-zinc-800',
+    'dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-200',
+    'dark:hover:border-zinc-700 dark:hover:bg-zinc-900/95',
     'dark:active:bg-zinc-800/30 dark:active:border-zinc-500/70',
   ].join(' '),
 

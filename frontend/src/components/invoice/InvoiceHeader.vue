@@ -126,7 +126,7 @@ const dueByDate = computed<string | null>({
           </div>
         </div>
       </div>
-      <DecorGradient />
+      <DecorGradient variant="gradientAndGrid" />
     </section>
   </header>
 </template>

@@ -40,7 +40,7 @@ const subtitle = 'Manage business identity, invoice defaults and PDF display opt
 const currencyOptions: CurrencyCode[] = ['GBP', 'EUR', 'USD']
 const dateFormatOptions: DateFormat[] = ['dd/mm/yyyy', 'mm/dd/yyyy', 'yyyy-mm-dd']
 
-const PAYMENT_TERMS_MAX = 400
+const PAYMENT_TERMS_MAX = 1000
 const PAYMENT_DETAILS_MAX = 250
 const FOOTER_NOTE_MAX = 180
 
@@ -364,8 +364,10 @@ useEscape(closeSettings, {
                       class="mt-1 text-right text-xs"
                       :class="
                         form.paymentTerms.length > PAYMENT_TERMS_MAX * 0.9
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-zinc-500 dark:text-zinc-400'
+                          ? 'text-rose-600 dark:text-rose-300'
+                          : form.paymentTerms.length > PAYMENT_TERMS_MAX * 0.8
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-zinc-500 dark:text-zinc-400'
                       "
                     >
                       {{ form.paymentTerms.length }}/{{ PAYMENT_TERMS_MAX }}
@@ -382,7 +384,7 @@ useEscape(closeSettings, {
                     <textarea
                       id="setts-pmnt-details"
                       v-model="form.paymentDetails"
-                      rows="4"
+                      rows="3"
                       :maxlength="PAYMENT_DETAILS_MAX"
                       class="input input-accent w-full resize-y rounded-xl px-3 py-2"
                       placeholder="Bank transfer details, sort code, account number, IBAN, etc."
@@ -391,8 +393,10 @@ useEscape(closeSettings, {
                       class="mt-1 text-right text-xs"
                       :class="
                         form.paymentDetails.length > PAYMENT_DETAILS_MAX * 0.9
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-zinc-500 dark:text-zinc-400'
+                          ? 'text-rose-600 dark:text-rose-300'
+                          : form.paymentDetails.length > PAYMENT_DETAILS_MAX * 0.8
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-zinc-500 dark:text-zinc-400'
                       "
                     >
                       {{ form.paymentDetails.length }}/{{ PAYMENT_DETAILS_MAX }}
@@ -419,8 +423,10 @@ useEscape(closeSettings, {
                       class="mt-1 text-right text-xs"
                       :class="
                         form.notesFooter.length > FOOTER_NOTE_MAX * 0.9
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-zinc-500 dark:text-zinc-400'
+                          ? 'text-rose-600 dark:text-rose-300'
+                          : form.notesFooter.length > FOOTER_NOTE_MAX * 0.8
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-zinc-500 dark:text-zinc-400'
                       "
                     >
                       {{ form.notesFooter.length }}/{{ FOOTER_NOTE_MAX }}

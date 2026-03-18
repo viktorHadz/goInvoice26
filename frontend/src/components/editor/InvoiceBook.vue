@@ -39,7 +39,7 @@ const setStore = useSettingsStore()
 const clientStore = useClientStore()
 const bookStore = useEditorStore()
 
-const { invoiceBook, isLoading, canGoPrev, canGoNext, offset, total, errorMessage } =
+const { invoiceBook, isLoadingBook, canGoPrev, canGoNext, offset, total, errorMessage } =
   storeToRefs(bookStore)
 
 const invoices = computed<InvBookInvoice[]>(() => invoiceBook.value)
@@ -181,18 +181,10 @@ async function handleNextPage() {
 
 watch(
   () => clientStore.selectedClient?.id,
-  async (newId, oldId) => {
+  () => {
     openId.value = null
     query.value = ''
-
-    if (!newId) {
-      bookStore.clearInvoiceBook()
-      return
-    }
-
-    if (newId !== oldId && isOpen.value) {
-      await bookStore.fetchInvoiceBook(true)
-    }
+    closeDropdown()
   },
 )
 
@@ -252,7 +244,7 @@ useEscape(() => closeDropdown())
           <div
             class="relative border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
           >
-            <DecorGradient />
+            <DecorGradient variant="gradientAndGrid" />
             <div class="relative p-4">
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
@@ -297,7 +289,7 @@ useEscape(() => closeDropdown())
             >
               <div :key="`${offset}-${query}`">
                 <div
-                  v-if="isLoading && !invoiceBook.length"
+                  v-if="isLoadingBook && !invoiceBook.length"
                   class="rounded-xl border border-dashed border-zinc-200 px-3 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400"
                 >
                   Loading invoices...
@@ -467,7 +459,7 @@ useEscape(() => closeDropdown())
               <TheButton
                 type="button"
                 variant="secondary"
-                :disabled="!canGoPrev || isLoading"
+                :disabled="!canGoPrev || isLoadingBook"
                 @click="handlePrevPage"
               >
                 Prev
@@ -476,7 +468,7 @@ useEscape(() => closeDropdown())
               <TheButton
                 type="button"
                 variant="secondary"
-                :disabled="!canGoNext || isLoading"
+                :disabled="!canGoNext || isLoadingBook"
                 @click="handleNextPage"
               >
                 Next

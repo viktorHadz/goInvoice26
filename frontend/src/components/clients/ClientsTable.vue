@@ -268,7 +268,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
       class="relative mb-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
       <!-- border glow/texture  -->
-      <DecorGradient />
+      <DecorGradient variant="gradientAndGrid" />
 
       <div class="relative p-4">
         <!-- title row -->
@@ -303,7 +303,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
               </TheButton>
             </TheTooltip>
 
-            <TheTooltip :text="canCreate ? 'Add new' : 'Adjust inputs'">
+            <TheTooltip :text="canCreate ? 'Add new' : 'Adjust inputs before creating'">
               <TheButton
                 type="button"
                 :disabled="!canCreate"

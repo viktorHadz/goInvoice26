@@ -12,12 +12,15 @@ import (
 // Do not return it directly in HTTP responses.
 // Map it to an API response model in the handler layer.
 type ItemLine struct {
-	Name         string
-	LineType     string
-	Quantity     int64
-	UnitPriceMin int64
-	LineTotalMin int64
-	SortOrder    int64
+	ProductID     *int64
+	PricingMode   *string
+	Name          string
+	LineType      string
+	Quantity      int64
+	MinutesWorked *int64
+	UnitPriceMin  int64
+	LineTotalMin  int64
+	SortOrder     int64
 }
 
 // InvoiceOverviewTotals is a DB/query row for invoice overview and totals.
@@ -124,6 +127,9 @@ func QueryInvoiceLines(
 	query := `
 		SELECT
 			it.sort_order,
+			it.product_id,
+			it.pricing_mode,
+			it.minutes_worked,
 			it.name,
 			it.line_type,
 			it.quantity,
@@ -150,6 +156,9 @@ func QueryInvoiceLines(
 
 		if err := rows.Scan(
 			&item.SortOrder,
+			&item.ProductID,
+			&item.PricingMode,
+			&item.MinutesWorked,
 			&item.Name,
 			&item.LineType,
 			&item.Quantity,

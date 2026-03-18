@@ -14,6 +14,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import TheTooltip from '@/components/UI/TheTooltip.vue'
 import { useProductStore } from '@/stores/products'
+import DecorGradient from '@/components/UI/DecorGradient.vue'
 
 // The idea is to disable invoice and editor if no client is selected
 const clientStore = useClientStore()
@@ -62,7 +63,7 @@ const features = [
           </ul>
         </div>
 
-        <!-- tiny “how to” -->
+        <!-- how to-->
         <div class="mt-8 text-zinc-600 dark:text-zinc-400">
           <div class="font-medium text-zinc-900 dark:text-zinc-200">Quick start:</div>
           <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
@@ -101,7 +102,7 @@ const features = [
           <h2 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             Continue where you left off
           </h2>
-          <span class="text-sm text-sky-600 dark:text-emerald-400">
+          <span class="text-sm font-semibold text-sky-600 dark:text-emerald-400">
             client → items → invoice → edit
           </span>
         </div>
@@ -137,9 +138,7 @@ const features = [
         </div>
 
         <div v-else>
-          <p class="text-sm text-zinc-600 dark:text-zinc-300">Where to next?</p>
-
-          <div class="mt-4 flex flex-wrap gap-3">
+          <div class="mt-12 flex flex-wrap gap-3">
             <RouterLink to="/clients">
               <TheButton class="cursor-pointer">
                 <UsersIcon class="size-4"></UsersIcon>

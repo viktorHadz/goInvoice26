@@ -52,7 +52,7 @@ async function generatePdfOnly() {
     v-else
     class="min-w-0 space-y-3 text-base"
   >
-    <div class="flex min-w-0 items-center justify-between gap-3">
+    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
       <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Subtotal</div>
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
@@ -61,7 +61,7 @@ async function generatePdfOnly() {
       </div>
     </div>
 
-    <div class="flex min-w-0 items-center justify-between gap-3">
+    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
       <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Discount</div>
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
@@ -70,7 +70,7 @@ async function generatePdfOnly() {
       </div>
     </div>
 
-    <div class="flex min-w-0 items-center justify-between gap-3">
+    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
       <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">VAT</div>
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
@@ -81,7 +81,7 @@ async function generatePdfOnly() {
 
     <div class="h-px bg-zinc-200 dark:bg-zinc-800" />
 
-    <div class="flex min-w-0 items-center justify-between gap-3 text-lg">
+    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3 text-lg">
       <div class="min-w-0 truncate font-semibold text-zinc-800 dark:text-zinc-100">Total</div>
       <div
         class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
@@ -90,28 +90,28 @@ async function generatePdfOnly() {
       </div>
     </div>
 
-    <div
-      class="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/60"
-    >
-      <div class="flex min-w-0 items-center justify-between gap-3">
-        <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Deposit</div>
-        <div
-          class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
-        >
-          -{{ fmtGBPMinor(invStore.depositMinor) }}
-        </div>
-      </div>
+    <div class="h-px bg-zinc-200 dark:bg-zinc-800" />
 
-      <div class="mt-2 flex min-w-0 items-center justify-between gap-3">
-        <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Paid</div>
-        <div
-          class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
-        >
-          -{{ fmtGBPMinor(invStore.invoice.paidMinor) }}
-        </div>
+    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
+      <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Deposit</div>
+      <div
+        class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
+      >
+        -{{ fmtGBPMinor(invStore.depositMinor) }}
       </div>
+    </div>
 
-      <div class="mt-3 flex min-w-0 items-center justify-between gap-3 text-lg">
+    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
+      <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Paid</div>
+      <div
+        class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
+      >
+        -{{ fmtGBPMinor(invStore.invoice.paidMinor) }}
+      </div>
+    </div>
+
+    <div class="rounded-xl bg-zinc-50 px-3 py-3 dark:bg-zinc-900/40">
+      <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3 text-lg">
         <div class="min-w-0 truncate font-semibold text-zinc-800 dark:text-zinc-100">
           Balance due
         </div>
@@ -123,33 +123,24 @@ async function generatePdfOnly() {
       </div>
     </div>
 
-    <div class="flex flex-col gap-y-2 sm:flex-row sm:gap-x-4">
-      <TheTooltip
-        text="Generate a PDF without saving invoice."
-        class="w-full"
+    <div class="flex flex-col gap-y-2 pt-2 sm:flex-row sm:gap-x-4">
+      <TheButton
+        class="flex w-full cursor-pointer items-center gap-2"
+        :disabled="isGeneratingPdf || isCreatingDraft"
+        @click="generatePdfOnly"
       >
-        <TheButton
-          class="flex w-full items-center gap-2"
-          :disabled="isGeneratingPdf || isCreatingDraft"
-          @click="generatePdfOnly"
-        >
-          <DocumentArrowDownIcon class="size-4" />
-          Print / PDF
-        </TheButton>
-      </TheTooltip>
-      <TheTooltip
-        text="Save invoice and generate a PDF"
-        class="w-full"
+        <DocumentArrowDownIcon class="size-4" />
+        Create PDF
+      </TheButton>
+
+      <TheButton
+        class="flex w-full cursor-pointer items-center gap-2"
+        :disabled="isCreatingDraft || isGeneratingPdf"
+        @click="createDraft"
       >
-        <TheButton
-          class="flex w-full items-center gap-2"
-          :disabled="isCreatingDraft || isGeneratingPdf"
-          @click="createDraft"
-        >
-          <DocumentIcon class="size-4" />
-          Create Draft
-        </TheButton>
-      </TheTooltip>
+        <DocumentIcon class="size-4" />
+        Create Draft
+      </TheButton>
     </div>
   </div>
 </template>

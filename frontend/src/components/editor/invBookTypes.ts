@@ -38,6 +38,37 @@ export type InvoiceBookResponse = {
 }
 
 export type InvoiceResponse = {
-    lines: []
-    totals: []
+    totals: {
+        baseNumber: number
+        revisionNo: number
+        issueDate: string
+        dueByDate?: string
+        clientName: string
+        clientCompanyName: string
+        clientAddress: string
+        clientEmail: string
+        note?: string
+        vatRate: number
+        vatAmountMinor: number
+        discountType: string
+        discountRate: number
+        discountMinor: number
+        depositType: string
+        depositRate: number
+        depositMinor: number
+        subtotalMinor: number
+        totalMinor: number
+        paidMinor: number
+    }
+    lines: {
+        productId?: number | null
+        pricingMode?: string | null
+        minutesWorked?: number | null
+        name: string
+        lineType: string
+        quantity: number
+        unitPriceMinor: number
+        lineTotalMinor: number
+        sortOrder: number
+    }[]
 }
