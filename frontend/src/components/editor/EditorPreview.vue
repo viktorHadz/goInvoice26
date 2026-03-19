@@ -66,7 +66,7 @@ const balanceDueMinor = computed(() => {
     class="space-y-4"
   >
     <!-- Header card -->
-    <section
+    <header
       class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
       <div
@@ -179,7 +179,7 @@ const balanceDueMinor = computed(() => {
           </div>
         </div>
       </div>
-    </section>
+    </header>
 
     <!-- Items card -->
     <section

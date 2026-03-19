@@ -25,33 +25,38 @@ import { validateInvoicePayload } from '@/utils/frontendValidation'
 import { emitToastError, emitToastSuccess } from '@/utils/toast'
 import { NetworkError } from '@/utils/fetchHelper'
 import type { Client } from '@/utils/clientHttpHandler'
-import { asNum, round0 } from '@/utils/numbers'
-import { clamp } from '@vueuse/core'
-import {
-    calcBalanceDueMinor,
-    calcDepositMinor,
-    calcTotals,
-    lineTotalMinor,
-    toMinor,
-} from '@/utils/money'
+import { lineTotalMinor, toMinor } from '@/utils/money'
 import { apiDTO } from '@/utils/invoiceDto'
 import { flattenValidationErrors } from './pdf'
 import { fmtPrettyInvoiceNumber } from '@/utils/numbers'
-import { useInvoiceFieldErrors } from '@/composables/getFieldError'
-// Exported so components can import directly rather than always going through the store
+import { useInvoiceFieldErrors } from '@/composables/useInvoiceFieldErrors'
+import {
+    addInvoiceLine,
+    clearInvoiceDeposit,
+    clearInvoiceDiscount,
+    removeInvoiceLine,
+    setInvoiceDepositFixedGBP,
+    setInvoiceDepositPercent,
+    setInvoiceDepositType,
+    setInvoiceDiscountFixedGBP,
+    setInvoiceDiscountPercent,
+    setInvoiceDiscountType,
+    setInvoiceDueByDate,
+    setInvoiceIssueDate,
+    setInvoiceNote,
+    setInvoicePaidGBP,
+    setInvoiceVatRateBps,
+    updateInvoiceLine,
+} from '@/utils/invoiceMutations'
+import { useInvoicePricing } from '@/composables/useInvoicePricing'
 
-function assignDefined<T extends object>(target: T, patch: Partial<T>) {
-    for (const k in patch) {
-        const v = patch[k as keyof T]
-        if (v !== undefined) (target as any)[k] = v
-    }
-    return target
-}
-
-// INVOICE STORE
+// * INVOICE STORE
 export const useInvoiceStore = defineStore('invoice', () => {
     const invoice = ref<Invoice | null>(null)
     const serverFieldErrors = ref<Record<string, string>>({})
+    /**
+     * showAllValidation - whether validation errors are displayed before attempting to submit.
+     */
     const showAllValidation = ref(false)
     const setsStore = useSettingsStore()
     const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
@@ -114,6 +119,8 @@ export const useInvoiceStore = defineStore('invoice', () => {
     const prettyBaseNumber = computed(() =>
         fmtPrettyInvoiceNumber(invoicePrefix.value, invoice.value?.baseNumber),
     )
+    // Pricing is a single computed that derives all pricing in one pass
+    const { totals, depositMinor, balanceDueMinor } = useInvoicePricing(invoice)
 
     let verifyTimer: number | null = null
     let verifyAbort: AbortController | null = null
@@ -262,26 +269,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
         }, debounceDur)
     }
 
-    // Single computed that derives all pricing in one pass
-    const pricing = computed(() => {
-        const inv = invoice.value
-        if (!inv) return null
-
-        const totals = calcTotals(inv)
-        const deposit = calcDepositMinor(inv, totals.totalMinor)
-        const balanceDue = calcBalanceDueMinor(totals.totalMinor, deposit, inv.paidMinor)
-
-        return { totals, depositMinor: deposit, balanceDueMinor: balanceDue }
-    })
-
-    const totals = computed<Totals | null>(() => pricing.value?.totals ?? null)
-    const depositMinor = computed<MoneyMinor>(
-        () => pricing.value?.depositMinor ?? (0 as MoneyMinor),
-    )
-    const balanceDueMinor = computed<MoneyMinor>(
-        () => pricing.value?.balanceDueMinor ?? (0 as MoneyMinor),
-    )
-
     watch(
         invoice,
         () => {
@@ -303,171 +290,83 @@ export const useInvoiceStore = defineStore('invoice', () => {
     }
 
     // * -------- LINES CRUD -------- * //
-
     function addLine(line: Omit<InvoiceLine, 'sortOrder'>) {
-        const inv = ensure()
-
-        const canMerge = line.lineType !== 'custom' && line.productId != null
-        const existingLine = canMerge
-            ? inv.lines.find((ln) => ln.productId === line.productId)
-            : undefined
-
-        if (existingLine) {
-            const qtyToAdd = Number.isFinite(line.quantity) && line.quantity > 0 ? line.quantity : 1
-            existingLine.quantity += qtyToAdd
-            return
-        }
-
-        const maxSort = inv.lines.reduce(
-            (m, current) => Math.max(m, asNum(current.sortOrder, 0)),
-            0,
-        )
-        inv.lines.push({ ...line, sortOrder: maxSort + 1 })
+        addInvoiceLine(ensure(), line)
         scheduleServerVerify()
     }
 
     function updateLine(sortOrder: number, patch: Partial<InvoiceLine>): void {
-        const inv = ensure()
-        const line = inv.lines.find((l) => l.sortOrder === sortOrder)
-        if (!line) return
+        updateInvoiceLine(ensure(), sortOrder, patch)
         scheduleServerVerify()
-
-        assignDefined(line, patch)
     }
 
     function removeLine(sortOrder: number): void {
-        const inv = ensure()
-
-        inv.lines = inv.lines
-            .filter((l) => l.sortOrder !== sortOrder)
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((l, i) => ({ ...l, sortOrder: i + 1 }))
-
+        removeInvoiceLine(ensure(), sortOrder)
         scheduleServerVerify()
     }
 
-    // Setters — all validated/clamped here so components stay dumb
+    // * ----- Setters ----- * //
     function setIssueDate(v: string): void {
-        ensure().issueDate = String(v ?? '')
+        setInvoiceIssueDate(ensure(), v)
     }
 
     function setDueByDate(v: string): void {
-        ensure().dueByDate = String(v ?? '')
+        setInvoiceDueByDate(ensure(), v)
         scheduleServerVerify()
     }
 
     function setNote(note: string): void {
-        ensure().note = String(note ?? '')
+        setInvoiceNote(ensure(), note)
         scheduleServerVerify()
     }
 
     function setVatRateBps(v: number): void {
-        ensure().vatRate = clamp(round0(asNum(v, 0)), 0, 10000)
+        setInvoiceVatRateBps(ensure(), v)
         scheduleServerVerify()
     }
 
     function setDiscountType(t: DiscountType): void {
-        const inv = ensure()
+        setInvoiceDiscountType(ensure(), t)
         scheduleServerVerify()
-
-        inv.discountType = t
-
-        if (t === 'none') {
-            inv.discountMinor = 0
-            inv.discountRate = 0
-        }
-
-        if (t === 'percent') {
-            inv.discountRate = clamp(round0(asNum(inv.discountRate, 0)), 0, 10000)
-            inv.discountMinor = 0
-        }
-
-        if (t === 'fixed') {
-            inv.discountMinor = Math.max(0, round0(asNum(inv.discountMinor, 0)))
-            inv.discountRate = 0
-        }
     }
 
     function setDiscountFixedGBP(gbp: number): void {
-        const inv = ensure()
-
-        inv.discountType = 'fixed'
-        inv.discountMinor = Math.max(0, toMinor(gbp))
-        inv.discountRate = 0
-
+        setInvoiceDiscountFixedGBP(ensure(), gbp)
         scheduleServerVerify()
     }
 
     function setDiscountPercent(percent: number): void {
-        const inv = ensure()
-
-        inv.discountType = 'percent'
-        inv.discountRate = clamp(round0(asNum(percent, 0) * 100), 0, 10000)
-        inv.discountMinor = 0
-
+        setInvoiceDiscountPercent(ensure(), percent)
         scheduleServerVerify()
     }
 
     function clearDiscount(): void {
-        const inv = ensure()
-
-        inv.discountType = 'none'
-        inv.discountMinor = 0
-        inv.discountRate = 0
-
+        clearInvoiceDiscount(ensure())
         scheduleServerVerify()
     }
+
     function setDepositType(t: DepositType): void {
-        const inv = ensure()
-
-        inv.depositType = t
-
-        if (t === 'none') {
-            inv.depositMinor = 0
-            inv.depositRate = 0
-        }
-
-        if (t === 'percent') {
-            inv.depositRate = clamp(round0(asNum(inv.depositRate, 0)), 0, 10000)
-            inv.depositMinor = 0
-        }
-
-        if (t === 'fixed') {
-            inv.depositMinor = Math.max(0, round0(asNum(inv.depositMinor, 0)))
-            inv.depositRate = 0
-        }
+        setInvoiceDepositType(ensure(), t)
         scheduleServerVerify()
     }
 
     function setDepositFixedGBP(gbp: number): void {
-        const inv = ensure()
-
-        inv.depositType = 'fixed'
-        inv.depositMinor = Math.max(0, toMinor(gbp))
-        inv.depositRate = 0
+        setInvoiceDepositFixedGBP(ensure(), gbp)
         scheduleServerVerify()
     }
 
     function setDepositPercent(percent: number): void {
-        const inv = ensure()
-
-        inv.depositType = 'percent'
-        inv.depositRate = clamp(round0(asNum(percent, 0) * 100), 0, 10000)
-        inv.depositMinor = 0
+        setInvoiceDepositPercent(ensure(), percent)
         scheduleServerVerify()
     }
 
     function clearDeposit(): void {
-        const inv = ensure()
-
-        inv.depositType = 'none'
-        inv.depositMinor = 0
-        inv.depositRate = 0
+        clearInvoiceDeposit(ensure())
         scheduleServerVerify()
     }
 
     function setPaidGBP(gbp: number): void {
-        ensure().paidMinor = Math.max(0, toMinor(gbp))
+        setInvoicePaidGBP(ensure(), gbp)
         scheduleServerVerify()
     }
 

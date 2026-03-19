@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch, type MaybeRefOrGetter } from 'vue'
 import { useClientStore } from './clients'
 import { getInvAndRevNums, getInvoice } from '@/utils/editorHttpHandler'
 import type { InvBookInvoice, InvoiceResponse } from '@/components/editor/invBookTypes'
@@ -9,16 +9,32 @@ import type {
     DepositType,
     DiscountType,
     Invoice,
+    InvoiceLine,
     LineType,
     PricingMode,
 } from '@/components/invoice/invoiceTypes'
+import { useInvoiceFieldErrors } from '@/composables/useInvoiceFieldErrors'
+import { cloneInvoice } from '@/utils/cloneInvoice'
+import { addInvoiceLine, removeInvoiceLine, updateInvoiceLine } from '@/utils/invoiceMutations'
+import { fmtPrettyInvoiceNumber } from '@/utils/numbers'
+import { useSettingsStore } from './settings'
+import { useInvoiceVerification } from '@/composables/useInvoiceVerification'
+import { useInvoicePricing } from '@/composables/useInvoicePricing'
 
 export const useEditorStore = defineStore('editorStore', () => {
     const clientStore = useClientStore()
+    const setsStore = useSettingsStore()
+    const getClientStore = () => useClientStore()
+
+    const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
 
     const invoiceBook = ref<InvBookInvoice[]>([])
-    // const activeInvoice = ref<InvoiceResponse | undefined>(undefined)
-    const activeInvoice = ref<Invoice | undefined>(undefined)
+    const activeInvoice = ref<Invoice | null>(null)
+    /**
+     * draftInvoice is the editable working copy.
+     */
+    const draftInvoice = ref<Invoice | null>(null)
+
     const isEditing = ref(false)
 
     const limit = ref(10)
@@ -30,12 +46,43 @@ export const useEditorStore = defineStore('editorStore', () => {
     const isLoadingInvoice = ref(false)
 
     const bookError = ref('')
+    const serverFieldErrors = ref<Record<string, string>>({})
 
+    const prettyBaseNumber = computed(() => {
+        console.log(invoicePrefix.value)
+        return fmtPrettyInvoiceNumber(invoicePrefix.value, draftInvoice.value?.baseNumber)
+    })
+
+    /**
+     * showAllValidation - whether validation errors are displayed before attempting to submit.
+     */
+    const showAllValidation = ref(false)
     const canGoPrev = computed(() => offset.value > 0)
     const canGoNext = computed(() => hasMore.value)
+    const { totals, depositMinor, balanceDueMinor } = useInvoicePricing(draftInvoice)
+
+    const {
+        verifyStatus,
+        lastVerifyAt,
+        serverCanonicalTotals,
+        serverCanonicalLineTotals,
+        runServerVerify,
+        scheduleServerVerify,
+        clearVerifyState,
+        abortVerify,
+    } = useInvoiceVerification(
+        draftInvoice,
+        computed(() => clientStore.selectedClient?.id ?? null),
+        totals,
+        serverFieldErrors,
+    )
+
+    function ensure(invoice: MaybeRefOrGetter): Invoice {
+        if (!invoice.value) throw new Error('Invoice not initialised')
+        return invoice.value
+    }
 
     let lastBookRequestId = 0
-
     async function fetchInvoiceBook(reset = false) {
         const clientId = clientStore.selectedClient?.id
 
@@ -99,7 +146,6 @@ export const useEditorStore = defineStore('editorStore', () => {
         }
 
         const requestId = ++lastInvoiceRequestId
-
         isLoadingInvoice.value = true
 
         try {
@@ -108,8 +154,15 @@ export const useEditorStore = defineStore('editorStore', () => {
             if (requestId !== lastInvoiceRequestId) return
             if (clientStore.selectedClient?.id !== clientId) return
 
-            // activeInvoice.value = data
-            activeInvoice.value = fmtActive(data, clientId)
+            const formatted = fmtActive(data, clientId)
+
+            activeInvoice.value = formatted
+            draftInvoice.value = cloneInvoice(formatted)
+
+            isEditing.value = false
+            serverFieldErrors.value = {}
+            showAllValidation.value = false
+            clearVerifyState()
         } catch (error) {
             if (requestId !== lastInvoiceRequestId) return
 
@@ -126,6 +179,10 @@ export const useEditorStore = defineStore('editorStore', () => {
             }
         }
     }
+
+    /**
+     * fmtActive formats an invoice into a shape accepted by the server.
+     */
     function fmtActive(resp: InvoiceResponse, clientId: number): Invoice {
         const t = resp.totals
         return {
@@ -161,6 +218,11 @@ export const useEditorStore = defineStore('editorStore', () => {
         }
     }
 
+    const { liveFieldErrors, getFieldError } = useInvoiceFieldErrors(
+        draftInvoice,
+        serverFieldErrors,
+    )
+
     // Helpers
     async function nextPage() {
         if (!hasMore.value || isLoadingBook.value) return
@@ -190,31 +252,75 @@ export const useEditorStore = defineStore('editorStore', () => {
 
     function clearActiveInvoice() {
         lastInvoiceRequestId++
-        activeInvoice.value = undefined
+        activeInvoice.value = null
+        draftInvoice.value = null
+        isEditing.value = false
+        serverFieldErrors.value = {}
+        showAllValidation.value = false
+        clearVerifyState()
     }
 
     function initEdit() {
+        if (!activeInvoice.value) return
+        clearVerifyState()
+        draftInvoice.value = cloneInvoice(activeInvoice.value)
+        serverFieldErrors.value = {}
+        showAllValidation.value = false
         isEditing.value = true
     }
+
     function cancelEdit() {
-        if (!isEditing) return
+        if (!activeInvoice.value) return
+
+        draftInvoice.value = cloneInvoice(activeInvoice.value)
+        serverFieldErrors.value = {}
+        showAllValidation.value = false
         isEditing.value = false
+        clearVerifyState()
     }
 
+    // * CRUD Operations
+    function addLine(line: Omit<InvoiceLine, 'sortOrder'>) {
+        if (!draftInvoice || draftInvoice.value === null) return
+        addInvoiceLine(draftInvoice.value, line)
+        scheduleServerVerify()
+    }
+
+    function updateLine(sortOrder: number, patch: Partial<InvoiceLine>): void {
+        updateInvoiceLine(ensure(draftInvoice), sortOrder, patch)
+        scheduleServerVerify()
+    }
+
+    function removeLine(sortOrder: number): void {
+        removeInvoiceLine(ensure(draftInvoice), sortOrder)
+        scheduleServerVerify()
+    }
+
+    watch(
+        draftInvoice,
+        () => {
+            if (Object.keys(serverFieldErrors.value).length > 0) {
+                serverFieldErrors.value = {}
+            }
+        },
+        { deep: true },
+    )
     return {
         invoiceBook,
-        // activeInvoice,
         activeInvoice,
-
+        draftInvoice,
         limit,
         offset,
         total,
         hasMore,
 
+        liveFieldErrors,
+        showAllValidation,
         isLoadingBook,
         isLoadingInvoice,
         errorMessage: bookError,
         isEditing,
+        prettyBaseNumber,
 
         canGoPrev,
         canGoNext,
@@ -229,5 +335,21 @@ export const useEditorStore = defineStore('editorStore', () => {
         fmtActive,
         initEdit,
         cancelEdit,
+        getFieldError,
+
+        addLine,
+        updateLine,
+        removeLine,
+
+        totals,
+        depositMinor,
+        balanceDueMinor,
+
+        verifyStatus,
+        lastVerifyAt,
+        serverCanonicalTotals,
+        serverCanonicalLineTotals,
+        runServerVerify,
+        scheduleServerVerify,
     }
 })

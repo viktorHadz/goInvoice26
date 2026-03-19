@@ -61,12 +61,12 @@ const variants: Record<Variant, string> = {
   ].join(' '),
 
   danger: [
-    'border-red-200 bg-red-50 text-red-500',
-    'hover:bg-red-100 hover:border-red-300',
-    'active:bg-red-200/60 active:border-red-300',
-    'dark:border-red-400/20 dark:bg-red-950/25 dark:text-red-200',
-    'dark:hover:bg-red-950/40 dark:hover:border-red-400/35',
-    'dark:active:bg-red-950/55 dark:active:border-red-400/45',
+    'border-rose-200 bg-rose-50 text-rose-500',
+    'hover:bg-rose-100 hover:border-rose-300',
+    'active:bg-rose-200/60 active:border-rose-300',
+    'dark:border-rose-400/20 dark:bg-rose-950/25 dark:text-rose-200',
+    'dark:hover:bg-rose-950/40 dark:hover:border-rose-400/35',
+    'dark:active:bg-rose-950/55 dark:active:border-rose-400/45',
   ].join(' '),
 }
 
