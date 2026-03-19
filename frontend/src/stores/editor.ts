@@ -17,8 +17,9 @@ export const useEditorStore = defineStore('editorStore', () => {
     const clientStore = useClientStore()
 
     const invoiceBook = ref<InvBookInvoice[]>([])
-    const activeInvoice = ref<InvoiceResponse | undefined>(undefined)
-    const fmtActiveInv = ref<Invoice | undefined>(undefined)
+    // const activeInvoice = ref<InvoiceResponse | undefined>(undefined)
+    const activeInvoice = ref<Invoice | undefined>(undefined)
+    const isEditing = ref(false)
 
     const limit = ref(10)
     const offset = ref(0)
@@ -107,8 +108,8 @@ export const useEditorStore = defineStore('editorStore', () => {
             if (requestId !== lastInvoiceRequestId) return
             if (clientStore.selectedClient?.id !== clientId) return
 
-            activeInvoice.value = data
-            fmtActiveInv.value = fmtActive(data, clientId)
+            // activeInvoice.value = data
+            activeInvoice.value = fmtActive(data, clientId)
         } catch (error) {
             if (requestId !== lastInvoiceRequestId) return
 
@@ -159,6 +160,8 @@ export const useEditorStore = defineStore('editorStore', () => {
             note: t.note ?? undefined,
         }
     }
+
+    // Helpers
     async function nextPage() {
         if (!hasMore.value || isLoadingBook.value) return
         offset.value += limit.value
@@ -190,10 +193,18 @@ export const useEditorStore = defineStore('editorStore', () => {
         activeInvoice.value = undefined
     }
 
+    function initEdit() {
+        isEditing.value = true
+    }
+    function cancelEdit() {
+        if (!isEditing) return
+        isEditing.value = false
+    }
+
     return {
         invoiceBook,
+        // activeInvoice,
         activeInvoice,
-        fmtActiveInv,
 
         limit,
         offset,
@@ -203,6 +214,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         isLoadingBook,
         isLoadingInvoice,
         errorMessage: bookError,
+        isEditing,
 
         canGoPrev,
         canGoNext,
@@ -215,5 +227,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         clearInvoiceBook,
         clearActiveInvoice,
         fmtActive,
+        initEdit,
+        cancelEdit,
     }
 })

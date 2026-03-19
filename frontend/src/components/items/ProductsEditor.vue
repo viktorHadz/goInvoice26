@@ -368,7 +368,7 @@ useEscape(
                 class="rounded-full px-3 py-1.5 text-sm font-medium transition"
                 :class="
                   tab === 'style'
-                    ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
+                    ? 'bg-sky-100 text-sky-700 shadow-sm dark:bg-emerald-950/60 dark:text-emerald-200'
                     : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                 "
                 @click="tab = 'style'"
@@ -381,7 +381,7 @@ useEscape(
                 class="rounded-full px-3 py-1.5 text-sm font-medium transition"
                 :class="
                   tab === 'sample'
-                    ? 'bg-sky-600 text-white shadow-sm dark:bg-emerald-600'
+                    ? 'bg-sky-100 text-sky-700 shadow-sm dark:bg-emerald-950/60 dark:text-emerald-200'
                     : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                 "
                 @click="tab = 'sample'"

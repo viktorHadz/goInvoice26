@@ -14,6 +14,7 @@ import {
     verifyInvoiceHandler,
 } from '@/utils/invoiceHttpHandler'
 import { useClientStore } from './clients'
+import { useSettingsStore } from './settings'
 import {
     isApiError,
     hasFieldErrors,
@@ -35,7 +36,8 @@ import {
 } from '@/utils/money'
 import { apiDTO } from '@/utils/invoiceDto'
 import { flattenValidationErrors } from './pdf'
-
+import { fmtPrettyInvoiceNumber } from '@/utils/numbers'
+import { useInvoiceFieldErrors } from '@/composables/getFieldError'
 // Exported so components can import directly rather than always going through the store
 
 function assignDefined<T extends object>(target: T, patch: Partial<T>) {
@@ -46,17 +48,13 @@ function assignDefined<T extends object>(target: T, patch: Partial<T>) {
     return target
 }
 
-function fmtPrettyInvoiceNumber(prefix: string, baseNumber?: number): string {
-    if (!baseNumber || baseNumber <= 0) return ''
-    return `${prefix} - ${baseNumber}`
-}
-
 // INVOICE STORE
 export const useInvoiceStore = defineStore('invoice', () => {
     const invoice = ref<Invoice | null>(null)
     const serverFieldErrors = ref<Record<string, string>>({})
     const showAllValidation = ref(false)
-    const invoicePrefix = import.meta.env.VITE_INVOICE_PREFIX
+    const setsStore = useSettingsStore()
+    const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
     const verifyStatus = ref<'idle' | 'checking' | 'ok' | 'mismatch' | 'invalid' | 'error'>('idle')
     const lastVerifyAt = ref<number | null>(null)
     const serverCanonicalTotals = ref<Totals | null>(null)
@@ -114,7 +112,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
     }
 
     const prettyBaseNumber = computed(() =>
-        fmtPrettyInvoiceNumber(invoicePrefix, invoice.value?.baseNumber),
+        fmtPrettyInvoiceNumber(invoicePrefix.value, invoice.value?.baseNumber),
     )
 
     let verifyTimer: number | null = null
@@ -284,12 +282,12 @@ export const useInvoiceStore = defineStore('invoice', () => {
         () => pricing.value?.balanceDueMinor ?? (0 as MoneyMinor),
     )
 
-    const liveFieldErrors = computed<Record<string, string>>(() => {
-        const inv = invoice.value
-        if (!inv) return {}
-        const dto = apiDTO(inv)
-        return validateInvoicePayload(dto)
-    })
+    // const liveFieldErrors = computed<Record<string, string>>(() => {
+    //     const inv = invoice.value
+    //     if (!inv) return {}
+    //     const dto = apiDTO(inv)
+    //     return validateInvoicePayload(dto)
+    // })
 
     watch(
         invoice,
@@ -509,7 +507,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
             clearVerifyTimer()
             abortVerify()
             emitToastSuccess(
-                `Invoice ${fmtPrettyInvoiceNumber(invoicePrefix, inv.baseNumber)} saved as draft.`,
+                `Invoice ${fmtPrettyInvoiceNumber(invoicePrefix.value, inv.baseNumber)} saved as draft.`,
             )
             lastVerifyFailureToastedAt.value = null
 
@@ -564,10 +562,10 @@ export const useInvoiceStore = defineStore('invoice', () => {
             return false
         }
     }
-
-    function getFieldError(field: string): string | null {
-        return liveFieldErrors.value[field] ?? serverFieldErrors.value[field] ?? null
-    }
+    const { liveFieldErrors, getFieldError } = useInvoiceFieldErrors(invoice, serverFieldErrors)
+    // function getFieldError(field: string): string | null {
+    //     return liveFieldErrors.value[field] ?? serverFieldErrors.value[field] ?? null
+    // }
 
     function clearServerFieldErrors() {
         serverFieldErrors.value = {}

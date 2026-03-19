@@ -476,14 +476,14 @@ useEscape(closeSettings, {
                         />
                         Replace image
                       </label>
-
-                      <button
+                      <TheButton
                         type="button"
-                        class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100 dark:border-rose-400/20 dark:bg-rose-950/25 dark:text-rose-200 dark:hover:bg-rose-950/40"
                         @click="removeLogo"
+                        variant="danger"
+                        class="cursor-pointer"
                       >
                         Remove
-                      </button>
+                      </TheButton>
                     </div>
                   </div>
 
@@ -549,7 +549,7 @@ useEscape(closeSettings, {
             <TheButton
               type="button"
               @click="closeSettings"
-              variant="secondary"
+              variant="danger"
               class="cursor-pointer"
             >
               Cancel

@@ -29,7 +29,7 @@ const navLinks = [
             :class="[
               'absolute inset-0 rounded-xl transition-all duration-200 ease-out',
               isActive
-                ? 'scale-100 bg-zinc-100 shadow-sm dark:bg-zinc-800'
+                ? 'scale-100 bg-sky-100 shadow-sm dark:bg-emerald-950/60'
                 : 'scale-95 bg-transparent',
             ]"
           />
@@ -38,7 +38,7 @@ const navLinks = [
             :class="[
               'relative z-10 block rounded-xl px-3 py-1.5 text-sm font-medium transition-colors duration-200',
               isActive
-                ? 'text-sky-600 dark:text-emerald-400'
+                ? 'text-sky-700 dark:text-emerald-200'
                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100',
             ]"
           >
