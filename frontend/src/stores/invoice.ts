@@ -282,13 +282,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
         () => pricing.value?.balanceDueMinor ?? (0 as MoneyMinor),
     )
 
-    // const liveFieldErrors = computed<Record<string, string>>(() => {
-    //     const inv = invoice.value
-    //     if (!inv) return {}
-    //     const dto = apiDTO(inv)
-    //     return validateInvoicePayload(dto)
-    // })
-
     watch(
         invoice,
         () => {
@@ -563,9 +556,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
         }
     }
     const { liveFieldErrors, getFieldError } = useInvoiceFieldErrors(invoice, serverFieldErrors)
-    // function getFieldError(field: string): string | null {
-    //     return liveFieldErrors.value[field] ?? serverFieldErrors.value[field] ?? null
-    // }
 
     function clearServerFieldErrors() {
         serverFieldErrors.value = {}
