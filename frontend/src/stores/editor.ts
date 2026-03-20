@@ -49,7 +49,6 @@ export const useEditorStore = defineStore('editorStore', () => {
     const serverFieldErrors = ref<Record<string, string>>({})
 
     const prettyBaseNumber = computed(() => {
-        console.log(invoicePrefix.value)
         return fmtPrettyInvoiceNumber(invoicePrefix.value, draftInvoice.value?.baseNumber)
     })
 
@@ -77,9 +76,9 @@ export const useEditorStore = defineStore('editorStore', () => {
         serverFieldErrors,
     )
 
-    function ensure(invoice: MaybeRefOrGetter): Invoice {
-        if (!invoice.value) throw new Error('Invoice not initialised')
-        return invoice.value
+    function ensureDraft(): Invoice {
+        if (!draftInvoice.value) throw new Error('Invoice not initialised')
+        return draftInvoice.value
     }
 
     let lastBookRequestId = 0
@@ -287,12 +286,12 @@ export const useEditorStore = defineStore('editorStore', () => {
     }
 
     function updateLine(sortOrder: number, patch: Partial<InvoiceLine>): void {
-        updateInvoiceLine(ensure(draftInvoice), sortOrder, patch)
+        updateInvoiceLine(ensureDraft(), sortOrder, patch)
         scheduleServerVerify()
     }
 
     function removeLine(sortOrder: number): void {
-        removeInvoiceLine(ensure(draftInvoice), sortOrder)
+        removeInvoiceLine(ensureDraft(), sortOrder)
         scheduleServerVerify()
     }
 

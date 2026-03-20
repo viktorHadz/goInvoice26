@@ -54,4 +54,6 @@ const editStore = useEditorStore()
   </div>
   <EditorItemPicker></EditorItemPicker>
   <EditorItemsTable></EditorItemsTable>
+  <!-- <EditorAdjustments></EditorAdjustments>
+  <EditorTotals></EditorTotals> -->
 </template>

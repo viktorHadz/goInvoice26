@@ -509,8 +509,8 @@ export const useInvoiceStore = defineStore('invoice', () => {
         setClientSnapshot,
 
         // helpers exported(again) for components
-        lineTotalMinor,
-        toMinor,
+        // lineTotalMinor,
+        // toMinor,
 
         // API
         newDraftInvoice,

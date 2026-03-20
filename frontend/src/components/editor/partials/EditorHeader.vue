@@ -20,10 +20,7 @@ const inv = computed(() => editStore.draftInvoice)
           v-if="inv"
         >
           <div class="min-w-0">
-            <h2 class="mb-4 text-lg font-semibold text-zinc-800 dark:text-zinc-100">
-              Invoice details
-            </h2>
-            <div class="mb-2 flex gap-x-4 font-medium">
+            <div class="mb-2 flex gap-x-4 font-medium text-zinc-700 dark:text-zinc-300">
               <span>Invoice number:</span>
               <span class="font-bold text-sky-600 dark:text-emerald-400">
                 {{

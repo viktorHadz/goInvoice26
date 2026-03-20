@@ -10,7 +10,7 @@ import { useProductStore } from '@/stores/products'
 import { useInvoiceStore } from '@/stores/invoice'
 import type { Product, ProductType } from '@/utils/productHttpHandler'
 import TheTooltip from '../UI/TheTooltip.vue'
-import { fmtGBPMinor } from '@/utils/money'
+import { fmtGBPMinor, toMinor } from '@/utils/money'
 
 const prod = useProductStore()
 const invStore = useInvoiceStore()
@@ -103,7 +103,7 @@ function addCustomItem() {
     lineType: 'custom',
     pricingMode: 'flat',
     quantity: 1,
-    unitPriceMinor: invStore.toMinor(0),
+    unitPriceMinor: toMinor(0),
     minutesWorked: null,
   })
   open.value = false

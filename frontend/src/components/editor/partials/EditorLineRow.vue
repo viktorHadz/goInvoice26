@@ -2,17 +2,17 @@
 import { computed } from 'vue'
 import { TrashIcon } from '@heroicons/vue/24/outline'
 import TheInput from '@/components/UI/TheInput.vue'
-import { useInvoiceStore } from '@/stores/invoice'
 import type { InvoiceLine } from '@/components/invoice/invoiceTypes'
-import { fmtGBPMinor, fromMinor } from '@/utils/money'
+import { fmtGBPMinor, fromMinor, lineTotalMinor, toMinor } from '@/utils/money'
+import { useEditorStore } from '@/stores/editor'
 
 const props = defineProps<{ line: InvoiceLine; lineIndex: number }>()
 
-const inv = useInvoiceStore()
+const editStore = useEditorStore()
 
-const totalMinor = computed(() => inv.lineTotalMinor(props.line))
+const totalMinor = computed(() => lineTotalMinor(props.line))
 const serverTotalMinor = computed(
-  () => inv.serverCanonicalLineTotals?.[props.line.sortOrder] ?? null,
+  () => editStore.serverCanonicalLineTotals?.[props.line.sortOrder] ?? null,
 )
 const serverMismatch = computed(
   () => typeof serverTotalMinor.value === 'number' && serverTotalMinor.value !== totalMinor.value,
@@ -22,33 +22,33 @@ const minutesDisabled = computed(() => props.line.pricingMode !== 'hourly')
 const unitPounds = computed(() => fromMinor(props.line.unitPriceMinor))
 
 function fieldError(field: string) {
-  return inv.getFieldError(`lines[${props.lineIndex}].${field}`)
+  return editStore.getFieldError(`lines[${props.lineIndex}].${field}`)
 }
 
 function setName(v: unknown) {
-  inv.updateLine(props.line.sortOrder, { name: String(v ?? '') })
+  editStore.updateLine(props.line.sortOrder, { name: String(v ?? '') })
 }
 
 function setQty(v: unknown) {
   if (v === '' || v === null || v === undefined) {
-    inv.updateLine(props.line.sortOrder, { quantity: 0 })
+    editStore.updateLine(props.line.sortOrder, { quantity: 0 })
     return
   }
   const n = Number(v)
   if (!Number.isFinite(n) || n < 0) return
-  inv.updateLine(props.line.sortOrder, { quantity: n })
+  editStore.updateLine(props.line.sortOrder, { quantity: n })
 }
 
 function setMinutes(v: unknown) {
   const n = Number(v)
   if (!Number.isFinite(n) || n < 0) return
-  inv.updateLine(props.line.sortOrder, { minutesWorked: n })
+  editStore.updateLine(props.line.sortOrder, { minutesWorked: n })
 }
 
 function setUnitPounds(v: unknown) {
   const n = Number(v)
   if (!Number.isFinite(n) || n < 0) return
-  inv.updateLine(props.line.sortOrder, { unitPriceMinor: inv.toMinor(n) })
+  editStore.updateLine(props.line.sortOrder, { unitPriceMinor: toMinor(n) })
 }
 </script>
 
@@ -140,7 +140,7 @@ function setUnitPounds(v: unknown) {
       <button
         type="button"
         class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-500 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
-        @click="inv.removeLine(line.sortOrder)"
+        @click="editStore.removeLine(line.sortOrder)"
       >
         <TrashIcon class="size-5" />
       </button>

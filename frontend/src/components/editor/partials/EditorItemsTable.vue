@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import InvoiceLineRow from '@/components/invoice/InvoiceLineRow.vue'
 import { useEditorStore } from '@/stores/editor'
 import EditorLineRow from './EditorLineRow.vue'
 
