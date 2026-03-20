@@ -18,18 +18,7 @@ const lines = computed(() => {
     <div
       class="flex items-start justify-between gap-3 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800"
     >
-      <div class="min-w-0">
-        <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
-        <div class="text-xs text-sky-600 dark:text-emerald-400">
-          {{ editStore.prettyBaseNumber ? 'For ' + editStore.prettyBaseNumber : '' }}
-        </div>
-      </div>
-
-      <span
-        class="hidden rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
-      >
-        edit invoice items
-      </span>
+      <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
     </div>
 
     <div class="p-2.5 md:p-3">

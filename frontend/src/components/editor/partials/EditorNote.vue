@@ -1,25 +1,26 @@
 <script setup lang="ts">
+import { useEditorStore } from '@/stores/editor'
 import { useInvoiceStore } from '@/stores/invoice'
 import { computed, ref, watch } from 'vue'
 
-const inv = useInvoiceStore()
+const editStore = useEditorStore()
 const noteProxy = computed<string>({
-  get: () => inv.invoice?.note ?? '',
-  set: (v) => inv.setNote(String(v ?? '')),
+  get: () => editStore.draftInvoice?.note ?? '',
+  set: (v) => editStore.setNote(String(v ?? '')),
 })
 const noteTouched = ref(false)
 
 const NOTE_TEXT_LIMIT = 1000
 
 function syncFromInvoice() {
-  const v = inv.invoice
+  const v = editStore.draftInvoice
   if (!v) return
 
   noteTouched.value = false
 }
 
 watch(
-  () => inv.invoice,
+  () => editStore.draftInvoice,
   () => syncFromInvoice(),
   { immediate: true },
 )
@@ -56,7 +57,7 @@ watch(
         id="invoice-adjustments-text-area"
         v-model="noteProxy"
         class="input input-accent w-full resize-y rounded-xl px-3 py-2"
-        :disabled="!inv.invoice"
+        :disabled="!editStore.draftInvoice"
         placeholder="Add a note to the invoice…"
         @blur.stop="noteTouched = true"
         maxlength="1000"
@@ -65,14 +66,14 @@ watch(
       <p
         class="mt-1 min-h-5 text-xs"
         :class="
-          inv.getFieldError('note') && (noteTouched || inv.showAllValidation)
+          editStore.getFieldError('note') && (noteTouched || editStore.showAllValidation)
             ? 'text-rose-600 dark:text-rose-300'
             : 'text-transparent'
         "
       >
         {{
-          inv.getFieldError('note') && (noteTouched || inv.showAllValidation)
-            ? inv.getFieldError('note')
+          editStore.getFieldError('note') && (noteTouched || editStore.showAllValidation)
+            ? editStore.getFieldError('note')
             : '•'
         }}
       </p>

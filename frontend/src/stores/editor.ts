@@ -15,16 +15,22 @@ import type {
 } from '@/components/invoice/invoiceTypes'
 import { useInvoiceFieldErrors } from '@/composables/useInvoiceFieldErrors'
 import { cloneInvoice } from '@/utils/cloneInvoice'
-import { addInvoiceLine, removeInvoiceLine, updateInvoiceLine } from '@/utils/invoiceMutations'
+import {
+    addInvoiceLine,
+    removeInvoiceLine,
+    setInvoiceNote,
+    updateInvoiceLine,
+} from '@/utils/invoiceMutations'
 import { fmtPrettyInvoiceNumber } from '@/utils/numbers'
 import { useSettingsStore } from './settings'
 import { useInvoiceVerification } from '@/composables/useInvoiceVerification'
 import { useInvoicePricing } from '@/composables/useInvoicePricing'
 
+// TODO: Need to fix payments for editor and invoice
+
 export const useEditorStore = defineStore('editorStore', () => {
     const clientStore = useClientStore()
     const setsStore = useSettingsStore()
-    const getClientStore = () => useClientStore()
 
     const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
 
@@ -294,6 +300,10 @@ export const useEditorStore = defineStore('editorStore', () => {
         removeInvoiceLine(ensureDraft(), sortOrder)
         scheduleServerVerify()
     }
+    function setNote(note: string): void {
+        setInvoiceNote(ensureDraft(), note)
+        scheduleServerVerify()
+    }
 
     watch(
         draftInvoice,
@@ -335,6 +345,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         initEdit,
         cancelEdit,
         getFieldError,
+        setNote,
 
         addLine,
         updateLine,
