@@ -5,44 +5,10 @@ import type { ActiveEditorNode } from '@/components/editor/invBookTypes'
 import DecorGradient from '@/components/UI/DecorGradient.vue'
 import { DocumentIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 import { useEditorStore } from '@/stores/editor'
-import { useClientStore } from '@/stores/clients'
 import EditorPreview from '@/components/editor/EditorPreview.vue'
 import EditorSurface from '@/components/editor/EditorSurface.vue'
 
-const clientStore = useClientStore()
 const editStore = useEditorStore()
-
-const activeNode = ref<ActiveEditorNode>(null)
-
-watch(
-  () => clientStore.selectedClient?.id,
-  async (newClientId, oldClientId) => {
-    if (newClientId === oldClientId) return
-
-    activeNode.value = null
-    editStore.clearActiveInvoice()
-    editStore.clearInvoiceBook()
-
-    if (!newClientId) return
-
-    await editStore.fetchInvoiceBook(true)
-  },
-  { immediate: true },
-)
-
-watch(activeNode, async (node) => {
-  if (!node) {
-    editStore.clearActiveInvoice()
-    return
-  }
-
-  if (node.type === 'invoice') {
-    await editStore.fetchInvoice(node.baseNo, 1)
-    return
-  }
-
-  await editStore.fetchInvoice(node.baseNo, node.revisionNo)
-})
 </script>
 
 <template>
@@ -98,8 +64,8 @@ watch(activeNode, async (node) => {
 
             <div class="w-full sm:w-auto">
               <InvoiceBook
-                :active-node="activeNode"
-                @select="activeNode = $event"
+                :active-node="editStore.activeNode"
+                @select="editStore.activeNode = $event"
               />
             </div>
           </div>
@@ -108,7 +74,7 @@ watch(activeNode, async (node) => {
     </section>
 
     <!-- Empty state -->
-    <section v-if="!activeNode">
+    <section v-if="!editStore.activeNode">
       <div
         class="flex min-h-80 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-6 py-10 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30"
       >
@@ -130,7 +96,7 @@ watch(activeNode, async (node) => {
     </section>
 
     <!-- Invoice Preview -->
-    <EditorPreview v-else-if="activeNode && !editStore.isEditing" />
-    <EditorSurface v-else-if="activeNode && editStore.isEditing" />
+    <EditorPreview v-else-if="editStore.activeNode && !editStore.isEditing" />
+    <EditorSurface v-else-if="editStore.activeNode && editStore.isEditing" />
   </main>
 </template>

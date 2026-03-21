@@ -3,7 +3,8 @@ import { computed, ref } from 'vue'
 
 export type CurrencyCode = 'GBP' | 'EUR' | 'USD'
 export type DateFormat = 'dd/mm/yyyy' | 'mm/dd/yyyy' | 'yyyy-mm-dd'
-
+// TODO: add custom coluumn in clients for company number
+// TODO: Polylang SUPPORT
 export type Settings = {
     companyName: string
     email: string

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { DocumentArrowDownIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
+import { DocumentArrowDownIcon, EnvelopeIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 import { fmtGBPMinor, calcTotals, calcDepositMinor, calcBalanceDueMinor } from '@/utils/money'
 import { fmtStrDate } from '@/utils/dates'
-import { fmtPrettyInvoiceNumber } from '@/utils/numbers'
+import {
+  formatActiveEditorNodeLabel,
+  formatInvoiceBaseLabel,
+} from '@/utils/invoiceLabels'
 import TheButton from '@/components/UI/TheButton.vue'
 import { usePdfStore } from '@/stores/pdf'
 
@@ -43,6 +46,16 @@ const depositMinor = computed(() => {
 const balanceDueMinor = computed(() => {
   if (!inv.value || !totals.value) return 0
   return calcBalanceDueMinor(totals.value.totalMinor, depositMinor.value, inv.value.paidMinor)
+})
+
+const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
+
+const invoiceDisplayLabel = computed(() => {
+  const i = inv.value
+  if (!i) return ''
+  const node = editStore.activeNode
+  if (node) return formatActiveEditorNodeLabel(invoicePrefix.value, node)
+  return formatInvoiceBaseLabel(invoicePrefix.value, i.baseNumber)
 })
 </script>
 
@@ -92,12 +105,19 @@ const balanceDueMinor = computed(() => {
           </TheButton>
 
           <TheButton
-            class="w-full sm:w-auto"
+            class="w-full cursor-pointer sm:w-auto"
             type="button"
             @click="generatePdfOnly"
           >
             <DocumentArrowDownIcon class="size-4" />
             Print PDF
+          </TheButton>
+          <TheButton
+            class="w-full cursor-pointer sm:w-auto"
+            type="button"
+          >
+            <EnvelopeIcon class="size-4" />
+            Send Email
           </TheButton>
         </div>
       </div>
@@ -109,10 +129,9 @@ const balanceDueMinor = computed(() => {
               Invoice number:
             </span>
             <span class="text-base font-bold text-sky-600 dark:text-emerald-400">
-              {{ fmtPrettyInvoiceNumber(setsStore.settings?.invoicePrefix ?? '', inv.baseNumber) }}
+              {{ invoiceDisplayLabel }}
             </span>
           </div>
-
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">

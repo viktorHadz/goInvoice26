@@ -77,6 +77,7 @@ async function generatePdfOnly() {
               type="button"
               class="w-full cursor-pointer truncate sm:w-auto"
               variant="success"
+              @click="editStore.saveRevision(editStore.draftInvoice)"
             >
               <DocumentArrowDownIcon class="size-4" />
               Save Invoice
@@ -112,14 +113,6 @@ async function generatePdfOnly() {
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
             <div class="text-xs text-sky-600 dark:text-emerald-400">Balance overview</div>
           </div>
-          <TheTooltip
-            text="Create a draft to save in invoice book. This lets you free edit invoice later."
-            side="top"
-            align="center"
-            class="hover:text-sky-600 dark:hover:text-emerald-400"
-          >
-            <InformationCircleIcon class="size-5" />
-          </TheTooltip>
         </div>
         <div class="p-3 md:p-4">
           <EditorTotals />

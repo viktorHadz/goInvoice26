@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Settings } from '@/stores/settings'
+import { formatInvoiceBaseLabel } from '@/utils/invoiceLabels'
 
 defineProps<{
   form: Settings
@@ -74,7 +75,7 @@ function lineOrFallback(value: string, fallback: string) {
               Invoice no.
             </div>
             <div class="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              {{ lineOrFallback(form.invoicePrefix, 'INV-') }}001
+              {{ formatInvoiceBaseLabel(lineOrFallback(form.invoicePrefix, 'INV-'), 1) }}
             </div>
           </div>
 

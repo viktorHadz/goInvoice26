@@ -23,6 +23,20 @@ export async function newInvoiceHandler(
     })
 }
 
+export async function newRevisionHandler(
+    clientId: number,
+    baseNumber: number,
+    invoPayload: unknown,
+) {
+    const url = `api/clients/${clientId}/invoice/${baseNumber}/revisions`
+    const payload = JSON.stringify(invoPayload)
+    return await request<Invoice>(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+    })
+}
+
 export type VerifyInvoiceResponse = {
     invoice: unknown
 }
@@ -44,7 +58,6 @@ export async function verifyInvoiceHandler(
     })
 }
 
-
 function downloadBlob(blob: Blob, filename: string) {
     const blobUrl = URL.createObjectURL(blob)
 
@@ -62,7 +75,6 @@ function downloadBlob(blob: Blob, filename: string) {
         window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
     }
 }
-
 
 export async function generatePdfHandler(
     clientId: number,

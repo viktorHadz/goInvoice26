@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import DatePick from '@/components/invoice/DatePick.vue'
-import DecorGradient from '@/components/UI/DecorGradient.vue'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
-import { fmtPrettyInvoiceNumber } from '@/utils/numbers'
 import { computed } from 'vue'
+import { formatActiveEditorNodeLabel } from '@/utils/invoiceLabels'
 
 const editStore = useEditorStore()
 const setsStore = useSettingsStore()
 
 const inv = computed(() => editStore.draftInvoice)
+
+const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
+
+const invoiceDisplayLabel = computed(() => {
+  const i = inv.value
+  const node = editStore.activeNode
+  if (!i || !node) return ''
+  return formatActiveEditorNodeLabel(invoicePrefix.value, node)
+})
 </script>
 <template>
   <header>
@@ -17,16 +25,14 @@ const inv = computed(() => editStore.draftInvoice)
       <div class="relative z-10 space-y-4 p-3 md:p-4">
         <div
           class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start"
-          v-if="inv"
+          v-if="inv && editStore.activeNode"
         >
           <div class="min-w-0">
             <div class="mb-2 flex gap-x-4 font-medium text-zinc-700 dark:text-zinc-300">
               <span>Invoice number:</span>
-              <span class="font-bold text-sky-600 dark:text-emerald-400">
-                {{
-                  fmtPrettyInvoiceNumber(setsStore.settings?.invoicePrefix ?? '', inv.baseNumber)
-                }}
-              </span>
+              <span class="font-bold text-sky-600 dark:text-emerald-400">{{
+                invoiceDisplayLabel
+              }}</span>
             </div>
             <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
               <div>

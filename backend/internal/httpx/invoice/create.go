@@ -1,6 +1,7 @@
 package invoice
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -37,10 +38,10 @@ func CreateInvoice(a *app.App) http.HandlerFunc {
 		// Route param consistency - prevents mismatched path/body invoices
 		var routeErrs []res.FieldError
 		if dtoInvoice.Overview.ClientID != clientID {
-			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route param"))
+			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route parameter"))
 		}
 		if dtoInvoice.Overview.BaseNumber != baseNumber {
-			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route param"))
+			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route parameter"))
 		}
 		if len(routeErrs) > 0 {
 			res.Validation(w, routeErrs...)
@@ -84,6 +85,76 @@ func CreateInvoice(a *app.App) http.HandlerFunc {
 		res.JSON(w, http.StatusCreated, map[string]any{
 			"invoiceId":  invID,
 			"revisionId": revID,
+		})
+	}
+}
+
+func CreateRevision(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clientID, ok := params.ValidateParam(w, r, "clientID")
+		if !ok {
+			return
+		}
+		baseNumber, ok := params.ValidateParam(w, r, "baseNumber")
+		if !ok {
+			return
+		}
+
+		var dtoInvoice models.FEInvoiceIn
+		if ok := res.DecodeJSON(w, r, &dtoInvoice); !ok {
+			slog.WarnContext(r.Context(), "received bad JSON for invoice revision",
+				"json", &dtoInvoice,
+			)
+			return
+		}
+
+		var routeErrs []res.FieldError
+		if dtoInvoice.Overview.ClientID != clientID {
+			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route param"))
+		}
+		if dtoInvoice.Overview.BaseNumber != baseNumber {
+			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route param"))
+		}
+		if len(routeErrs) > 0 {
+			res.Validation(w, routeErrs...)
+			return
+		}
+
+		validInvoice, errs := ValidateInvoiceCreate(dtoInvoice)
+		if len(errs) > 0 {
+			res.Validation(w, errs...)
+			return
+		}
+
+		canonical := RecalcInvoice(validInvoice)
+
+		if errs := verifyTotalsMatch(validInvoice.Totals, canonical.Totals); len(errs) > 0 {
+			res.Validation(w, errs...)
+			return
+		}
+
+		invoiceID, revisionID, revisionNo, err := invoiceTx.CreateRevision(r.Context(), a, &canonical)
+		if err != nil {
+			if errors.Is(err, invoiceTx.ErrInvoiceNotFound) {
+				res.Error(w, http.StatusNotFound, "NOT_FOUND", "Invoice not found")
+				return
+			}
+
+			slog.ErrorContext(r.Context(),
+				"create invoice revision failed",
+				"client_id", clientID,
+				"base_number", baseNumber,
+				"err", err,
+			)
+
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
+			return
+		}
+
+		res.JSON(w, http.StatusCreated, map[string]any{
+			"invoiceId":  invoiceID,
+			"revisionId": revisionID,
+			"revisionNo": revisionNo,
 		})
 	}
 }

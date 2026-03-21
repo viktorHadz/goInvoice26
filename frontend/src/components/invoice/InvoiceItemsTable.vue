@@ -27,7 +27,7 @@ const lines = computed(() => {
         <div class="truncate">Product name</div>
         <div class="text-right">Qty</div>
         <div class="text-right">Mins</div>
-        <div class="text-right">Unit</div>
+        <div class="text-right">Unit price</div>
         <div class="text-right">Total</div>
         <div></div>
       </div>

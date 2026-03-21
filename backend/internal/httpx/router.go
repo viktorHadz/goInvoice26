@@ -50,6 +50,7 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 					r.Delete("/", products.DeleteProduct(a))
 				})
 			})
+			// TODO: rate limit create revision manually
 
 			// /api/clients/{clientID}/invoice/...
 			r.Route("/invoice", func(r chi.Router) {
@@ -57,7 +58,7 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 				r.Route("/{baseNumber}", func(r chi.Router) {
 					r.Post("/", invoice.CreateInvoice(a))
 					r.Post("/verify", invoice.VerifyInvoice())
-					// /api/clients/{clientID}/invoice/{baseNumber}/{revisionNO}/pdf
+					r.Post("/revisions", invoice.CreateRevision(a))
 					r.Get("/{revisionNo}/pdf", invoice.GeneratePDFHandler(a))
 					r.Post("/{revisionNo}/pdf/quick", invoice.QuickPDFHandler(a))
 				})

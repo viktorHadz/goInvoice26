@@ -1,10 +1,20 @@
 import { defineStore } from 'pinia'
-import { computed, ref, watch, type MaybeRefOrGetter } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useClientStore } from './clients'
 import { getInvAndRevNums, getInvoice } from '@/utils/editorHttpHandler'
-import type { InvBookInvoice, InvoiceResponse } from '@/components/editor/invBookTypes'
+import type {
+    ActiveEditorNode,
+    InvBookInvoice,
+    InvoiceResponse,
+} from '@/components/editor/invBookTypes'
 import { handleActionError } from '@/utils/errors/handleActionError'
-import { getApiErrorMessage, isApiError } from '@/utils/apiErrors'
+import {
+    getApiErrorMessage,
+    hasFieldErrors,
+    isApiError,
+    isSupportOnlyApiError,
+    toFieldErrorMap,
+} from '@/utils/apiErrors'
 import type {
     DepositType,
     DiscountType,
@@ -21,12 +31,25 @@ import {
     setInvoiceNote,
     updateInvoiceLine,
 } from '@/utils/invoiceMutations'
-import { fmtPrettyInvoiceNumber } from '@/utils/numbers'
 import { useSettingsStore } from './settings'
 import { useInvoiceVerification } from '@/composables/useInvoiceVerification'
 import { useInvoicePricing } from '@/composables/useInvoicePricing'
+import { validateInvoicePayload } from '@/utils/frontendValidation'
+import { emitToastError, emitToastSuccess } from '@/utils/toast'
+import { apiDTO } from '@/utils/invoiceDto'
+import { flattenValidationErrors } from './pdf'
+import { NetworkError } from '@/utils/fetchHelper'
+import { newRevisionHandler } from '@/utils/invoiceHttpHandler'
+import { formatInvoiceBaseLabel } from '@/utils/invoiceLabels'
 
-// TODO: Need to fix payments for editor and invoice
+/* 
+  TODO: Need to fix payments for editor and invoice dasdas
+  * invoice: payment is fine. But saving logic needs to account it into totals. 
+
+  * editor: 
+    * use an array to stick the payments 
+    ? add dates (DatePicker?) for each payment 
+*/
 
 export const useEditorStore = defineStore('editorStore', () => {
     const clientStore = useClientStore()
@@ -36,11 +59,11 @@ export const useEditorStore = defineStore('editorStore', () => {
 
     const invoiceBook = ref<InvBookInvoice[]>([])
     const activeInvoice = ref<Invoice | null>(null)
+    const activeNode = ref<ActiveEditorNode>(null)
     /**
      * draftInvoice is the editable working copy.
      */
     const draftInvoice = ref<Invoice | null>(null)
-
     const isEditing = ref(false)
 
     const limit = ref(10)
@@ -54,9 +77,9 @@ export const useEditorStore = defineStore('editorStore', () => {
     const bookError = ref('')
     const serverFieldErrors = ref<Record<string, string>>({})
 
-    const prettyBaseNumber = computed(() => {
-        return fmtPrettyInvoiceNumber(invoicePrefix.value, draftInvoice.value?.baseNumber)
-    })
+    const prettyBaseNumber = computed(() =>
+        formatInvoiceBaseLabel(invoicePrefix.value, draftInvoice.value?.baseNumber),
+    )
 
     /**
      * showAllValidation - whether validation errors are displayed before attempting to submit.
@@ -64,6 +87,7 @@ export const useEditorStore = defineStore('editorStore', () => {
     const showAllValidation = ref(false)
     const canGoPrev = computed(() => offset.value > 0)
     const canGoNext = computed(() => hasMore.value)
+
     const { totals, depositMinor, balanceDueMinor } = useInvoicePricing(draftInvoice)
 
     const {
@@ -74,7 +98,6 @@ export const useEditorStore = defineStore('editorStore', () => {
         runServerVerify,
         scheduleServerVerify,
         clearVerifyState,
-        abortVerify,
     } = useInvoiceVerification(
         draftInvoice,
         computed(() => clientStore.selectedClient?.id ?? null),
@@ -223,12 +246,90 @@ export const useEditorStore = defineStore('editorStore', () => {
         }
     }
 
+    async function saveRevision(inv: Invoice | null): Promise<boolean> {
+        if (!clientStore.selectedClient) throw new Error('No client selected')
+        if (!inv) return false
+        if (inv === null) return false
+        const dto = apiDTO(inv)
+
+        showAllValidation.value = true
+        serverFieldErrors.value = {}
+
+        const errors = validateInvoicePayload(dto)
+        if (Object.keys(errors).length > 0) {
+            clearVerifyState()
+
+            emitToastError({
+                title: 'Invalid invoice data',
+                message: flattenValidationErrors(errors),
+            })
+            return false
+        }
+
+        try {
+            await newRevisionHandler(dto.overview.clientId, inv.baseNumber, dto)
+            showAllValidation.value = false
+
+            clearVerifyState()
+            emitToastSuccess(
+                `Revision ${formatInvoiceBaseLabel(invoicePrefix.value, dto.overview.baseNumber)} saved successfully.`,
+            )
+
+            lastVerifyAt.value = null
+            fetchInvoiceBook()
+            return true
+        } catch (err: unknown) {
+            if (isApiError(err) && hasFieldErrors(err)) {
+                serverFieldErrors.value = toFieldErrorMap(err.fields)
+                return false
+            }
+
+            showAllValidation.value = false
+
+            if (isApiError(err) && isSupportOnlyApiError(err)) {
+                emitToastError({
+                    id: err.id,
+                    title: 'Could not create revision',
+                    message: err.id
+                        ? `Something went wrong. Please quote error ID: ${err.id}`
+                        : 'Something went wrong. Please try again later.',
+                })
+                console.error('[invoice create]', err)
+                return false
+            }
+
+            if (isApiError(err)) {
+                emitToastError({
+                    id: err.id,
+                    title: 'Could not create invoice',
+                    message: err.message || 'Please check your data and try again.',
+                })
+                return false
+            }
+
+            if (err instanceof NetworkError) {
+                emitToastError({
+                    title: 'Network error',
+                    message: 'Could not reach the server. Please check your connection.',
+                })
+                return false
+            }
+
+            emitToastError({
+                title: 'Could not create invoice',
+                message: 'An unexpected error occurred. Please try again.',
+            })
+            console.error('[invoice create]', err)
+            return false
+        }
+    }
+
+    // Helpers
     const { liveFieldErrors, getFieldError } = useInvoiceFieldErrors(
         draftInvoice,
         serverFieldErrors,
     )
 
-    // Helpers
     async function nextPage() {
         if (!hasMore.value || isLoadingBook.value) return
         offset.value += limit.value
@@ -314,9 +415,40 @@ export const useEditorStore = defineStore('editorStore', () => {
         },
         { deep: true },
     )
+    // Reset invoice book on client change
+    watch(
+        () => clientStore.selectedClient?.id,
+        async (newClientId, oldClientId) => {
+            if (newClientId === oldClientId) return
+
+            activeNode.value = null
+            clearActiveInvoice()
+            clearInvoiceBook()
+
+            if (!newClientId) return
+
+            await fetchInvoiceBook(true)
+        },
+        { immediate: true },
+    )
+
+    watch(activeNode, async (node) => {
+        if (!node) {
+            clearActiveInvoice()
+            return
+        }
+
+        if (node.type === 'invoice') {
+            await fetchInvoice(node.baseNo, 1)
+            return
+        }
+
+        await fetchInvoice(node.baseNo, node.revisionNo)
+    })
     return {
         invoiceBook,
         activeInvoice,
+        activeNode,
         draftInvoice,
         limit,
         offset,
@@ -336,6 +468,7 @@ export const useEditorStore = defineStore('editorStore', () => {
 
         fetchInvoiceBook,
         fetchInvoice,
+        saveRevision,
         nextPage,
         prevPage,
         goToFirstPage,

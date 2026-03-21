@@ -28,7 +28,7 @@ import type { Client } from '@/utils/clientHttpHandler'
 import { lineTotalMinor, toMinor } from '@/utils/money'
 import { apiDTO } from '@/utils/invoiceDto'
 import { flattenValidationErrors } from './pdf'
-import { fmtPrettyInvoiceNumber } from '@/utils/numbers'
+import { formatInvoiceBaseLabel } from '@/utils/invoiceLabels'
 import { useInvoiceFieldErrors } from '@/composables/useInvoiceFieldErrors'
 import {
     addInvoiceLine,
@@ -117,7 +117,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
     }
 
     const prettyBaseNumber = computed(() =>
-        fmtPrettyInvoiceNumber(invoicePrefix.value, invoice.value?.baseNumber),
+        formatInvoiceBaseLabel(invoicePrefix.value, invoice.value?.baseNumber),
     )
     // Pricing is a single computed that derives all pricing in one pass
     const { totals, depositMinor, balanceDueMinor } = useInvoicePricing(invoice)
@@ -399,7 +399,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
             clearVerifyTimer()
             abortVerify()
             emitToastSuccess(
-                `Invoice ${fmtPrettyInvoiceNumber(invoicePrefix.value, inv.baseNumber)} saved as draft.`,
+                `Invoice ${formatInvoiceBaseLabel(invoicePrefix.value, inv.baseNumber)} saved as draft.`,
             )
             lastVerifyFailureToastedAt.value = null
 

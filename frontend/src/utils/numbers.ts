@@ -12,6 +12,7 @@ export const multiplyAndRoundBps = (baseMinor: MoneyMinor, bps: number): MoneyMi
     const b = clamp(round0(asNum(bps, 0)), 0, 10000)
     return round0((baseMinor * b) / 10000) as MoneyMinor
 }
+/** Implementation detail for pretty invoice numbers; prefer `@/utils/invoiceLabels` for user-facing UI. */
 export function fmtPrettyInvoiceNumber(prefix: string, baseNumber?: number): string {
     if (!baseNumber || baseNumber <= 0) return ''
     const cleanPrefix = prefix.replace(/-\s*$/, '').trim()

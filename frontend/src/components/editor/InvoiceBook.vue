@@ -17,6 +17,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useEditorStore } from '@/stores/editor'
 import { useClientStore } from '@/stores/clients'
 import { fmtStrDate } from '@/utils/dates'
+import { formatInvoiceBaseLabel, formatInvoiceDisplayLabel } from '@/utils/invoiceLabels'
 
 const props = defineProps<{
   activeNode: ActiveEditorNode
@@ -44,19 +45,22 @@ const { invoiceBook, isLoadingBook, canGoPrev, canGoNext, offset, total, errorMe
 
 const invoices = computed<InvBookInvoice[]>(() => invoiceBook.value)
 
+const bookInvoicePrefix = computed(() => setStore.settings?.invoicePrefix ?? '')
+
 const filteredInvoices = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return invoices.value
 
+  const prefix = bookInvoicePrefix.value
+
   return invoices.value
     .map((invoice) => {
-      const invoiceLabel =
-        `${setStore.settings?.invoicePrefix ?? 'INV'}-${invoice.baseNo}`.toLowerCase()
+      const invoiceLabel = formatInvoiceBaseLabel(prefix, invoice.baseNo).toLowerCase()
 
       const invoiceMatch = invoiceLabel.includes(q)
 
       const revisions = invoice.revisions.filter((rev) =>
-        `${setStore.settings?.invoicePrefix ?? 'INV'}-${invoice.baseNo}.${rev.revisionNo}`
+        formatInvoiceDisplayLabel(prefix, invoice.baseNo, rev.revisionNo)
           .toLowerCase()
           .includes(q),
       )
@@ -349,7 +353,7 @@ useEscape(() => closeDropdown())
 
                           <div class="flex min-w-0 flex-1 items-center justify-between gap-2">
                             <div class="truncate text-sm font-medium">
-                              {{ setStore.settings?.invoicePrefix ?? 'INV' }}-{{ invoice.baseNo }}
+                              {{ formatInvoiceBaseLabel(bookInvoicePrefix, invoice.baseNo) }}
                             </div>
 
                             <TheTooltip>
@@ -360,8 +364,8 @@ useEscape(() => closeDropdown())
                                     {{ invoice.status || '' }}
                                   </div>
                                   <div>
-                                    <span class="font-bold">Invoice Num:</span>
-                                    {{ invoice.baseNo || '' }}
+                                    <span class="font-bold">Number:</span>
+                                    {{ formatInvoiceBaseLabel(bookInvoicePrefix, invoice.baseNo) }}
                                   </div>
                                 </div>
                               </template>
@@ -375,9 +379,11 @@ useEscape(() => closeDropdown())
                                 "
                               >
                                 {{
-                                  invoice.revisions.length
-                                    ? `${invoice.revisions.length} revisions`
-                                    : 'No revisions'
+                                  invoice.revisions.length === 1
+                                    ? 1 + ' revision'
+                                    : invoice.revisions.length > 1
+                                      ? `${invoice.revisions.length} revisions`
+                                      : 'No revisions'
                                 }}
                               </span>
                             </TheTooltip>
@@ -405,9 +411,13 @@ useEscape(() => closeDropdown())
                             />
 
                             <div class="min-w-0 flex-1 truncate text-sm font-medium">
-                              {{ setStore.settings?.invoicePrefix ?? 'INV' }}-{{
-                                invoice.baseNo
-                              }}.{{ rev.revisionNo }}
+                              {{
+                                formatInvoiceDisplayLabel(
+                                  bookInvoicePrefix,
+                                  invoice.baseNo,
+                                  rev.revisionNo,
+                                )
+                              }}
                             </div>
 
                             <TheTooltip>
@@ -418,8 +428,14 @@ useEscape(() => closeDropdown())
                                     {{ invoice.status || '' }}
                                   </div>
                                   <div>
-                                    <span class="font-bold">Revision Number:</span>
-                                    {{ rev.revisionNo || '' }}
+                                    <span class="font-bold">Number:</span>
+                                    {{
+                                      formatInvoiceDisplayLabel(
+                                        bookInvoicePrefix,
+                                        invoice.baseNo,
+                                        rev.revisionNo,
+                                      )
+                                    }}
                                   </div>
                                   <span>
                                     <span class="font-bold">Issued at:</span>
