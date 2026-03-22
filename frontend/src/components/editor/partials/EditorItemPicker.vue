@@ -115,7 +115,7 @@ function addCustomItem() {
   >
     <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
       <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Insert products</div>
-      <div class="text-xs text-sky-600 dark:text-emerald-400">
+      <div class="text-xs text-zinc-600 dark:text-zinc-400">
         Select an existing or insert a custom product
       </div>
     </div>

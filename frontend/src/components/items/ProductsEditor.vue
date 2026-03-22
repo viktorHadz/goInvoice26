@@ -552,7 +552,7 @@ useEscape(
                 class="rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/60"
               >
                 <div
-                  class="mb-2 text-[11px] font-medium tracking-[0.12em] text-zinc-500 uppercase dark:text-zinc-400"
+                  class="text-tiny mb-2 font-medium tracking-[0.12em] text-zinc-500 uppercase dark:text-zinc-400"
                 >
                   Record details
                 </div>
@@ -562,7 +562,7 @@ useEscape(
                     class="rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/60"
                   >
                     <div
-                      class="text-[11px] font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400"
+                      class="text-tiny font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400"
                     >
                       Created
                     </div>
@@ -575,7 +575,7 @@ useEscape(
                     class="rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/60"
                   >
                     <div
-                      class="text-[11px] font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400"
+                      class="text-tiny font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400"
                     >
                       Last updated
                     </div>

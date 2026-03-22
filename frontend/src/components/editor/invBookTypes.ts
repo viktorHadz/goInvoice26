@@ -38,6 +38,7 @@ export type InvoiceBookResponse = {
 }
 
 export type InvoiceResponse = {
+    status: string
     totals: {
         baseNumber: number
         revisionNo: number

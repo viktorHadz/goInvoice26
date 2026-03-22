@@ -67,7 +67,7 @@ onActivated(refreshInvoiceClientSnapshot)
     >
       <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
         <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Insert products</div>
-        <div class="text-xs text-sky-600 dark:text-emerald-400">
+        <div class="text-xs text-zinc-600 dark:text-zinc-400">
           Select an existing or insert a custom product
         </div>
       </div>
@@ -85,13 +85,13 @@ onActivated(refreshInvoiceClientSnapshot)
       >
         <div class="min-w-0">
           <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
-          <div class="text-xs text-sky-600 dark:text-emerald-400">
+          <div class="text-xs text-zinc-600 dark:text-zinc-400">
             {{ invStore.prettyBaseNumber ? 'For ' + invStore.prettyBaseNumber : '' }}
           </div>
         </div>
 
         <span
-          class="hidden rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+          class="hidden rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
         >
           Tip: items can be modified
         </span>
@@ -109,7 +109,7 @@ onActivated(refreshInvoiceClientSnapshot)
         <div class="flex justify-between border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
           <div>
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Adjustments</div>
-            <div class="text-xs text-sky-600 dark:text-emerald-400">
+            <div class="text-xs text-zinc-600 dark:text-zinc-400">
               Paid, deposit, discount, VAT and note
             </div>
           </div>
@@ -126,7 +126,7 @@ onActivated(refreshInvoiceClientSnapshot)
         <div class="flex justify-between border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
           <div>
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-            <div class="text-xs text-sky-600 dark:text-emerald-400">Balance overview</div>
+            <div class="text-xs text-zinc-600 dark:text-zinc-400">Balance overview</div>
           </div>
 
           <TheTooltip

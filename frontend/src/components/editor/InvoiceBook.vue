@@ -60,9 +60,7 @@ const filteredInvoices = computed(() => {
       const invoiceMatch = invoiceLabel.includes(q)
 
       const revisions = invoice.revisions.filter((rev) =>
-        formatInvoiceDisplayLabel(prefix, invoice.baseNo, rev.revisionNo)
-          .toLowerCase()
-          .includes(q),
+        formatInvoiceDisplayLabel(prefix, invoice.baseNo, rev.revisionNo).toLowerCase().includes(q),
       )
 
       if (invoiceMatch) return invoice
@@ -157,7 +155,7 @@ function rowClass(active: boolean) {
   return [
     'flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition',
     active
-      ? 'border-sky-200 bg-sky-50/80 text-zinc-900 shadow-sm dark:border-emerald-900/80 dark:bg-emerald-950/40 dark:text-zinc-100'
+      ? 'border-sky-200 bg-sky-50/80 text-sky-700 shadow-sm dark:border-emerald-900/80 dark:bg-emerald-950/40 dark:text-zinc-100'
       : 'border-transparent text-zinc-700 hover:border-zinc-200 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:border-zinc-800 dark:hover:bg-zinc-900/60',
   ]
 }
@@ -467,7 +465,7 @@ useEscape(() => closeDropdown())
           <div
             class="flex items-center justify-between gap-2 border-t border-zinc-200 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800"
           >
-            <p class="text-xs text-zinc-500 dark:text-zinc-400">
+            <p class="text-xs text-zinc-600 dark:text-zinc-400">
               {{ pageLabel }}
             </p>
 

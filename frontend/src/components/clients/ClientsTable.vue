@@ -279,13 +279,13 @@ useEnter(saveEdit, { enabled: editForm.id === null })
                 <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Add client</h3>
 
                 <span
-                  class="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
+                  class="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
                 >
                   Name required
                 </span>
               </div>
 
-              <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-300">
+              <p class="mt-0.5 text-xs text-zinc-700 dark:text-zinc-300">
                 Create a client, to use in invoices and items
               </p>
             </div>
@@ -333,7 +333,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
         </div>
 
         <div
-          class="mt-3 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-200"
+          class="mt-3 flex items-center justify-between text-xs text-zinc-700 dark:text-zinc-200"
         >
           <div class="hidden sm:block">
             Tip: Company,email and address are optional, but useful for your invoice

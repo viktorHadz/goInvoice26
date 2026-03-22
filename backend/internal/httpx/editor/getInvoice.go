@@ -106,6 +106,7 @@ func GetInvoice(a *app.App) http.HandlerFunc {
 		}
 
 		out := models.InvoiceEditorResponse{
+			Status: summary.Status,
 			Totals: toEditorTotals(*summary),
 			Lines:  toEditorLines(lines),
 		}

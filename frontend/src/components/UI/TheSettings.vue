@@ -494,14 +494,14 @@ useEscape(closeSettings, {
                     <div
                       class="grid size-14 place-items-center rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
                     >
-                      <PhotoIcon class="size-7 text-zinc-500 dark:text-zinc-400" />
+                      <PhotoIcon class="size-7 text-zinc-600 dark:text-zinc-400" />
                     </div>
 
                     <div>
                       <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         Upload logo
                       </div>
-                      <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      <div class="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
                         PNG, JPG, or WebP for invoice header
                       </div>
                     </div>

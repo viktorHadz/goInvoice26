@@ -22,7 +22,7 @@ const lines = computed(() => {
       </p>
 
       <div
-        class="grid grid-cols-[minmax(220px,1fr)_48px_64px_96px_110px_36px] items-center gap-2 py-2 pr-3 pl-2 text-sm font-semibold text-zinc-600 dark:text-zinc-200"
+        class="grid grid-cols-[minmax(220px,1fr)_48px_64px_96px_110px_36px] items-center gap-2 py-2 pr-3 pl-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200"
       >
         <div class="truncate">Product name</div>
         <div class="text-right">Qty</div>

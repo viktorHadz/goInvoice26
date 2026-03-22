@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { DocumentArrowDownIcon, EnvelopeIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
+import { computed, reactive, ref } from 'vue'
+import { BanknotesIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 import { fmtGBPMinor, calcTotals, calcDepositMinor, calcBalanceDueMinor } from '@/utils/money'
 import { fmtStrDate } from '@/utils/dates'
-import {
-  formatActiveEditorNodeLabel,
-  formatInvoiceBaseLabel,
-} from '@/utils/invoiceLabels'
-import TheButton from '@/components/UI/TheButton.vue'
+import { formatActiveEditorNodeLabel, formatInvoiceBaseLabel } from '@/utils/invoiceLabels'
+import TheDropdown from '@/components/UI/TheDropdown.vue'
+import DetailsToolbar from '@/components/editor/partials/DetailsToolbar.vue'
+import DetailsMenu, { type MenuOption } from '@/components/editor/partials/DetailsMenu.vue'
 import { usePdfStore } from '@/stores/pdf'
+import type { InvoiceStatus } from '@/components/invoice/invoiceTypes'
+import { reachableStatuses } from '@/utils/invoiceStatusOptions'
 
 const editStore = useEditorStore()
 const setsStore = useSettingsStore()
@@ -57,6 +58,51 @@ const invoiceDisplayLabel = computed(() => {
   if (node) return formatActiveEditorNodeLabel(invoicePrefix.value, node)
   return formatInvoiceBaseLabel(invoicePrefix.value, i.baseNumber)
 })
+
+const lifecycleStatus = computed(() => (inv.value?.status ?? 'draft') as InvoiceStatus)
+
+const canStartEdit = computed(
+  () => lifecycleStatus.value !== 'paid' && lifecycleStatus.value !== 'void',
+)
+
+const statusSelectOptions = computed(() => reachableStatuses(lifecycleStatus.value))
+
+const selectedInvoiceStatus = computed({
+  get(): InvoiceStatus {
+    return lifecycleStatus.value
+  },
+  set(next: InvoiceStatus | null) {
+    if (next == null || next === lifecycleStatus.value) return
+    editStore.setInvoiceLifecycleStatus(next)
+  },
+})
+
+const menuOpts = computed<MenuOption[]>(() => [
+  {
+    id: 1,
+    name: 'Edit invoice',
+    disabled: !canStartEdit.value,
+    disabledReason: 'Cannot edit when status is "paid" or "void"',
+    effect: () => editStore.initEdit(),
+    icon: PencilSquareIcon,
+  },
+  {
+    id: 2,
+    name: 'Add payment',
+    disabled: !canStartEdit.value,
+    disabledReason: 'Payments cannot be added when status is "paid" or "void"',
+    effect: () => console.log('Add payment'),
+    icon: BanknotesIcon,
+  },
+  {
+    id: 3,
+    name: 'Delete invoice',
+    disabled: !canStartEdit.value,
+    disabledReason: 'Cannot delete when status is "paid" or "void"',
+    effect: () => console.log('Deleting invoice'),
+    icon: TrashIcon,
+  },
+])
 </script>
 
 <template>
@@ -78,124 +124,117 @@ const invoiceDisplayLabel = computed(() => {
     v-else
     class="space-y-4"
   >
-    <!-- Header card -->
+    <!-- Header -->
     <header
       class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
-      <div
-        class="flex flex-col gap-3 border-b border-zinc-200 px-3 py-2.5 sm:flex-row sm:items-start sm:justify-between dark:border-zinc-800"
+      <DetailsToolbar
+        :identity-label="invoiceDisplayLabel"
+        subtitle="Read-only preview"
       >
-        <div class="min-w-0">
-          <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-            Invoice details
+        <template #more-menu>
+          <DetailsMenu
+            :pdf-disabled="isGeneratingPdf"
+            @pdf="generatePdfOnly"
+            :options="menuOpts"
+          />
+        </template>
+        <template #actions>
+          <div class="w-full max-w-40 min-w-32 sm:max-w-none">
+            <TheDropdown
+              v-model="selectedInvoiceStatus"
+              select-title="Status"
+              select-title-class="text-xs font-medium text-zinc-500 dark:text-zinc-400"
+              :options="statusSelectOptions"
+              input-class="py-1.5 capitalize"
+              placeholder="Status"
+            />
           </div>
-          <div class="text-xs text-sky-600 dark:text-emerald-400">
-            Review invoice information before editing or exporting
-          </div>
-        </div>
+        </template>
+      </DetailsToolbar>
 
-        <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <TheButton
-            class="w-full sm:w-auto"
-            type="button"
-            @click="editStore.initEdit()"
-          >
-            <PencilSquareIcon class="size-4" />
-            Edit invoice
-          </TheButton>
-
-          <TheButton
-            class="w-full cursor-pointer sm:w-auto"
-            type="button"
-            @click="generatePdfOnly"
-          >
-            <DocumentArrowDownIcon class="size-4" />
-            Print PDF
-          </TheButton>
-          <TheButton
-            class="w-full cursor-pointer sm:w-auto"
-            type="button"
-          >
-            <EnvelopeIcon class="size-4" />
-            Send Email
-          </TheButton>
-        </div>
-      </div>
-
-      <div class="grid gap-4 p-3 md:p-4 lg:grid-cols-2 lg:items-start">
-        <div class="min-w-0">
-          <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span class="text-base font-medium text-zinc-700 dark:text-zinc-300">
-              Invoice number:
-            </span>
-            <span class="text-base font-bold text-sky-600 dark:text-emerald-400">
-              {{ invoiceDisplayLabel }}
-            </span>
-          </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+      <div class="px-3 py-4 md:px-4 md:py-5">
+        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
+          <!-- Left: invoice details -->
+          <section class="flex justify-between gap-8">
+            <div
+              class="w-full min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+            >
+              <div class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400">
                 Issue date
               </div>
-              <div
-                class="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-100"
-              >
+              <div class="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                 {{ fmtStrDate(inv.issueDate) }}
               </div>
             </div>
 
-            <div>
-              <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">Due by</div>
-              <div
-                class="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-100"
-              >
-                {{ inv.dueByDate ? fmtStrDate(inv.dueByDate) : 'N/A' }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
-        >
-          <div class="mb-2 flex items-center justify-between">
-            <div class="font-semibold text-sky-600 dark:text-emerald-400">To</div>
             <div
-              class="hidden rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+              class="w-full min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
             >
-              client details
-            </div>
-          </div>
-
-          <div class="space-y-2 text-sm">
-            <div class="grid grid-cols-[84px_1fr] items-start gap-2">
-              <div class="text-zinc-500 dark:text-zinc-400">Name</div>
-              <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                {{ inv.clientSnapshot.name || '—' }}
+              <div class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400">
+                Due by
+              </div>
+              <div class="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                {{ inv.dueByDate ? fmtStrDate(inv.dueByDate) : '—' }}
               </div>
             </div>
+          </section>
 
-            <div class="grid grid-cols-[84px_1fr] items-start gap-2">
-              <div class="text-zinc-500 dark:text-zinc-400">Company</div>
-              <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                {{ inv.clientSnapshot.companyName || '—' }}
+          <!-- Right: client card -->
+          <section
+            class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+          >
+            <div class="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <div class="text-base font-semibold">To</div>
               </div>
+
+              <span
+                class="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400"
+              >
+                Client details
+              </span>
             </div>
 
-            <div class="grid grid-cols-[84px_1fr] items-start gap-2">
-              <div class="text-zinc-500 dark:text-zinc-400">Address</div>
-              <div class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100">
-                {{ inv.clientSnapshot.address || '—' }}
+            <div class="space-y-2 text-sm">
+              <div class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3">
+                <div class="text-zinc-500 dark:text-zinc-400">Name</div>
+                <div class="min-w-0 font-medium text-zinc-900 dark:text-zinc-100">
+                  {{ inv.clientSnapshot.name || '—' }}
+                </div>
               </div>
-            </div>
 
-            <div class="grid grid-cols-[84px_1fr] items-start gap-2">
-              <div class="text-zinc-500 dark:text-zinc-400">Email</div>
-              <div class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100">
-                {{ inv.clientSnapshot.email || '—' }}
+              <div
+                v-if="inv.clientSnapshot.companyName"
+                class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
+              >
+                <div class="text-zinc-500 dark:text-zinc-400">Company</div>
+                <div class="min-w-0 font-medium text-zinc-900 dark:text-zinc-100">
+                  {{ inv.clientSnapshot.companyName }}
+                </div>
+              </div>
+
+              <div
+                v-if="inv.clientSnapshot.address"
+                class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
+              >
+                <div class="text-zinc-500 dark:text-zinc-400">Address</div>
+                <div class="min-w-0 font-medium text-zinc-900 dark:text-zinc-100">
+                  {{ inv.clientSnapshot.address }}
+                </div>
+              </div>
+
+              <div
+                v-if="inv.clientSnapshot.email"
+                class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
+              >
+                <div class="text-zinc-500 dark:text-zinc-400">Email</div>
+                <div class="min-w-0 font-medium wrap-break-word text-zinc-900 dark:text-zinc-100">
+                  {{ inv.clientSnapshot.email }}
+                </div>
               </div>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </header>
@@ -209,13 +248,13 @@ const invoiceDisplayLabel = computed(() => {
       >
         <div class="min-w-0">
           <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
-          <div class="text-xs text-sky-600 dark:text-emerald-400">
+          <div class="text-xs text-zinc-600 dark:text-zinc-400">
             Saved line items for this invoice
           </div>
         </div>
 
         <span
-          class="hidden rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+          class="hidden rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400"
         >
           Read only
         </span>
@@ -257,7 +296,7 @@ const invoiceDisplayLabel = computed(() => {
                     {{ line.name }}
                   </div>
 
-                  <div class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                  <div class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">
                     {{ line.pricingMode }}
                     <span v-if="line.pricingMode === 'hourly' && line.minutesWorked">
                       · {{ line.minutesWorked }} min
@@ -287,14 +326,14 @@ const invoiceDisplayLabel = computed(() => {
       </div>
     </section>
 
-    <!-- Totals + Note -->
+    <!-- Totals  -->
     <section class="grid gap-4 md:grid-cols-2">
       <section
         class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
         <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
           <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-          <div class="text-xs text-sky-600 dark:text-emerald-400">Balance overview</div>
+          <div class="text-xs text-zinc-600 dark:text-zinc-400">Balance overview</div>
         </div>
 
         <div
@@ -380,7 +419,7 @@ const invoiceDisplayLabel = computed(() => {
       >
         <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
           <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Note</div>
-          <div class="text-xs text-sky-600 dark:text-emerald-400">
+          <div class="text-xs text-zinc-600 dark:text-zinc-400">
             Extra text shown on the invoice
           </div>
         </div>

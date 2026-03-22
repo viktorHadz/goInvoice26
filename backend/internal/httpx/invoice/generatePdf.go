@@ -138,6 +138,10 @@ func QuickPDFHandler(a *app.App) http.HandlerFunc {
 			res.Validation(w, errs...)
 			return
 		}
+		if errs := ValidatePaidVsDepositTotal(canonical.Totals); len(errs) > 0 {
+			res.Validation(w, errs...)
+			return
+		}
 
 		builder := func() (models.InvoicePDFData, error) {
 			settings, err := settingsTx.Get(r.Context(), a.DB)

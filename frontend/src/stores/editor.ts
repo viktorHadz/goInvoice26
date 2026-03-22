@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useClientStore } from './clients'
-import { getInvAndRevNums, getInvoice } from '@/utils/editorHttpHandler'
+import { getInvAndRevNums, getInvoice, patchInvoiceStatus } from '@/utils/editorHttpHandler'
 import type {
     ActiveEditorNode,
     InvBookInvoice,
@@ -20,6 +20,7 @@ import type {
     DiscountType,
     Invoice,
     InvoiceLine,
+    InvoiceStatus,
     LineType,
     PricingMode,
 } from '@/components/invoice/invoiceTypes'
@@ -41,6 +42,12 @@ import { flattenValidationErrors } from './pdf'
 import { NetworkError } from '@/utils/fetchHelper'
 import { newRevisionHandler } from '@/utils/invoiceHttpHandler'
 import { formatInvoiceBaseLabel } from '@/utils/invoiceLabels'
+
+function normalizeInvoiceStatus(s: string | undefined): InvoiceStatus {
+    const x = (s ?? 'draft').toLowerCase()
+    if (x === 'issued' || x === 'paid' || x === 'void' || x === 'draft') return x
+    return 'draft'
+}
 
 /* 
   TODO: Need to fix payments for editor and invoice dasdas
@@ -216,6 +223,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         return {
             baseNumber: t.baseNumber,
             clientId,
+            status: normalizeInvoiceStatus(resp.status),
             issueDate: t.issueDate,
             dueByDate: t.dueByDate ?? undefined,
             clientSnapshot: {
@@ -250,6 +258,17 @@ export const useEditorStore = defineStore('editorStore', () => {
         if (!clientStore.selectedClient) throw new Error('No client selected')
         if (!inv) return false
         if (inv === null) return false
+        const st = inv.status ?? 'draft'
+        if (st === 'paid' || st === 'void') {
+            emitToastError({
+                title: 'Cannot save revision',
+                message:
+                    st === 'void'
+                        ? 'This invoice is void.'
+                        : 'Reopen the invoice to issued before saving a revision.',
+            })
+            return false
+        }
         const dto = apiDTO(inv)
 
         showAllValidation.value = true
@@ -276,7 +295,8 @@ export const useEditorStore = defineStore('editorStore', () => {
             )
 
             lastVerifyAt.value = null
-            fetchInvoiceBook()
+            await fetchInvoiceBook()
+            await refreshActiveInvoiceFromServer()
             return true
         } catch (err: unknown) {
             if (isApiError(err) && hasFieldErrors(err)) {
@@ -285,6 +305,14 @@ export const useEditorStore = defineStore('editorStore', () => {
             }
 
             showAllValidation.value = false
+
+            if (isApiError(err) && err.status === 409) {
+                emitToastError({
+                    title: 'Cannot save revision',
+                    message: err.message || 'Invoice status prevents saving.',
+                })
+                return false
+            }
 
             if (isApiError(err) && isSupportOnlyApiError(err)) {
                 emitToastError({
@@ -366,8 +394,41 @@ export const useEditorStore = defineStore('editorStore', () => {
         clearVerifyState()
     }
 
+    async function refreshActiveInvoiceFromServer() {
+        const node = activeNode.value
+        const clientId = clientStore.selectedClient?.id
+        if (!node || !clientId) return
+        if (node.type === 'invoice') {
+            await fetchInvoice(node.baseNo, 1)
+        } else {
+            await fetchInvoice(node.baseNo, node.revisionNo)
+        }
+    }
+
+    async function setInvoiceLifecycleStatus(next: InvoiceStatus): Promise<boolean> {
+        const inv = activeInvoice.value
+        const clientId = clientStore.selectedClient?.id
+        if (!inv || !clientId) return false
+        try {
+            await patchInvoiceStatus(clientId, inv.baseNumber, next)
+            emitToastSuccess('Invoice status updated.')
+            await refreshActiveInvoiceFromServer()
+            await fetchInvoiceBook()
+            return true
+        } catch (error) {
+            handleActionError(error, {
+                toastTitle: 'Could not update status',
+                supportMessage: 'Please try again or contact support',
+                mapFields: false,
+            })
+            return false
+        }
+    }
+
     function initEdit() {
         if (!activeInvoice.value) return
+        const st = activeInvoice.value.status ?? 'draft'
+        if (st === 'paid' || st === 'void') return
         clearVerifyState()
         draftInvoice.value = cloneInvoice(activeInvoice.value)
         serverFieldErrors.value = {}
@@ -476,6 +537,8 @@ export const useEditorStore = defineStore('editorStore', () => {
         clearActiveInvoice,
         fmtActive,
         initEdit,
+        setInvoiceLifecycleStatus,
+        refreshActiveInvoiceFromServer,
         cancelEdit,
         getFieldError,
         setNote,

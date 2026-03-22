@@ -27,7 +27,7 @@ function lineOrFallback(value: string, fallback: string) {
         >
           <div class="min-w-0 flex-1">
             <div
-              class="text-[11px] font-semibold tracking-[0.18em] text-zinc-500 uppercase dark:text-zinc-400"
+              class="text-tiny font-semibold tracking-[0.18em] text-zinc-500 uppercase dark:text-zinc-400"
             >
               Invoice
             </div>
@@ -36,7 +36,7 @@ function lineOrFallback(value: string, fallback: string) {
               {{ lineOrFallback(form.companyName, 'Company name') }}
             </div>
 
-            <div class="mt-3 space-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <div class="mt-3 space-y-1 text-xs text-zinc-600 dark:text-zinc-400">
               <div>{{ lineOrFallback(form.email, 'name@example.com') }}</div>
               <div>{{ lineOrFallback(form.phone, '+44 1234 567890') }}</div>
               <div class="max-w-[24rem] leading-relaxed whitespace-pre-line">
@@ -93,7 +93,7 @@ function lineOrFallback(value: string, fallback: string) {
 
         <div class="py-4">
           <div
-            class="grid grid-cols-[1fr_1fr_auto] gap-3 border-b border-zinc-200 pb-2 text-[11px] font-semibold tracking-[0.14em] text-zinc-500 uppercase dark:border-zinc-800 dark:text-zinc-400"
+            class="text-tiny grid grid-cols-[1fr_1fr_auto] gap-3 border-b border-zinc-200 pb-2 font-semibold tracking-[0.14em] text-zinc-500 uppercase dark:border-zinc-800 dark:text-zinc-400"
           >
             <div>Description</div>
             <div>Type</div>
@@ -155,7 +155,7 @@ function lineOrFallback(value: string, fallback: string) {
         </div>
 
         <div class="border-t border-zinc-200 pt-4 dark:border-zinc-800">
-          <div class="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+          <div class="text-tiny leading-relaxed text-zinc-500 dark:text-zinc-400">
             {{ lineOrFallback(form.notesFooter, 'Footer note will appear here.') }}
           </div>
         </div>

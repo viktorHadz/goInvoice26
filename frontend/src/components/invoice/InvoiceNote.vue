@@ -33,9 +33,7 @@ watch(
     >
       <div class="min-w-0">
         <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Note</div>
-        <div class="text-xs text-sky-600 dark:text-emerald-400">
-          Extra text shown on the invoice
-        </div>
+        <div class="text-xs text-zinc-600 dark:text-zinc-400">Extra text shown on the invoice</div>
       </div>
       <div
         class="mt-1 text-right text-xs"
@@ -55,7 +53,7 @@ watch(
       <textarea
         id="invoice-adjustments-text-area"
         v-model="noteProxy"
-        class="input input-accent w-full resize-y rounded-xl px-3 py-2"
+        class="input input-accent w-full resize-y rounded-xl px-3 py-2 placeholder:text-sm"
         :disabled="!inv.invoice"
         placeholder="Add a note to the invoice…"
         @blur.stop="noteTouched = true"

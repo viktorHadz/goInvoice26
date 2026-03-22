@@ -140,11 +140,11 @@ function applyVat() {
 </script>
 
 <template>
-  <div class="min-w-0 divide-y divide-zinc-200 dark:divide-zinc-800">
+  <div class="min-w-0 divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
     <!-- Discount -->
-    <section class="min-w-0 py-3.5 first:pt-0">
+    <section class="min-w-0 py-2 first:pt-0">
       <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
-        <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Discount</div>
+        <div class="font-medium text-zinc-800 dark:text-zinc-100">Discount</div>
         <TheTooltip
           side="top"
           align="center"
@@ -155,7 +155,9 @@ function applyVat() {
         </TheTooltip>
       </div>
 
-      <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_5.5rem]">
+      <div
+        class="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_5.5rem]"
+      >
         <TheInput
           v-model="discount"
           type="number"
@@ -166,18 +168,18 @@ function applyVat() {
           :title="
             discountMode === 'none' ? 'select discount mode from dropdown first' : 'discount value'
           "
-          inputClass="w-full py-1.5"
+          inputClass="w-full py-1"
           :error="discountError"
         />
 
         <TheDropdown
           v-model="discountMode"
-          input-class="py-1.5"
+          input-class="py-1"
           :options="['none', 'fixed', 'percent']"
         />
 
         <TheButton
-          class="w-full"
+          class="w-full py-1.5!"
           @click="applyDiscount"
         >
           Apply
@@ -186,9 +188,9 @@ function applyVat() {
     </section>
 
     <!-- Deposit -->
-    <section class="min-w-0 py-3.5">
+    <section class="min-w-0 py-3">
       <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
-        <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Deposit</div>
+        <div class="font-medium text-zinc-800 dark:text-zinc-100">Deposit</div>
         <TheTooltip
           text="Take payment upfront as a fixed amount or percentage. Applied after VAT."
           class="hover:text-sky-400 dark:hover:text-emerald-400"
@@ -197,7 +199,9 @@ function applyVat() {
         </TheTooltip>
       </div>
 
-      <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_5.5rem]">
+      <div
+        class="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_5.5rem]"
+      >
         <TheInput
           v-model="deposit"
           type="number"
@@ -208,18 +212,18 @@ function applyVat() {
           :title="
             depositMode === 'none' ? 'select deposit mode from dropdown first' : 'deposit value'
           "
-          inputClass="w-full py-1.5"
+          inputClass="w-full py-1"
           :error="depositError"
         />
 
         <TheDropdown
           v-model="depositMode"
-          input-class="py-1.5"
+          input-class="py-1"
           :options="['none', 'fixed', 'percent']"
         />
 
         <TheButton
-          class="w-full"
+          class="w-full py-1.5!"
           @click="applyDeposit"
         >
           Apply
@@ -228,9 +232,9 @@ function applyVat() {
     </section>
 
     <!-- Paid -->
-    <section class="min-w-0 py-3.5">
+    <section class="min-w-0 py-3">
       <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
-        <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Amount paid</div>
+        <div class="font-medium text-zinc-800 dark:text-zinc-100">Amount paid</div>
         <TheTooltip
           text="Payment already received before the final balance."
           side="top"
@@ -241,19 +245,19 @@ function applyVat() {
         </TheTooltip>
       </div>
 
-      <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem]">
+      <div class="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem]">
         <TheInput
           v-model="paid"
           type="number"
           placeholder="0"
           labelHidden
           :reserveErrorSpace="false"
-          inputClass="w-full py-1.5"
+          inputClass="w-full py-1"
           :error="editStore.getFieldError('totals.paidMinor')"
         />
 
         <TheButton
-          class="w-full"
+          class="w-full py-1.5!"
           @click="applyPaid"
         >
           Apply
@@ -262,9 +266,9 @@ function applyVat() {
     </section>
 
     <!-- VAT -->
-    <section class="min-w-0 py-3.5">
+    <section class="min-w-0 py-3">
       <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
-        <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">VAT rate</div>
+        <div class="font-medium text-zinc-800 dark:text-zinc-100">VAT rate</div>
         <TheTooltip
           text="Set to 0% to exclude VAT from the invoice."
           side="top"
@@ -275,19 +279,19 @@ function applyVat() {
         </TheTooltip>
       </div>
 
-      <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem]">
+      <div class="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem]">
         <TheInput
           v-model="vatPercent"
           type="number"
           placeholder="20"
           labelHidden
           :reserveErrorSpace="false"
-          inputClass="w-full py-1.5"
+          inputClass="w-full py-1"
           :error="editStore.getFieldError('totals.vatRate')"
         />
 
         <TheButton
-          class="w-full"
+          class="w-full py-1.5!"
           @click="applyVat"
         >
           Apply

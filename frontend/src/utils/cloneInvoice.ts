@@ -11,6 +11,7 @@ export function cloneInvoice(invoice: Invoice): Invoice {
     return {
         baseNumber: src.baseNumber,
         clientId: src.clientId,
+        status: src.status,
         issueDate: src.issueDate,
         dueByDate: src.dueByDate,
         clientSnapshot: {

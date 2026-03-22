@@ -116,7 +116,7 @@ function addCustomItem() {
     <div
       class="mb-8 flex flex-col font-medium sm:mb-0 sm:flex-row sm:items-center sm:justify-between"
     >
-      <div class="mb-2 text-zinc-700 capitalize sm:mb-0 dark:text-zinc-200">
+      <div class="mb-2 text-zinc-800 capitalize sm:mb-0 dark:text-zinc-200">
         {{ itemType }} picker
       </div>
 

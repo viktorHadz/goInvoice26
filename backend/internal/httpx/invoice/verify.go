@@ -50,6 +50,10 @@ func VerifyInvoice() http.HandlerFunc {
 		}
 
 		canonical := RecalcInvoice(validInvoice)
+		if errs := ValidatePaidVsDepositTotal(canonical.Totals); len(errs) > 0 {
+			res.Validation(w, errs...)
+			return
+		}
 		slog.DebugContext(r.Context(), "invoice verified", "client_id", clientID, "base_number", baseNumber)
 
 		res.JSON(w, http.StatusOK, verifyResponse{Invoice: canonical})

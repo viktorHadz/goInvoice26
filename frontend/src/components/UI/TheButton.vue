@@ -33,7 +33,7 @@ const disabledCls = 'opacity-60 cursor-not-allowed '
 
 const variants: Record<Variant, string> = {
   primary: [
-    'border-zinc-200 bg-white text-zinc-800',
+    'border-zinc-200 bg-white text-zinc-700',
     'hover:border-sky-300 hover:text-sky-700 hover:bg-sky-50',
     // pressed feel
     'active:bg-sky-100 active:border-sky-300',
@@ -43,7 +43,7 @@ const variants: Record<Variant, string> = {
   ].join(' '),
 
   secondary: [
-    'border-zinc-200 bg-white text-zinc-800',
+    'border-zinc-200 bg-white text-zinc-700',
     'hover:border-zinc-400 hover:bg-zinc-50',
     'active:bg-zinc-100 active:border-zinc-400',
     'dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-200',

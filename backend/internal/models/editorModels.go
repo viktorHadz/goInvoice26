@@ -1,6 +1,7 @@
 package models
 
 type InvoiceEditorResponse struct {
+	Status string              `json:"status"`
 	Totals InvoiceEditorTotals `json:"totals"`
 	Lines  []InvoiceEditorLine `json:"lines"`
 }

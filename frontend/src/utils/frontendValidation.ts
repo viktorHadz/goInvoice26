@@ -355,6 +355,11 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
 
     if (totals.paidMinor < 0) errors['totals.paidMinor'] = 'must be 0 or greater'
 
+    const maxPaidMinor = Math.max(0, totals.totalMinor - totals.depositMinor)
+    if (totals.paidMinor > maxPaidMinor) {
+        errors['totals.paidMinor'] = 'cannot exceed amount owing after deposit'
+    }
+
     if (totals.subtotalAfterDiscountMinor < 0) {
         errors['totals.subtotalAfterDiscountMinor'] = 'must be 0 or greater'
     }

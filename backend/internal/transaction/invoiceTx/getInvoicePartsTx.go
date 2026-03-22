@@ -29,6 +29,7 @@ type ItemLine struct {
 // Do not send it directly in JSON responses.
 // Map it to an API response model in the handler layer.
 type InvoiceOverviewTotals struct {
+	Status            string
 	BaseNumber        int64
 	RevisionNo        int64
 	IssueDate         string
@@ -67,6 +68,7 @@ func QueryInvoiceSummary(
 ) (*InvoiceOverviewTotals, error) {
 	query := `
 		SELECT
+			i.status,
 			i.base_number,
 			r.revision_no,
 			r.issue_date,
@@ -97,6 +99,7 @@ func QueryInvoiceSummary(
 
 	var o InvoiceOverviewTotals
 	err := db.QueryRowContext(ctx, query, revisionNo, baseNumber, clientID).Scan(
+		&o.Status,
 		&o.BaseNumber, &o.RevisionNo,
 		&o.IssueDate, &o.DueByDate,
 		&o.ClientName, &o.ClientCompanyName, &o.ClientAddress, &o.ClientEmail,

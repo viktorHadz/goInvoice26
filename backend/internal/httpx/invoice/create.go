@@ -63,11 +63,19 @@ func CreateInvoice(a *app.App) http.HandlerFunc {
 			res.Validation(w, errs...)
 			return
 		}
+		if errs := ValidatePaidVsDepositTotal(canonical.Totals); len(errs) > 0 {
+			res.Validation(w, errs...)
+			return
+		}
 
 		invID, revID, err := invoiceTx.Create(r.Context(), a, &canonical)
 		if err != nil {
 			if strings.Contains(err.Error(), "already exists") {
 				res.Validation(w, res.Invalid("baseNumber", "invoice number already in use"))
+				return
+			}
+			if errors.Is(err, invoiceTx.ErrPaymentDeltaNegative) {
+				res.Validation(w, res.Invalid("totals.paidMinor", "cannot be less than payments already recorded"))
 				return
 			}
 
@@ -132,11 +140,27 @@ func CreateRevision(a *app.App) http.HandlerFunc {
 			res.Validation(w, errs...)
 			return
 		}
+		if errs := ValidatePaidVsDepositTotal(canonical.Totals); len(errs) > 0 {
+			res.Validation(w, errs...)
+			return
+		}
 
 		invoiceID, revisionID, revisionNo, err := invoiceTx.CreateRevision(r.Context(), a, &canonical)
 		if err != nil {
 			if errors.Is(err, invoiceTx.ErrInvoiceNotFound) {
 				res.Error(w, http.StatusNotFound, "NOT_FOUND", "Invoice not found")
+				return
+			}
+			if errors.Is(err, invoiceTx.ErrInvoiceVoidForRevision) {
+				res.Error(w, http.StatusConflict, "INVOICE_VOID", "Invoice is void; revisions are not allowed")
+				return
+			}
+			if errors.Is(err, invoiceTx.ErrInvoicePaidForRevision) {
+				res.Error(w, http.StatusConflict, "INVOICE_PAID", "Reopen invoice to issued before saving a revision")
+				return
+			}
+			if errors.Is(err, invoiceTx.ErrPaymentDeltaNegative) {
+				res.Validation(w, res.Invalid("totals.paidMinor", "cannot be less than payments already recorded"))
 				return
 			}
 

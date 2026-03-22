@@ -31,17 +31,10 @@ export function flattenValidationErrors(
 export const usePdfStore = defineStore('pdf', () => {
     const inv = useInvoiceStore()
 
-    async function handlePdfGeneration(
-        handler: () => Promise<void>,
-        successMessage: string,
-        showInfoToast: boolean = false,
-    ) {
+    async function handlePdfGeneration(handler: () => Promise<void>, successMessage: string) {
         try {
             await handler()
             emitToastSuccess(successMessage)
-            if (showInfoToast) {
-                emitToastInfo('Consider saving draft to enable revisions.')
-            }
         } catch (err) {
             if (isApiError(err)) {
                 console.error('[invoice pdf api error]', err)
@@ -102,7 +95,6 @@ export const usePdfStore = defineStore('pdf', () => {
                     invo,
                 ),
             'Quick PDF generated successfully.',
-            true,
         )
     }
 

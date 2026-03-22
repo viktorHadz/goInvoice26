@@ -49,10 +49,10 @@ const dueByDate = computed<string | null>({
           v-if="invStore.invoice"
         >
           <div class="min-w-0">
-            <h2 class="mb-4 text-lg font-semibold text-zinc-800 dark:text-zinc-100">
+            <h2 class="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
               Invoice details
             </h2>
-            <div class="mb-2 flex gap-x-4 font-medium">
+            <div class="mb-4 flex gap-x-4 font-medium">
               <span>Invoice number:</span>
               <span class="font-bold text-sky-600 dark:text-emerald-400">
                 {{ invStore.prettyBaseNumber }}
@@ -84,12 +84,12 @@ const dueByDate = computed<string | null>({
           </div>
 
           <div
-            class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+            class="min-w-0 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
           >
             <div class="mb-2 flex items-center justify-between">
-              <div class="font-semibold text-sky-600 dark:text-emerald-400">To</div>
+              <div class="font-semibold">To</div>
               <div
-                class="hidden rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+                class="hidden rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
               >
                 client details
               </div>

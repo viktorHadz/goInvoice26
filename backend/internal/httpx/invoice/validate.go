@@ -348,6 +348,18 @@ func validateTotals(t models.TotalsCreateIn) (models.TotalsCreateIn, []res.Field
 	return out, errs
 }
 
+// ValidatePaidVsDepositTotal ensures paidMinor does not exceed totalMinor - depositMinor (post-recalc canonical totals).
+func ValidatePaidVsDepositTotal(t models.TotalsCreateIn) []res.FieldError {
+	maxPaid := t.TotalMinor - t.DepositMinor
+	if maxPaid < 0 {
+		maxPaid = 0
+	}
+	if t.PaidMinor > maxPaid {
+		return []res.FieldError{res.Invalid("totals.paidMinor", "cannot exceed amount owing after deposit")}
+	}
+	return nil
+}
+
 func validateISODateRequired(field, value string) (string, []res.FieldError) {
 	value = strings.TrimSpace(value)
 	if value == "" {

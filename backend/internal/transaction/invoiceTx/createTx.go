@@ -48,6 +48,13 @@ func Create(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn) (inv
 		return 0, 0, err
 	}
 
+	if err := appendPaymentDelta(ctx, tx, invoiceID, canonical.Totals.PaidMinor); err != nil {
+		return 0, 0, err
+	}
+	if err := applyAutoPaidIfSettled(ctx, tx, invoiceID, canonical.Totals.TotalMinor, canonical.Totals.DepositMinor); err != nil {
+		return 0, 0, err
+	}
+
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE invoice_number_seq
 		SET next_base_number = MAX(next_base_number, ?)
@@ -80,15 +87,15 @@ func CreateRevision(ctx context.Context, a *app.App, canonical *models.FEInvoice
 
 	ov := &canonical.Overview
 
-	if err := tx.QueryRowContext(ctx, `
-		SELECT id
-		FROM invoices
-		WHERE client_id = ? AND base_number = ?;
-	`, ov.ClientID, ov.BaseNumber).Scan(&invoiceID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	invoiceID, invStatus, err := LoadInvoiceIDAndStatus(ctx, tx, ov.ClientID, ov.BaseNumber)
+	if err != nil {
+		if errors.Is(err, ErrInvoiceNotFound) {
 			return 0, 0, 0, ErrInvoiceNotFound
 		}
-		return 0, 0, 0, fmt.Errorf("load invoice: %w", err)
+		return 0, 0, 0, err
+	}
+	if err := assertRevisionAllowed(invStatus); err != nil {
+		return 0, 0, 0, err
 	}
 
 	if err := tx.QueryRowContext(ctx, `
@@ -101,6 +108,13 @@ func CreateRevision(ctx context.Context, a *app.App, canonical *models.FEInvoice
 
 	revisionID, err = insertRevisionWithItems(ctx, tx, invoiceID, revisionNo, canonical)
 	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	if err := appendPaymentDelta(ctx, tx, invoiceID, canonical.Totals.PaidMinor); err != nil {
+		return 0, 0, 0, err
+	}
+	if err := applyAutoPaidIfSettled(ctx, tx, invoiceID, canonical.Totals.TotalMinor, canonical.Totals.DepositMinor); err != nil {
 		return 0, 0, 0, err
 	}
 

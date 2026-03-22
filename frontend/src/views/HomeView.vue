@@ -128,7 +128,7 @@ const features = [
             ></TheDropdown>
           </div>
 
-          <div class="text-xs text-zinc-500 dark:text-zinc-400">
+          <div class="text-xs text-zinc-600 dark:text-zinc-400">
             Tip: create / edit clients in the Clients page.
           </div>
 

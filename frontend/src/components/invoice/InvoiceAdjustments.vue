@@ -146,7 +146,9 @@ function applyVat() {
         </TheTooltip>
       </div>
 
-      <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_5.5rem]">
+      <div
+        class="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_5.5rem]"
+      >
         <TheInput
           v-model="discount"
           type="number"
@@ -157,18 +159,18 @@ function applyVat() {
           :title="
             discountMode === 'none' ? 'select discount mode from dropdown first' : 'discount value'
           "
-          inputClass="w-full py-1.5"
+          inputClass="w-full py-1"
           :error="discountError"
         />
 
         <TheDropdown
           v-model="discountMode"
-          input-class="py-1.5"
+          input-class="py-1"
           :options="['none', 'fixed', 'percent']"
         />
 
         <TheButton
-          class="w-full"
+          class="w-full py-1.5!"
           @click="applyDiscount"
         >
           Apply
@@ -188,7 +190,9 @@ function applyVat() {
         </TheTooltip>
       </div>
 
-      <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_5.5rem]">
+      <div
+        class="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_5.5rem]"
+      >
         <TheInput
           v-model="deposit"
           type="number"
@@ -199,18 +203,18 @@ function applyVat() {
           :title="
             depositMode === 'none' ? 'select deposit mode from dropdown first' : 'deposit value'
           "
-          inputClass="w-full py-1.5"
+          inputClass="w-full py-1"
           :error="depositError"
         />
 
         <TheDropdown
           v-model="depositMode"
-          input-class="py-1.5"
+          input-class="py-1"
           :options="['none', 'fixed', 'percent']"
         />
 
         <TheButton
-          class="w-full"
+          class="w-full py-1.5!"
           @click="applyDeposit"
         >
           Apply
@@ -239,12 +243,12 @@ function applyVat() {
           placeholder="0"
           labelHidden
           :reserveErrorSpace="false"
-          inputClass="w-full py-1.5"
+          inputClass="w-full py-1"
           :error="inv.getFieldError('totals.paidMinor')"
         />
 
         <TheButton
-          class="w-full"
+          class="w-full py-1.5!"
           @click="applyPaid"
         >
           Apply
@@ -273,12 +277,12 @@ function applyVat() {
           placeholder="20"
           labelHidden
           :reserveErrorSpace="false"
-          inputClass="w-full py-1.5"
+          inputClass="w-full py-1"
           :error="inv.getFieldError('totals.vatRate')"
         />
 
         <TheButton
-          class="w-full"
+          class="w-full py-1.5!"
           @click="applyVat"
         >
           Apply

@@ -90,6 +90,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
     function buildFreshInvoiceTemplate(c: Client): Omit<Invoice, 'baseNumber'> {
         return {
             clientId: c.id,
+            status: 'draft',
             issueDate: '',
             dueByDate: undefined,
             clientSnapshot: {

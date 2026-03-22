@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
 import InvoiceBook from '@/components/editor/InvoiceBook.vue'
-import type { ActiveEditorNode } from '@/components/editor/invBookTypes'
 import DecorGradient from '@/components/UI/DecorGradient.vue'
 import { DocumentIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 import { useEditorStore } from '@/stores/editor'
@@ -50,13 +48,13 @@ const editStore = useEditorStore()
                   </h3>
 
                   <span
-                    class="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
+                    class="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
                   >
                     Browse saved invoices
                   </span>
                 </div>
 
-                <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-300">
+                <p class="mt-0.5 text-xs text-zinc-700 dark:text-zinc-300">
                   Open and select an invoice or revision to edit
                 </p>
               </div>

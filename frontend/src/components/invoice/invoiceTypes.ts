@@ -6,6 +6,8 @@ export type PricingMode = 'flat' | 'hourly'
 export type MoneyMinor = number // integer minor units (pence)
 export type BasisPoints = number // 1000 = 10%, 10000 = 100%
 
+export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'void'
+
 export type Totals = {
     subtotalMinor: MoneyMinor
     discountMinor: MoneyMinor
@@ -29,6 +31,9 @@ export type Invoice = {
     invoiceId?: number
     baseNumber: number
     clientId: number
+
+    /** Server lifecycle state; new unsaved invoices use draft */
+    status?: InvoiceStatus
 
     issueDate: string
     dueByDate?: string

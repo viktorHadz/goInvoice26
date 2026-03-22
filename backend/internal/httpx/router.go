@@ -57,6 +57,7 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 				r.Get("/", invoice.GetNextInvoiceNumber(a))
 				r.Route("/{baseNumber}", func(r chi.Router) {
 					r.Post("/", invoice.CreateInvoice(a))
+					r.Patch("/status", invoice.PatchInvoiceStatus(a))
 					r.Post("/verify", invoice.VerifyInvoice())
 					r.Post("/revisions", invoice.CreateRevision(a))
 					r.Get("/{revisionNo}/pdf", invoice.GeneratePDFHandler(a))
