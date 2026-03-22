@@ -12,3 +12,26 @@
     opacity: 0;
     transform: translateY(-30px);
 }
+
+/* fade out and down on leave  */
+/* fade in and up on enter */
+/* Used in invoice book next/prev page change */
+/* NEEDS: mode="out-in" on transition el */
+.fade-down-up-enter-active,
+.fade-down-up-leave-active {
+    transition:
+        opacity 110ms ease,
+        transform 110ms ease;
+}
+
+.fade-down-up-enter-from,
+.fade-down-up-leave-to {
+    opacity: 0;
+    transform: translateY(4px);
+}
+
+.fade-down-up-enter-to,
+.fade-down-up-leave-from {
+    opacity: 1;
+    transform: translateY(0);
+}

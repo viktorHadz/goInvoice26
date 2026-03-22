@@ -70,31 +70,35 @@ const editStore = useEditorStore()
         </div>
       </div>
     </section>
+    <Transition
+      name="fade-down-up"
+      mode="out-in"
+    >
+      <!-- Empty state -->
+      <section v-if="!editStore.activeNode">
+        <div
+          class="flex min-h-80 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-6 py-10 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30"
+        >
+          <div class="mx-auto max-w-sm text-center">
+            <div
+              class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-zinc-500 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+            >
+              <DocumentIcon class="size-5" />
+            </div>
 
-    <!-- Empty state -->
-    <section v-if="!editStore.activeNode">
-      <div
-        class="flex min-h-80 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-6 py-10 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30"
-      >
-        <div class="mx-auto max-w-sm text-center">
-          <div
-            class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-zinc-500 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
-          >
-            <DocumentIcon class="size-5" />
-          </div>
-
-          <div class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-            Select an invoice to start editing
-          </div>
-          <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Use the invoice book above to choose a base invoice or revision.
+            <div class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+              Select an invoice to start editing
+            </div>
+            <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Use the invoice book above to choose a base invoice or revision.
+            </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- Invoice Preview -->
-    <EditorPreview v-else-if="editStore.activeNode && !editStore.isEditing" />
-    <EditorSurface v-else-if="editStore.activeNode && editStore.isEditing" />
+      </section>
+      <!-- Invoice Preview -->
+      <EditorPreview v-else-if="editStore.activeNode && !editStore.isEditing" />
+      <!-- Editing  -->
+      <EditorSurface v-else-if="editStore.activeNode && editStore.isEditing" />
+    </Transition>
   </main>
 </template>

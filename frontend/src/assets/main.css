@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 @import './scrollbar.css';
+@import './transitions.css';
+
 @layer base {
     :root {
         /* Chrome, Safari, Edge, Opera */

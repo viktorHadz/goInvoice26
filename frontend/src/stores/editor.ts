@@ -467,6 +467,11 @@ export const useEditorStore = defineStore('editorStore', () => {
         scheduleServerVerify()
     }
 
+    const quickPayOpen = ref(false)
+    const setQuickPayOpen = (open: boolean) => {
+        quickPayOpen.value = open
+    }
+
     watch(
         draftInvoice,
         () => {
@@ -523,7 +528,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         errorMessage: bookError,
         isEditing,
         prettyBaseNumber,
-
+        quickPayOpen,
         canGoPrev,
         canGoNext,
 
@@ -542,6 +547,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         cancelEdit,
         getFieldError,
         setNote,
+        setQuickPayOpen,
 
         addLine,
         updateLine,

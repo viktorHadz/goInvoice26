@@ -78,6 +78,7 @@ const pageLabel = computed(() => {
   return `Showing ${start}-${end} of ${total.value}`
 })
 
+// calculates the books position based on window dimensions
 function placePanel() {
   if (!triggerEl.value) return
 
@@ -128,7 +129,7 @@ function selectInvoice(invoice: InvBookInvoice) {
     id: invoice.id,
     baseNo: invoice.baseNo,
   })
-  closeDropdown()
+  // closeDropdown() // might use at a later stage
 }
 
 function selectRevision(invoice: InvBookInvoice, revision: InvBookRevision) {
@@ -140,7 +141,7 @@ function selectRevision(invoice: InvBookInvoice, revision: InvBookRevision) {
     baseNo: invoice.baseNo,
     revisionNo: revision.revisionNo,
   })
-  closeDropdown()
+  // closeDropdown() // might use at a later stage
 }
 
 function isActiveInvoice(invoice: InvBookInvoice) {
@@ -286,7 +287,7 @@ useEscape(() => closeDropdown())
             class="lg relative max-h-[min(26rem,calc(100vh-12rem))] overflow-y-auto p-3 pb-4 sm:max-h-100"
           >
             <Transition
-              name="invoice-content"
+              name="fade-down-up"
               mode="out-in"
             >
               <div :key="`${offset}-${query}`">
@@ -513,24 +514,5 @@ useEscape(() => closeDropdown())
 .invoice-book-leave-from {
   opacity: 1;
   transform: translateY(0) scale(1);
-}
-
-.invoice-content-enter-active,
-.invoice-content-leave-active {
-  transition:
-    opacity 110ms ease,
-    transform 110ms ease;
-}
-
-.invoice-content-enter-from,
-.invoice-content-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
-}
-
-.invoice-content-enter-to,
-.invoice-content-leave-from {
-  opacity: 1;
-  transform: translateY(0);
 }
 </style>
