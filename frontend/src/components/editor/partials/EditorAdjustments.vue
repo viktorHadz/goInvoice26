@@ -140,7 +140,7 @@ function applyVat() {
 </script>
 
 <template>
-  <div class="min-w-0 divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
+  <main class="min-w-0 divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
     <!-- Discount -->
     <section class="min-w-0 py-2 first:pt-0">
       <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
@@ -298,5 +298,5 @@ function applyVat() {
         </TheButton>
       </div>
     </section>
-  </div>
+  </main>
 </template>

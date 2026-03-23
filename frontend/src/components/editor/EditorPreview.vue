@@ -8,7 +8,6 @@ import { fmtGBPMinor, calcTotals, calcDepositMinor, calcBalanceDueMinor } from '
 import { fmtStrDate } from '@/utils/dates'
 import { formatActiveEditorNodeLabel, formatInvoiceBaseLabel } from '@/utils/invoiceLabels'
 import TheDropdown from '@/components/UI/TheDropdown.vue'
-import DetailsToolbar from '@/components/editor/partials/DetailsToolbar.vue'
 import DetailsMenu, { type MenuOption } from '@/components/editor/partials/DetailsMenu.vue'
 import { usePdfStore } from '@/stores/pdf'
 import type { InvoiceStatus } from '@/components/invoice/invoiceTypes'
@@ -65,9 +64,9 @@ const canStartEdit = computed(
   () => lifecycleStatus.value !== 'paid' && lifecycleStatus.value !== 'void',
 )
 
-const statusSelectOptions = computed(() => reachableStatuses(lifecycleStatus.value))
+const statusOptions = computed(() => reachableStatuses(lifecycleStatus.value))
 
-const selectedInvoiceStatus = computed({
+const selectedStatus = computed({
   get(): InvoiceStatus {
     return lifecycleStatus.value
   },
@@ -130,20 +129,25 @@ const menuOpts = computed<MenuOption[]>(() => [
     >
       <!-- Header -->
       <header
-        class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+        class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
-        <DetailsToolbar
-          :identity-label="invoiceDisplayLabel"
-          subtitle="Read-only preview"
-        >
-          <template #more-menu>
-            <DetailsMenu
-              :pdf-disabled="isGeneratingPdf"
-              @pdf="generatePdfOnly"
-              :options="menuOpts"
-            />
-          </template>
-        </DetailsToolbar>
+        <div class="border-b border-zinc-200 px-3 py-3 sm:px-4 dark:border-zinc-800">
+          <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div class="min-w-0">
+              <h2 class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+                {{ invoiceDisplayLabel }}
+              </h2>
+              <p class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">Read-only preview</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <DetailsMenu
+                :pdf-disabled="isGeneratingPdf"
+                @pdf="generatePdfOnly"
+                :options="menuOpts"
+              />
+            </div>
+          </div>
+        </div>
 
         <div class="px-3 py-4 md:px-4 md:py-5">
           <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
@@ -176,10 +180,10 @@ const menuOpts = computed<MenuOption[]>(() => [
                   class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 sm:col-span-2 xl:col-span-1 dark:border-zinc-800 dark:bg-zinc-900/40"
                 >
                   <TheDropdown
-                    v-model="selectedInvoiceStatus"
+                    v-model="selectedStatus"
                     select-title="Status"
                     select-title-class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
-                    :options="statusSelectOptions"
+                    :options="statusOptions"
                     input-class="mt-1.5 py-1.5 capitalize"
                     placeholder="Status"
                   />
@@ -206,7 +210,7 @@ const menuOpts = computed<MenuOption[]>(() => [
               <div class="space-y-2 text-sm">
                 <div class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3">
                   <div class="text-zinc-500 dark:text-zinc-400">Name</div>
-                  <div class="min-w-0 font-medium text-zinc-900 dark:text-zinc-100">
+                  <div class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100">
                     {{ inv.clientSnapshot.name || '—' }}
                   </div>
                 </div>
@@ -216,7 +220,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                   class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
                 >
                   <div class="text-zinc-500 dark:text-zinc-400">Company</div>
-                  <div class="min-w-0 font-medium text-zinc-900 dark:text-zinc-100">
+                  <div class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100">
                     {{ inv.clientSnapshot.companyName }}
                   </div>
                 </div>
@@ -226,7 +230,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                   class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
                 >
                   <div class="text-zinc-500 dark:text-zinc-400">Address</div>
-                  <div class="min-w-0 font-medium text-zinc-900 dark:text-zinc-100">
+                  <div class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100">
                     {{ inv.clientSnapshot.address }}
                   </div>
                 </div>
@@ -236,7 +240,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                   class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
                 >
                   <div class="text-zinc-500 dark:text-zinc-400">Email</div>
-                  <div class="min-w-0 font-medium wrap-break-word text-zinc-900 dark:text-zinc-100">
+                  <div class="min-w-0 font-medium wrap-break-word text-zinc-800 dark:text-zinc-100">
                     {{ inv.clientSnapshot.email }}
                   </div>
                 </div>
@@ -258,7 +262,7 @@ const menuOpts = computed<MenuOption[]>(() => [
               Invoice items
             </div>
             <div class="text-xs text-zinc-600 dark:text-zinc-400">
-              Saved line items for this invoice
+              Saved line items for the current invoice
             </div>
           </div>
 

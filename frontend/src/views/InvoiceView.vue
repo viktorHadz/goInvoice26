@@ -62,20 +62,7 @@ onActivated(refreshInvoiceClientSnapshot)
   <main class="mx-auto w-full max-w-4xl pb-16 sm:pb-0">
     <InvoiceHeader />
 
-    <section
-      class="mt-4 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
-    >
-      <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
-        <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Insert products</div>
-        <div class="text-xs text-zinc-600 dark:text-zinc-400">
-          Select an existing or insert a custom product
-        </div>
-      </div>
-
-      <div class="p-3 md:p-4">
-        <InvoiceItemPicker />
-      </div>
-    </section>
+    <InvoiceItemPicker />
 
     <section
       class="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"

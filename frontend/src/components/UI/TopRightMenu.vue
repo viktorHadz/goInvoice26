@@ -58,10 +58,9 @@ useShortcuts(shortcuts)
               :options="clientStore.clients"
               placeholder="Select Client"
               :left-icon="UserIcon"
-              :right-icon="ChevronUpDownIcon"
               label-key="name"
               value-key="id"
-              input-class="py-1 font-medium"
+              input-class="py-1.5 font-medium text-sm"
             />
           </div>
 

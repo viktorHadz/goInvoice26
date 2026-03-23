@@ -54,7 +54,7 @@ function setUnitPounds(v: unknown) {
 
 <template>
   <div
-    class="grid w-full grid-cols-[minmax(220px,1fr)_48px_64px_96px_110px_36px] items-start gap-2 px-2 py-3"
+    class="grid w-full grid-cols-[minmax(220px,1fr)_48px_64px_96px_110px_36px] items-start gap-3 px-2 py-3"
   >
     <!-- name -->
     <div class="min-w-0">
@@ -114,7 +114,7 @@ function setUnitPounds(v: unknown) {
     <!-- total -->
     <div class="min-w-0 text-right">
       <div
-        class="text-base font-semibold tabular-nums"
+        class="text-sm font-medium tabular-nums"
         :class="{
           'text-zinc-900 dark:text-zinc-100': !serverMismatch,
           'text-amber-700 dark:text-amber-300': serverMismatch,

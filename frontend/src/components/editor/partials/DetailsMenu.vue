@@ -72,7 +72,7 @@ const emit = defineEmits<{
             type="button"
             @click="onOptionClick(option)"
             :aria-disabled="option.disabled ? 'true' : 'false'"
-            class="flex w-full items-center gap-2 px-3 py-2 text-left text-zinc-800 dark:text-zinc-100"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left text-zinc-700 dark:text-zinc-100"
             :class="[
               active
                 ? 'cursor-pointer bg-sky-50 text-zinc-900 dark:bg-emerald-950/25 dark:text-zinc-100'
@@ -91,7 +91,7 @@ const emit = defineEmits<{
         <MenuItem v-slot="{ active }">
           <button
             type="button"
-            class="flex w-full items-center gap-2 px-3 py-2 text-left text-zinc-800 disabled:opacity-50 dark:text-zinc-100"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left text-zinc-700 disabled:opacity-50 dark:text-zinc-100"
             :class="
               active
                 ? 'cursor-pointer bg-sky-50 text-zinc-900 dark:bg-emerald-950/25 dark:text-zinc-100'
@@ -107,7 +107,7 @@ const emit = defineEmits<{
         <MenuItem v-slot="{ active }">
           <button
             type="button"
-            class="flex w-full items-center px-3 py-2 text-left text-zinc-800 disabled:opacity-50 dark:text-zinc-100"
+            class="flex w-full items-center px-3 py-2 text-left text-zinc-700 disabled:opacity-50 dark:text-zinc-100"
             :class="
               active
                 ? 'cursor-pointer bg-sky-50 text-zinc-900 dark:bg-emerald-950/25 dark:text-zinc-100'

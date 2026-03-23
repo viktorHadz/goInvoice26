@@ -110,58 +110,57 @@ function addCustomItem() {
 }
 </script>
 <template>
-  <section
-    class="mt-4 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+  <main
+    class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
   >
     <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
-      <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Insert products</div>
-      <div class="text-xs text-zinc-600 dark:text-zinc-400">
-        Select an existing or insert a custom product
-      </div>
+      <section
+        class="mb-8 flex flex-col font-medium sm:mb-0 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+            Insert products
+          </div>
+          <div class="text-xs text-zinc-600 dark:text-zinc-400">
+            Select an existing or insert a custom product
+          </div>
+        </div>
+
+        <!-- Toggle Tabs -->
+        <div
+          class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60"
+        >
+          <button
+            type="button"
+            class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:focus-visible:ring-emerald-400/30"
+            :class="
+              itemType === 'style'
+                ? 'bg-sky-100 text-sky-700 dark:bg-emerald-950/60 dark:text-emerald-200'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+            "
+            @click="itemType = 'style'"
+          >
+            Styles
+          </button>
+
+          <button
+            type="button"
+            class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:focus-visible:ring-emerald-400/30"
+            :class="
+              itemType === 'sample'
+                ? 'bg-sky-100 text-sky-700 shadow-sm dark:bg-emerald-950/60 dark:text-emerald-200'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+            "
+            @click="itemType = 'sample'"
+          >
+            Samples
+          </button>
+        </div>
+      </section>
     </div>
 
     <div class="p-3 md:p-4">
       <div class="space-y-3">
-        <!-- Header row -->
-        <div
-          class="mb-8 flex flex-col font-medium sm:mb-0 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div class="mb-2 text-zinc-700 capitalize sm:mb-0 dark:text-zinc-200">
-            {{ itemType }} picker
-          </div>
-
-          <!-- Toggle -->
-          <div
-            class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60"
-          >
-            <button
-              type="button"
-              class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform"
-              :class="
-                itemType === 'style'
-                  ? 'bg-sky-100 text-sky-700 shadow-sm outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:bg-emerald-950/60 dark:text-emerald-200 dark:focus-visible:ring-emerald-400/30'
-                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-              "
-              @click="itemType = 'style'"
-            >
-              Styles
-            </button>
-
-            <button
-              type="button"
-              class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform"
-              :class="
-                itemType === 'sample'
-                  ? 'bg-sky-100 text-sky-700 shadow-sm outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:bg-emerald-950/60 dark:text-emerald-200 dark:focus-visible:ring-emerald-400/30'
-                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-              "
-              @click="itemType = 'sample'"
-            >
-              Samples
-            </button>
-          </div>
-        </div>
-
         <!-- Product Picker  -->
         <div class="flex flex-col gap-3 md:flex-row md:items-center">
           <!-- Search -->
@@ -274,5 +273,5 @@ function addCustomItem() {
         </div>
       </div>
     </div>
-  </section>
+  </main>
 </template>

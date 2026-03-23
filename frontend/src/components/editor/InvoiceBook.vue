@@ -156,8 +156,8 @@ function rowClass(active: boolean) {
   return [
     'flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition',
     active
-      ? 'border-sky-200 bg-sky-50/80 text-sky-700 shadow-sm dark:border-emerald-900/80 dark:bg-emerald-950/40 dark:text-zinc-100'
-      : 'border-transparent text-zinc-700 hover:border-zinc-200 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:border-zinc-800 dark:hover:bg-zinc-900/60',
+      ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-emerald-900/80 dark:bg-emerald-950/40 dark:text-zinc-100'
+      : 'border-transparent text-zinc-700 hover:border-zinc-200 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:border-zinc-700/50 dark:hover:bg-zinc-800/40',
   ]
 }
 
@@ -256,27 +256,27 @@ useEscape(() => closeDropdown())
                   </h3>
 
                   <span
-                    class="text-tiny rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
+                    class="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
                   >
                     {{ total }} invoices
                   </span>
                 </div>
 
-                <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-300">
+                <p class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-300">
                   Browse saved invoices and revisions
                 </p>
               </div>
 
               <div class="relative mt-4">
                 <MagnifyingGlassIcon
-                  class="pointer-events-none absolute top-1/2 left-2 size-5 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+                  class="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
                 />
                 <input
                   id="invo-book-search"
                   v-model="query"
                   type="text"
                   placeholder="Search invoice…"
-                  class="input input-accent pl-9"
+                  class="input input-accent py-1 pl-9"
                 />
               </div>
             </div>

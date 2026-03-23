@@ -30,7 +30,7 @@ const navLinks = [
               'absolute inset-0 rounded-xl transition-all duration-200 ease-out',
               isActive
                 ? 'scale-100 bg-sky-100 shadow-sm dark:bg-emerald-950/60'
-                : 'scale-95 bg-transparent',
+                : 'scale-75 bg-transparent',
             ]"
           />
 

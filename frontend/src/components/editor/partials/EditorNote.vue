@@ -27,7 +27,7 @@ watch(
 </script>
 <template>
   <section
-    class="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+    class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
   >
     <div
       class="flex items-start justify-between gap-3 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800"
@@ -50,7 +50,7 @@ watch(
       </div>
     </div>
 
-    <div class="p-2.5 md:p-3">
+    <div class="p-3 md:p-4">
       <textarea
         id="invoice-adjustments-text-area"
         v-model="noteProxy"

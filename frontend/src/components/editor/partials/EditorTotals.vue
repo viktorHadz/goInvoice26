@@ -15,7 +15,7 @@ const editStore = useEditorStore()
 
   <div
     v-else
-    class="min-w-0 space-y-6 text-sm"
+    class="min-w-0 space-y-4 text-sm"
   >
     <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
       <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Subtotal</div>

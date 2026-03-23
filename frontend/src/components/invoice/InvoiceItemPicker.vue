@@ -111,154 +111,168 @@ function addCustomItem() {
 </script>
 
 <template>
-  <div class="space-y-3">
-    <!-- Header row -->
-    <div
-      class="mb-8 flex flex-col font-medium sm:mb-0 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <div class="mb-2 text-zinc-800 capitalize sm:mb-0 dark:text-zinc-200">
-        {{ itemType }} picker
-      </div>
-
-      <!-- Toggle -->
+  <section
+    class="mt-4 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+  >
+    <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+      <!-- Header row -->
       <div
-        class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60"
+        class="mb-8 flex flex-col font-medium sm:mb-0 sm:flex-row sm:items-center sm:justify-between"
       >
-        <button
-          type="button"
-          class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform"
-          :class="
-            itemType === 'style'
-              ? 'bg-sky-100 text-sky-700 shadow-sm outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:bg-emerald-950/60 dark:text-emerald-200 dark:focus-visible:ring-emerald-400/30'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-          "
-          @click="itemType = 'style'"
-        >
-          Styles
-        </button>
-
-        <button
-          type="button"
-          class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform"
-          :class="
-            itemType === 'sample'
-              ? 'bg-sky-100 text-sky-700 shadow-sm outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:bg-emerald-950/60 dark:text-emerald-200 dark:focus-visible:ring-emerald-400/30'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-          "
-          @click="itemType = 'sample'"
-        >
-          Samples
-        </button>
-      </div>
-    </div>
-
-    <!-- Product Picker  -->
-    <div class="flex flex-col gap-3 md:flex-row md:items-center">
-      <!-- Search -->
-      <div class="relative min-w-0 flex-1">
-        <div
-          class="group relative text-zinc-500 hover:text-sky-600 dark:text-zinc-400 hover:dark:text-emerald-400"
-        >
-          <label
-            :for="itemType + '-picker'"
-            class="absolute -top-6 text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            Product Menu
-          </label>
-
-          <input
-            v-model="q"
-            :id="itemType + '-picker'"
-            class="input input-accent w-full px-10 py-1.5 text-sm group-hover:placeholder:text-sky-600 dark:group-hover:placeholder:text-emerald-400"
-            placeholder="Search..."
-            @focus="open = true"
-            @input="open = true"
-          />
-          <MagnifyingGlassIcon class="pointer-events-none absolute top-2 left-2 size-4" />
-
-          <ChevronUpDownIcon
-            class="pointer-events-none absolute top-1/2 right-2 size-5 -translate-y-1/2 rounded-lg"
-          />
+        <div>
+          <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+            Insert products
+          </div>
+          <div class="text-xs text-zinc-600 dark:text-zinc-400">
+            Select an existing or insert a custom product
+          </div>
         </div>
 
-        <transition
-          enter-active-class="transition duration-150 origin-top ease-out"
-          enter-from-class="opacity-0 scale-y-50"
-          enter-to-class="opacity-100 scale-y-100"
-          leave-active-class="transition duration-100 origin-top ease-in"
-          leave-from-class="opacity-100 scale-y-100"
-          leave-to-class="opacity-0 scale-y-50"
+        <!-- Toggle -->
+        <div
+          class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-700 dark:bg-zinc-900/60"
         >
-          <div
-            v-if="open && filtered.length"
-            class="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
-            ref="pickerRef"
+          <button
+            type="button"
+            class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:focus-visible:ring-emerald-400/30"
+            :class="
+              itemType === 'style'
+                ? 'bg-sky-100 text-sky-700 dark:bg-emerald-950/60 dark:text-emerald-200'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+            "
+            @click="itemType = 'style'"
           >
-            <div class="max-h-72 overflow-auto">
-              <div
-                v-for="p in filtered"
-                :key="p.id"
-                class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-              >
-                <div class="min-w-0">
-                  <div class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                    {{ p.productName }}
-                  </div>
-                  <div class="text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ p.productType }} · {{ priceLabel(p) }}
-                  </div>
-                </div>
+            Styles
+          </button>
 
-                <TheButton
-                  class="shrink-0 cursor-pointer"
-                  @click.stop="addFromProduct(p)"
-                >
-                  <SquaresPlusIcon class="size-4" />
-                  Add
-                </TheButton>
-              </div>
-            </div>
-          </div>
-        </transition>
-      </div>
-
-      <!-- Qty -->
-      <div class="w-full md:w-16">
-        <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Qty</div>
-        <TheInput
-          v-model="form.qty"
-          input-class="text-right py-1"
-          type="number"
-          placeholder="1"
-        />
-      </div>
-
-      <!-- Minutes -->
-      <div class="w-full md:w-16">
-        <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Mins</div>
-        <TheInput
-          v-model="form.minutes"
-          type="number"
-          input-class="text-right py-1"
-          :disabled="itemType === 'style'"
-          :title="itemType === 'style' ? 'Styles do not use minutes' : 'Used for hourly samples'"
-        />
-      </div>
-
-      <!-- Custom item -->
-      <div class="w-full md:w-auto md:shrink-0">
-        <TheTooltip
-          text="Custom items do not get saved to a client's items but display on invoice as custom."
-        >
-          <TheButton
-            class="w-full cursor-pointer py-2 text-sm md:w-auto"
-            @click="addCustomItem"
+          <button
+            type="button"
+            class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:focus-visible:ring-emerald-400/30"
+            :class="
+              itemType === 'sample'
+                ? 'bg-sky-100 text-sky-700 shadow-sm dark:bg-emerald-950/60 dark:text-emerald-200'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+            "
+            @click="itemType = 'sample'"
           >
-            <SquaresPlusIcon class="size-5" />
-            Custom Item
-          </TheButton>
-        </TheTooltip>
+            Samples
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+    <div class="p-3 md:p-4">
+      <div class="space-y-3">
+        <!-- Product Picker -->
+        <div class="flex flex-col gap-3 md:flex-row md:items-center">
+          <!-- Search -->
+          <div class="relative min-w-0 flex-1">
+            <div
+              class="group relative text-zinc-500 hover:text-sky-600 dark:text-zinc-400 hover:dark:text-emerald-400"
+            >
+              <label
+                :for="itemType + '-picker'"
+                class="absolute -top-6 text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              >
+                Product Menu
+              </label>
+
+              <input
+                v-model="q"
+                :id="itemType + '-picker'"
+                class="input input-accent w-full px-10 py-1.5 text-sm group-hover:placeholder:text-sky-600 dark:group-hover:placeholder:text-emerald-400"
+                placeholder="Search..."
+                @focus="open = true"
+                @input="open = true"
+              />
+              <MagnifyingGlassIcon class="pointer-events-none absolute top-2 left-2 size-4" />
+
+              <ChevronUpDownIcon
+                class="pointer-events-none absolute top-1/2 right-2 size-5 -translate-y-1/2 rounded-lg"
+              />
+            </div>
+
+            <transition
+              enter-active-class="transition duration-150 origin-top ease-out"
+              enter-from-class="opacity-0 scale-y-50"
+              enter-to-class="opacity-100 scale-y-100"
+              leave-active-class="transition duration-100 origin-top ease-in"
+              leave-from-class="opacity-100 scale-y-100"
+              leave-to-class="opacity-0 scale-y-50"
+            >
+              <div
+                v-if="open && filtered.length"
+                class="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+                ref="pickerRef"
+              >
+                <div class="max-h-72 overflow-auto">
+                  <div
+                    v-for="p in filtered"
+                    :key="p.id"
+                    class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  >
+                    <div class="min-w-0">
+                      <div class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                        {{ p.productName }}
+                      </div>
+                      <div class="text-sm text-zinc-500 dark:text-zinc-400">
+                        {{ p.productType }} · {{ priceLabel(p) }}
+                      </div>
+                    </div>
+
+                    <TheButton
+                      class="shrink-0 cursor-pointer"
+                      @click.stop="addFromProduct(p)"
+                    >
+                      <SquaresPlusIcon class="size-4" />
+                      Add
+                    </TheButton>
+                  </div>
+                </div>
+              </div>
+            </transition>
+          </div>
+
+          <!-- Qty -->
+          <div class="w-full md:w-16">
+            <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Qty</div>
+            <TheInput
+              v-model="form.qty"
+              input-class="text-right py-1"
+              type="number"
+              placeholder="1"
+            />
+          </div>
+
+          <!-- Minutes -->
+          <div class="w-full md:w-16">
+            <div class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Mins</div>
+            <TheInput
+              v-model="form.minutes"
+              type="number"
+              input-class="text-right py-1"
+              :disabled="itemType === 'style'"
+              :title="
+                itemType === 'style' ? 'Styles do not use minutes' : 'Used for hourly samples'
+              "
+            />
+          </div>
+
+          <!-- Custom item -->
+          <div class="w-full md:w-auto md:shrink-0">
+            <TheTooltip
+              text="Custom items do not get saved to a client's items but display on invoice as custom."
+            >
+              <TheButton
+                class="w-full cursor-pointer py-2 text-sm md:w-auto"
+                @click="addCustomItem"
+              >
+                <SquaresPlusIcon class="size-5" />
+                Custom Item
+              </TheButton>
+            </TheTooltip>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </template>

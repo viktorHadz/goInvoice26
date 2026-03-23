@@ -1,30 +1,45 @@
 <script setup lang="ts">
 import DatePick from '@/components/invoice/DatePick.vue'
+import TheDropdown from '@/components/UI/TheDropdown.vue'
 import { useEditorStore } from '@/stores/editor'
 import { computed } from 'vue'
+import type { InvoiceStatus } from '@/components/invoice/invoiceTypes'
+import { reachableStatuses } from '@/utils/invoiceStatusOptions'
 
 const editStore = useEditorStore()
 
 const inv = computed(() => editStore.draftInvoice)
+
+const lifecycleStatus = computed(() => (inv.value?.status ?? 'draft') as InvoiceStatus)
+
+const statusSelectOptions = computed(() => reachableStatuses(lifecycleStatus.value))
+
+const selectedInvoiceStatus = computed({
+  get(): InvoiceStatus {
+    return lifecycleStatus.value
+  },
+  set(next: InvoiceStatus | null) {
+    if (next == null || next === lifecycleStatus.value) return
+    editStore.setInvoiceLifecycleStatus(next)
+  },
+})
 </script>
+
 <template>
-  <header>
-    <div
-      v-if="inv && editStore.activeNode"
-      class="px-3 pb-4 pt-1 md:px-4"
-    >
-      <div
-        class="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-10"
-      >
-        <div class="min-w-0">
-          <div class="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            Dates
-          </div>
-          <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
-            <div>
-              <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                Issue date
-              </div>
+  <div
+    v-if="inv && editStore.activeNode"
+    class="px-3 py-4 md:px-4 md:py-5"
+  >
+    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
+      <!-- Left: invoice details -->
+      <section class="min-w-0">
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div class="min-w-0">
+            <div class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400">
+              Issue date
+            </div>
+
+            <div class="mt-1.5">
               <DatePick
                 v-model="inv.issueDate"
                 placeholder="Select issue date"
@@ -32,11 +47,14 @@ const inv = computed(() => editStore.draftInvoice)
                 :forceShowError="editStore.showAllValidation"
               />
             </div>
+          </div>
 
-            <div>
-              <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                Due by
-              </div>
+          <div class="min-w-0">
+            <div class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400">
+              Due by
+            </div>
+
+            <div class="mt-1.5">
               <DatePick
                 v-model="inv.dueByDate"
                 placeholder="Select due date"
@@ -45,37 +63,75 @@ const inv = computed(() => editStore.draftInvoice)
               />
             </div>
           </div>
+
+          <div class="min-w-0">
+            <TheDropdown
+              v-model="selectedInvoiceStatus"
+              select-title="Status"
+              select-title-class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
+              :options="statusSelectOptions"
+              input-class="mt-1.5 py-1.5 capitalize"
+              placeholder="Status"
+            />
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: client card -->
+      <section
+        class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+      >
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">To</div>
+          </div>
+
+          <span
+            class="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400"
+          >
+            Client details
+          </span>
         </div>
 
-        <div class="min-w-0">
-          <div class="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            Bill to
-          </div>
-          <div class="mt-1.5 space-y-1 text-sm text-zinc-900 dark:text-zinc-100">
-            <div class="font-medium">
+        <div class="space-y-2 text-sm">
+          <div class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3">
+            <div class="text-zinc-500 dark:text-zinc-400">Name</div>
+            <div class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100">
               {{ inv.clientSnapshot.name || '—' }}
-              <span
-                v-if="inv.clientSnapshot.companyName"
-                class="font-normal text-zinc-600 dark:text-zinc-300"
-              >
-                · {{ inv.clientSnapshot.companyName }}
-              </span>
             </div>
-            <div
-              v-if="inv.clientSnapshot.email"
-              class="text-zinc-600 dark:text-zinc-300"
-            >
-              {{ inv.clientSnapshot.email }}
+          </div>
+
+          <div
+            v-if="inv.clientSnapshot.companyName"
+            class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
+          >
+            <div class="text-zinc-500 dark:text-zinc-400">Company</div>
+            <div class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100">
+              {{ inv.clientSnapshot.companyName }}
             </div>
-            <div
-              v-if="inv.clientSnapshot.address"
-              class="line-clamp-2 text-zinc-600 dark:text-zinc-300"
-            >
+          </div>
+
+          <div
+            v-if="inv.clientSnapshot.address"
+            class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
+          >
+            <div class="text-zinc-500 dark:text-zinc-400">Address</div>
+            <div class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100">
               {{ inv.clientSnapshot.address }}
             </div>
           </div>
+
+          <div
+            v-if="inv.clientSnapshot.email"
+            class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
+          >
+            <div class="text-zinc-500 dark:text-zinc-400">Email</div>
+            <div class="min-w-0 font-medium wrap-break-word text-zinc-800 dark:text-zinc-100">
+              {{ inv.clientSnapshot.email }}
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
-  </header>
+  </div>
 </template>
