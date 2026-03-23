@@ -2,7 +2,21 @@ import type { Invoice } from '@/components/invoice/invoiceTypes'
 import { asNum } from '@/utils/numbers'
 import { calcBalanceDueMinor, calcDepositMinor, calcTotals, lineTotalMinor } from '@/utils/money'
 
-export function apiDTO(inv: Invoice) {
+export type DraftPaymentInput = {
+    amountMinor: number
+    paymentDate: string
+    label?: string
+}
+
+export type InvoiceDtoOptions = {
+    sourceRevisionNo?: number
+}
+
+export function apiDTO(
+    inv: Invoice,
+    payments: DraftPaymentInput[] = [],
+    options: InvoiceDtoOptions = {},
+) {
     const totals = calcTotals(inv)
     const depositMinor = calcDepositMinor(inv, totals.totalMinor)
     const balanceDueMinor = calcBalanceDueMinor(totals.totalMinor, depositMinor, inv.paidMinor)
@@ -11,6 +25,7 @@ export function apiDTO(inv: Invoice) {
         overview: {
             clientId: inv.clientId,
             baseNumber: inv.baseNumber,
+            ...(options.sourceRevisionNo ? { sourceRevisionNo: options.sourceRevisionNo } : {}),
             clientName: inv.clientSnapshot.name,
             clientCompanyName: inv.clientSnapshot.companyName,
             clientAddress: inv.clientSnapshot.address,
@@ -49,5 +64,10 @@ export function apiDTO(inv: Invoice) {
             totalMinor: totals.totalMinor,
             balanceDueMinor,
         },
+        payments: payments.map((p) => ({
+            amountMinor: p.amountMinor,
+            paymentDate: p.paymentDate,
+            ...(p.label ? { label: p.label } : {}),
+        })),
     }
 }

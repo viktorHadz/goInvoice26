@@ -271,6 +271,11 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			payment_type TEXT NOT NULL DEFAULT 'payment'
 				CHECK (payment_type IN ('deposit','payment')),
 			amount_minor INTEGER NOT NULL CHECK (amount_minor > 0),
+			payment_date TEXT NOT NULL,
+			applied_in_revision_id INTEGER
+				REFERENCES invoice_revisions(id)
+				ON DELETE SET NULL
+				DEFERRABLE INITIALLY DEFERRED,
 
 			label TEXT,
 
@@ -358,6 +363,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_items_product_id ON invoice_items(product_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_products_client_id ON products(client_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_payments_invoice_revision ON payments(invoice_id, applied_in_revision_id);`,
 	}
 
 	tx, err := db.BeginTx(ctx, nil)

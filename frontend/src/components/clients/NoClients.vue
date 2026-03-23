@@ -21,7 +21,7 @@ function addNewClient() {
 </script>
 <template>
   <div class="">
-    <h2 class="text-acc text-2xl font-bold">Create a client to continue:</h2>
+    <h2 class="text-2xl font-bold text-sky-600">Create a client to continue:</h2>
 
     <div class="mt-8 flex w-full flex-col gap-8">
       <TheInput

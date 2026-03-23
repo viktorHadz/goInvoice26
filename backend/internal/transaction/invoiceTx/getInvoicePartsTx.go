@@ -53,6 +53,14 @@ type InvoiceOverviewTotals struct {
 	PaidMinor     int64
 }
 
+type PaymentRow struct {
+	ID          int64
+	AmountMinor int64
+	PaymentDate string
+	PaymentType string
+	Label       sql.NullString
+}
+
 // QueryInvoiceSummary returns the DB/query row for one invoice revision.
 //
 // The returned value is an internal backend shape.
@@ -89,7 +97,13 @@ func QueryInvoiceSummary(
 			r.subtotal_minor,
 			r.total_minor,
 			COALESCE(
-				(SELECT SUM(p.amount_minor) FROM payments p WHERE p.invoice_id = i.id), 0
+				(
+					SELECT SUM(p.amount_minor)
+					FROM payments p
+					JOIN invoice_revisions ap ON ap.id = p.applied_in_revision_id
+					WHERE p.invoice_id = i.id
+						AND ap.revision_no <= r.revision_no
+				), 0
 			) AS paid_minor
 		FROM invoices i
 		JOIN invoice_revisions r
@@ -114,6 +128,66 @@ func QueryInvoiceSummary(
 		return nil, fmt.Errorf("GetInvoiceSummary() => %w,\nrevisionNumber: %v,\nbaseNumber: %v,\nclientID: %v", err, revisionNo, baseNumber, clientID)
 	}
 	return &o, nil
+}
+
+func QueryInvoicePaymentsForRevision(
+	ctx context.Context,
+	db *sql.DB,
+	clientID int64,
+	baseNumber int64,
+	revisionNo int64,
+) ([]PaymentRow, error) {
+	query := `
+		SELECT
+			p.id,
+			p.amount_minor,
+			p.payment_date,
+			p.payment_type,
+			p.label
+		FROM invoices i
+		JOIN invoice_revisions r
+			ON r.invoice_id = i.id AND r.revision_no = ?
+		JOIN payments p
+			ON p.invoice_id = i.id
+		JOIN invoice_revisions ap
+			ON ap.id = p.applied_in_revision_id
+		WHERE i.base_number = ? AND i.client_id = ?
+			AND ap.revision_no <= r.revision_no
+		ORDER BY p.payment_date ASC, p.id ASC
+	`
+
+	rows, err := db.QueryContext(ctx, query, revisionNo, baseNumber, clientID)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"QueryInvoicePaymentsForRevision()=> %w\nrevisionNumber: %v,\nbaseNumber: %v,\nclientID: %v,",
+			err,
+			revisionNo,
+			baseNumber,
+			clientID,
+		)
+	}
+	defer rows.Close()
+
+	payments := make([]PaymentRow, 0)
+	for rows.Next() {
+		var p PaymentRow
+		if err := rows.Scan(
+			&p.ID,
+			&p.AmountMinor,
+			&p.PaymentDate,
+			&p.PaymentType,
+			&p.Label,
+		); err != nil {
+			return nil, fmt.Errorf("scan payment row: %w", err)
+		}
+		payments = append(payments, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("payment rows error: %w", err)
+	}
+
+	return payments, nil
 }
 
 // QueryInvoiceLines returns the DB/query rows for one invoice revision.

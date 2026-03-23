@@ -4,22 +4,29 @@ import TheInput from '@/components/UI/TheInput.vue'
 import TheButton from '@/components/UI/TheButton.vue'
 import TheDropdown from '@/components/UI/TheDropdown.vue'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
-import { fromMinor } from '@/utils/money'
+import { fromMinor, toMinor, fmtGBPMinor } from '@/utils/money'
 import TheTooltip from '@/components/UI/TheTooltip.vue'
 import { useEditorStore } from '@/stores/editor'
+import { fmtStrDate } from '@/utils/dates'
+import { emitToastError } from '@/utils/toast'
+import { cloneInvoice } from '@/utils/cloneInvoice'
+import { validateInvoicePayload } from '@/utils/frontendValidation'
+import { apiDTO } from '@/utils/invoiceDto'
 import {
   clearInvoiceDeposit,
   clearInvoiceDiscount,
   setInvoiceDepositFixedGBP,
   setInvoiceDepositPercent,
+  setInvoiceDiscountFixedGBP,
   setInvoiceDiscountPercent,
-  setInvoicePaidGBP,
   setInvoiceVatRateBps,
 } from '@/utils/invoiceMutations'
 
 const editStore = useEditorStore()
 
-const paid = ref<number | null>(0)
+const paymentAmount = ref<number | null>(0)
+const paymentDate = ref(todayISO())
+const paymentError = ref('')
 
 const depositMode = ref<'none' | 'fixed' | 'percent'>('none')
 const deposit = ref<number | null>(0)
@@ -52,8 +59,6 @@ function syncFromInvoice() {
   const v = editStore.draftInvoice
   if (!v) return
 
-  paid.value = fromMinor(v.paidMinor)
-
   depositMode.value = v.depositType
   deposit.value =
     v.depositType === 'fixed'
@@ -72,6 +77,9 @@ function syncFromInvoice() {
 
   vatPercent.value = (v.vatRate ?? 2000) / 100
   noteTouched.value = false
+  paymentAmount.value = 0
+  paymentDate.value = todayISO()
+  paymentError.value = ''
 }
 
 watch(
@@ -80,20 +88,93 @@ watch(
   { immediate: true },
 )
 
-function applyPaid() {
-  if (!editStore.draftInvoice) return
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
 
-  const gbp = Math.max(0, toNum(paid.value))
-  setInvoicePaidGBP(editStore.draftInvoice, gbp)
-  paid.value = gbp
+const canAddPayment = computed(() => editStore.balanceDueMinor > 0)
+
+function addPendingPayment() {
+  paymentError.value = ''
+  if (!editStore.draftInvoice) return
+  if (!canAddPayment.value) {
+    paymentError.value = 'No balance due to apply.'
+    paymentAmount.value = 0
+    emitToastError({ title: 'Invalid payment', message: paymentError.value })
+    return
+  }
+
+  const gbp = Math.max(0, toNum(paymentAmount.value))
+  const minor = toMinor(gbp)
+  if (minor <= 0) {
+    paymentError.value = 'Enter an amount greater than zero.'
+    paymentAmount.value = 0
+    emitToastError({ title: 'Invalid payment', message: paymentError.value })
+    return
+  }
+  if (minor > editStore.balanceDueMinor) {
+    paymentError.value = 'Amount cannot exceed outstanding balance.'
+    paymentAmount.value = 0
+    emitToastError({ title: 'Invalid payment', message: paymentError.value })
+    return
+  }
+  if (!paymentDate.value) {
+    paymentError.value = 'Payment date is required.'
+    paymentAmount.value = 0
+    emitToastError({ title: 'Invalid payment', message: paymentError.value })
+    return
+  }
+
+  editStore.stagePendingPayment({
+    amountMinor: minor,
+    paymentDate: paymentDate.value,
+  })
+  paymentAmount.value = 0
+}
+
+function removePendingPayment(tempId: string) {
+  editStore.removePendingPayment(tempId)
+}
+
+function assertEditorInvoiceValidOrRollback(
+  snapshot: ReturnType<typeof cloneInvoice>,
+  fieldNames: string[],
+  toastTitle: string,
+) {
+  const current = editStore.draftInvoice
+  if (!current) return true
+  const dto = apiDTO(
+    current,
+    editStore.pendingPayments.map((p) => ({
+      amountMinor: p.amountMinor,
+      paymentDate: p.paymentDate,
+      ...(p.label ? { label: p.label } : {}),
+    })),
+  )
+  const errors = validateInvoicePayload(dto)
+  if (Object.keys(errors).length === 0) return true
+
+  editStore.draftInvoice = snapshot
+  const message =
+    fieldNames.map((f) => errors[f]).find((msg) => Boolean(msg)) ??
+    errors['totals.paidMinor'] ??
+    'This change would make totals invalid and has been reverted.'
+  emitToastError({ title: toastTitle, message })
+  return false
 }
 
 function applyDeposit() {
   if (!editStore.draftInvoice) return
+  const snapshot = cloneInvoice(editStore.draftInvoice)
 
   if (depositMode.value === 'none') {
     clearInvoiceDeposit(editStore.draftInvoice)
     deposit.value = 0
+    assertEditorInvoiceValidOrRollback(
+      snapshot,
+      ['totals.depositMinor', 'totals.depositRate'],
+      'Deposit reverted',
+    )
     return
   }
 
@@ -101,41 +182,69 @@ function applyDeposit() {
     const gbp = Math.max(0, toNum(deposit.value))
     setInvoiceDepositFixedGBP(editStore.draftInvoice, gbp)
     deposit.value = gbp
+    assertEditorInvoiceValidOrRollback(
+      snapshot,
+      ['totals.depositMinor', 'totals.depositRate'],
+      'Deposit reverted',
+    )
     return
   }
 
   const percent = clamp(toNum(deposit.value), 0, 100)
   setInvoiceDepositPercent(editStore.draftInvoice, percent)
   deposit.value = percent
+  assertEditorInvoiceValidOrRollback(
+    snapshot,
+    ['totals.depositRate', 'totals.depositMinor'],
+    'Deposit reverted',
+  )
 }
 
 function applyDiscount() {
   if (!editStore.draftInvoice) return
+  const snapshot = cloneInvoice(editStore.draftInvoice)
 
   if (discountMode.value === 'none') {
     clearInvoiceDiscount(editStore.draftInvoice)
     discount.value = 0
+    assertEditorInvoiceValidOrRollback(
+      snapshot,
+      ['totals.discountMinor', 'totals.discountRate'],
+      'Discount reverted',
+    )
     return
   }
 
   if (discountMode.value === 'fixed') {
     const gbp = Math.max(0, toNum(discount.value))
-    setInvoiceDepositFixedGBP(editStore.draftInvoice, gbp)
+    setInvoiceDiscountFixedGBP(editStore.draftInvoice, gbp)
     discount.value = gbp
+    assertEditorInvoiceValidOrRollback(
+      snapshot,
+      ['totals.discountMinor', 'totals.discountRate'],
+      'Discount reverted',
+    )
     return
   }
 
   const percent = clamp(toNum(discount.value), 0, 100)
   setInvoiceDiscountPercent(editStore.draftInvoice, percent)
   discount.value = percent
+  assertEditorInvoiceValidOrRollback(
+    snapshot,
+    ['totals.discountRate', 'totals.discountMinor'],
+    'Discount reverted',
+  )
 }
 
 function applyVat() {
   if (!editStore.draftInvoice) return
+  const snapshot = cloneInvoice(editStore.draftInvoice)
 
   const percent = clamp(toNum(vatPercent.value), 0, 100)
   setInvoiceVatRateBps(editStore.draftInvoice, Math.round(percent * 100))
   vatPercent.value = percent
+  assertEditorInvoiceValidOrRollback(snapshot, ['totals.vatRate'], 'VAT change reverted')
 }
 </script>
 
@@ -234,9 +343,9 @@ function applyVat() {
     <!-- Paid -->
     <section class="min-w-0 py-3">
       <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
-        <div class="font-medium text-zinc-800 dark:text-zinc-100">Amount paid</div>
+        <div class="font-medium text-zinc-800 dark:text-zinc-100">Payments</div>
         <TheTooltip
-          text="Payment already received before the final balance."
+          text="Payments become visible only after saving this revision."
           side="top"
           align="center"
           class="hover:text-sky-400 dark:hover:text-emerald-400"
@@ -245,23 +354,89 @@ function applyVat() {
         </TheTooltip>
       </div>
 
-      <div class="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem]">
+      <div class="space-y-2">
+        <div
+          v-if="editStore.existingAppliedPayments.length === 0"
+          class="text-xs text-zinc-500 dark:text-zinc-400"
+        >
+          No saved payments on this revision.
+        </div>
+        <div
+          v-for="payment in editStore.existingAppliedPayments"
+          :key="payment.id"
+          class="flex items-center justify-between rounded-md border border-zinc-200 px-2 py-1.5 text-xs dark:border-zinc-800"
+        >
+          <div class="text-zinc-600 dark:text-zinc-300">
+            {{ fmtStrDate(payment.paymentDate) }}
+          </div>
+          <div class="font-medium text-zinc-800 tabular-nums dark:text-zinc-100">
+            {{ fmtGBPMinor(payment.amountMinor) }}
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 space-y-2">
+        <div
+          v-for="payment in editStore.pendingPayments"
+          :key="payment.tempId"
+          class="flex items-center justify-between rounded-md border border-dashed border-sky-300 bg-sky-50/60 px-2 py-1.5 text-xs dark:border-emerald-700 dark:bg-emerald-950/20"
+        >
+          <div class="text-zinc-700 dark:text-zinc-200">
+            Pending · {{ fmtStrDate(payment.paymentDate) }}
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-medium text-zinc-800 tabular-nums dark:text-zinc-100">
+              {{ fmtGBPMinor(payment.amountMinor) }}
+            </span>
+            <button
+              type="button"
+              class="cursor-pointer text-zinc-500 hover:text-rose-600 dark:text-zinc-400 dark:hover:text-rose-400"
+              @click="removePendingPayment(payment.tempId)"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="mt-3 grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5.5rem]"
+      >
         <TheInput
-          v-model="paid"
+          v-model="paymentAmount"
           type="number"
           placeholder="0"
           labelHidden
           :reserveErrorSpace="false"
+          :disabled="!canAddPayment"
           inputClass="w-full py-1"
-          :error="editStore.getFieldError('totals.paidMinor')"
         />
-
+        <TheInput
+          v-model="paymentDate"
+          type="date"
+          labelHidden
+          :reserveErrorSpace="false"
+          inputClass="w-full py-1"
+        />
         <TheButton
           class="w-full py-1.5!"
-          @click="applyPaid"
+          :disabled="!canAddPayment"
+          @click="addPendingPayment"
         >
-          Apply
+          Add
         </TheButton>
+      </div>
+      <p
+        v-if="paymentError || editStore.getFieldError('totals.paidMinor')"
+        class="mt-1 text-xs text-rose-600 dark:text-rose-400"
+      >
+        {{ paymentError || editStore.getFieldError('totals.paidMinor') }}
+      </p>
+      <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        Outstanding: {{ fmtGBPMinor(editStore.balanceDueMinor) }}
+      </p>
+      <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        Staged payments are saved with the next revision.
       </div>
     </section>
 

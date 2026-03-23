@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { BanknotesIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { ChevronUpDownIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
@@ -31,7 +31,8 @@ async function generatePdfOnly() {
   }
 }
 
-const inv = computed(() => editStore.activeInvoice)
+/** Draft when present (edit), else last saved invoice — keeps preview aligned with working copy. */
+const inv = computed(() => editStore.draftInvoice ?? editStore.activeInvoice)
 
 const totals = computed(() => {
   if (!inv.value) return null
@@ -87,14 +88,6 @@ const menuOpts = computed<MenuOption[]>(() => [
   },
   {
     id: 2,
-    name: 'Add payment',
-    disabled: !canStartEdit.value,
-    disabledReason: 'Payments cannot be added when status is "paid" or "void"',
-    effect: () => editStore.setQuickPayOpen(true),
-    icon: BanknotesIcon,
-  },
-  {
-    id: 3,
     name: 'Delete invoice',
     disabled: !canStartEdit.value,
     disabledReason: 'Cannot delete when status is "paid" or "void"',
@@ -183,6 +176,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                     v-model="selectedStatus"
                     select-title="Status"
                     select-title-class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
+                    :right-icon="ChevronUpDownIcon"
                     :options="statusOptions"
                     input-class="mt-1.5 py-1.5 capitalize"
                     placeholder="Status"
@@ -195,7 +189,7 @@ const menuOpts = computed<MenuOption[]>(() => [
             <section
               class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
             >
-              <div class="mb-4 flex items-start justify-between gap-3">
+              <div class="mb-2 flex items-start justify-between gap-3">
                 <div>
                   <div class="text-base font-semibold">To</div>
                 </div>
@@ -355,7 +349,7 @@ const menuOpts = computed<MenuOption[]>(() => [
           >
             <div class="grid grid-cols-[1fr_auto] items-center gap-3">
               <div class="text-zinc-600 dark:text-zinc-400">Subtotal</div>
-              <div class="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
                 {{ fmtGBPMinor(totals.subtotalMinor) }}
               </div>
             </div>
@@ -365,7 +359,7 @@ const menuOpts = computed<MenuOption[]>(() => [
               class="grid grid-cols-[1fr_auto] items-center gap-3"
             >
               <div class="text-zinc-600 dark:text-zinc-400">Discount</div>
-              <div class="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
                 -{{ fmtGBPMinor(totals.discountMinor) }}
               </div>
             </div>
@@ -375,7 +369,7 @@ const menuOpts = computed<MenuOption[]>(() => [
               class="grid grid-cols-[1fr_auto] items-center gap-3"
             >
               <div class="text-zinc-600 dark:text-zinc-400">VAT</div>
-              <div class="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
                 {{ fmtGBPMinor(totals.vatMinor) }}
               </div>
             </div>
@@ -384,7 +378,7 @@ const menuOpts = computed<MenuOption[]>(() => [
 
             <div class="grid grid-cols-[1fr_auto] items-center gap-3">
               <div class="font-semibold text-zinc-800 dark:text-zinc-100">Total</div>
-              <div class="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
                 {{ fmtGBPMinor(totals.totalMinor) }}
               </div>
             </div>
@@ -394,7 +388,7 @@ const menuOpts = computed<MenuOption[]>(() => [
               class="grid grid-cols-[1fr_auto] items-center gap-3"
             >
               <div class="text-zinc-600 dark:text-zinc-400">Deposit</div>
-              <div class="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
                 -{{ fmtGBPMinor(depositMinor) }}
               </div>
             </div>
@@ -404,7 +398,7 @@ const menuOpts = computed<MenuOption[]>(() => [
               class="grid grid-cols-[1fr_auto] items-center gap-3"
             >
               <div class="text-zinc-600 dark:text-zinc-400">Paid</div>
-              <div class="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
                 -{{ fmtGBPMinor(inv.paidMinor) }}
               </div>
             </div>
@@ -412,7 +406,7 @@ const menuOpts = computed<MenuOption[]>(() => [
             <div class="rounded-xl bg-zinc-50 px-3 py-3 dark:bg-zinc-900/40">
               <div class="grid grid-cols-[1fr_auto] items-center gap-3">
                 <div class="font-semibold text-zinc-800 dark:text-zinc-100">Balance due</div>
-                <div class="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+                <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
                   {{ fmtGBPMinor(balanceDueMinor) }}
                 </div>
               </div>

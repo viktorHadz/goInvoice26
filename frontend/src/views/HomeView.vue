@@ -98,86 +98,90 @@ const features = [
       <div
         class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-lg sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
       >
-        <div class="mb-3 flex items-center justify-between gap-3">
-          <h2 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            Continue where you left off
-          </h2>
-          <span class="text-sm font-semibold text-sky-600 dark:text-emerald-400">
-            client → items → invoice → edit
-          </span>
-        </div>
-
-        <NoClients v-if="!clientStore.hasClients"></NoClients>
-
-        <div
-          v-else-if="clientStore.hasClients && !clientStore.selectedClient"
-          class="space-y-3"
+        <Transition
+          name="fade-down-up"
+          mode="out-in"
         >
-          <p class="text-sm text-sky-600 dark:text-emerald-400">
-            Please select a client to continue:
-          </p>
+          <NoClients v-if="!clientStore.hasClients"></NoClients>
 
-          <div class="max-w-xl">
-            <TheDropdown
-              v-model="clientStore.selectedClient"
-              :options="clientStore.clients"
-              placeholder="No client selected"
-              :left-icon="UserIcon"
-              label-key="name"
-              value-key="id"
-            ></TheDropdown>
-          </div>
+          <div
+            v-else-if="clientStore.hasClients && !clientStore.selectedClient"
+            class="space-y-3"
+          >
+            <p class="text-sm text-sky-600 dark:text-emerald-400">
+              Please select a client to continue:
+            </p>
 
-          <div class="text-xs text-zinc-600 dark:text-zinc-400">
-            Tip: create / edit clients in the Clients page.
-          </div>
+            <div class="max-w-xl">
+              <TheDropdown
+                v-model="clientStore.selectedClient"
+                :options="clientStore.clients"
+                placeholder="No client selected"
+                :left-icon="UserIcon"
+                label-key="name"
+                value-key="id"
+              ></TheDropdown>
+            </div>
 
-          <RouterLink to="/clients">
-            <TheButton class="cursor-pointer">clients</TheButton>
-          </RouterLink>
-        </div>
+            <div class="text-xs text-zinc-600 dark:text-zinc-400">
+              Tip: create / edit clients in the Clients page.
+            </div>
 
-        <div v-else>
-          <div class="mt-12 flex flex-wrap gap-3">
             <RouterLink to="/clients">
-              <TheButton class="cursor-pointer">
-                <UsersIcon class="size-4"></UsersIcon>
-                clients
-              </TheButton>
-            </RouterLink>
-
-            <TheTooltip side="bottom">
-              <template #content>
-                <span class="mr-1 text-sky-600 dark:text-emerald-400">Shortcut:</span>
-                <kbd>Ctrl</kbd>
-                +
-                <kbd>i</kbd>
-              </template>
-
-              <TheButton
-                @click="productStore.open = true"
-                class="cursor-pointer"
-              >
-                <SquaresPlusIcon class="size-4"></SquaresPlusIcon>
-                items
-              </TheButton>
-            </TheTooltip>
-
-            <RouterLink to="/invoice">
-              <TheButton class="cursor-pointer">
-                <DocumentTextIcon class="size-4" />
-                invoice
-              </TheButton>
-            </RouterLink>
-
-            <RouterLink to="/editor">
-              <TheButton class="cursor-pointer">
-                <PencilSquareIcon class="size-4" />
-                editor
-              </TheButton>
+              <TheButton class="cursor-pointer">clients</TheButton>
             </RouterLink>
           </div>
-        </div>
+
+          <div v-else>
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <h2 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Continue where you left off
+              </h2>
+              <span class="text-sm font-semibold text-sky-600 dark:text-emerald-400">
+                client → items → invoice → edit
+              </span>
+            </div>
+            <div class="mt-12 flex flex-wrap gap-3">
+              <RouterLink to="/clients">
+                <TheButton class="cursor-pointer">
+                  <UsersIcon class="size-4"></UsersIcon>
+                  clients
+                </TheButton>
+              </RouterLink>
+
+              <TheTooltip side="bottom">
+                <template #content>
+                  <span class="mr-1 text-sky-600 dark:text-emerald-400">Shortcut:</span>
+                  <kbd>Ctrl</kbd>
+                  +
+                  <kbd>i</kbd>
+                </template>
+
+                <TheButton
+                  @click="productStore.open = true"
+                  class="cursor-pointer"
+                >
+                  <SquaresPlusIcon class="size-4"></SquaresPlusIcon>
+                  items
+                </TheButton>
+              </TheTooltip>
+
+              <RouterLink to="/invoice">
+                <TheButton class="cursor-pointer">
+                  <DocumentTextIcon class="size-4" />
+                  invoice
+                </TheButton>
+              </RouterLink>
+
+              <RouterLink to="/editor">
+                <TheButton class="cursor-pointer">
+                  <PencilSquareIcon class="size-4" />
+                  editor
+                </TheButton>
+              </RouterLink>
+            </div>
+          </div>
+        </Transition>
       </div>
     </section>
   </main>

@@ -5,6 +5,7 @@ import { useEditorStore } from '@/stores/editor'
 import { computed } from 'vue'
 import type { InvoiceStatus } from '@/components/invoice/invoiceTypes'
 import { reachableStatuses } from '@/utils/invoiceStatusOptions'
+import { ChevronUpDownIcon } from '@heroicons/vue/24/outline'
 
 const editStore = useEditorStore()
 
@@ -64,11 +65,12 @@ const selectedInvoiceStatus = computed({
             </div>
           </div>
 
-          <div class="min-w-0">
+          <div class="col-span-2 min-w-0">
             <TheDropdown
               v-model="selectedInvoiceStatus"
               select-title="Status"
               select-title-class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
+              :right-icon="ChevronUpDownIcon"
               :options="statusSelectOptions"
               input-class="mt-1.5 py-1.5 capitalize"
               placeholder="Status"
@@ -81,7 +83,7 @@ const selectedInvoiceStatus = computed({
       <section
         class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
       >
-        <div class="mb-4 flex items-start justify-between gap-3">
+        <div class="mb-2 flex items-start justify-between gap-3">
           <div>
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">To</div>
           </div>

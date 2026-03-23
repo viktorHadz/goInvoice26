@@ -150,7 +150,7 @@ function addCustomItem() {
             class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:focus-visible:ring-emerald-400/30"
             :class="
               itemType === 'sample'
-                ? 'bg-sky-100 text-sky-700 shadow-sm dark:bg-emerald-950/60 dark:text-emerald-200'
+                ? 'bg-sky-100 text-sky-700 dark:bg-emerald-950/60 dark:text-emerald-200'
                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
             "
             @click="itemType = 'sample'"

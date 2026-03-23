@@ -48,7 +48,12 @@ func Create(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn) (inv
 		return 0, 0, err
 	}
 
-	if err := appendPaymentDelta(ctx, tx, invoiceID, canonical.Totals.PaidMinor); err != nil {
+	expectedPaid := sumStagedPayments(canonical.Payments)
+	if canonical.Totals.PaidMinor != expectedPaid {
+		return 0, 0, ErrPaymentTotalsMismatch
+	}
+
+	if err := insertRevisionPayments(ctx, tx, invoiceID, revisionID, canonical.Payments); err != nil {
 		return 0, 0, err
 	}
 	if err := applyAutoPaidIfSettled(ctx, tx, invoiceID, canonical.Totals.TotalMinor, canonical.Totals.DepositMinor); err != nil {
@@ -111,7 +116,24 @@ func CreateRevision(ctx context.Context, a *app.App, canonical *models.FEInvoice
 		return 0, 0, 0, err
 	}
 
-	if err := appendPaymentDelta(ctx, tx, invoiceID, canonical.Totals.PaidMinor); err != nil {
+	sourceRevisionNo := revisionNo - 1
+	if canonical.Overview.SourceRevisionNo != nil {
+		sourceRevisionNo = *canonical.Overview.SourceRevisionNo
+	}
+	if sourceRevisionNo < 1 || sourceRevisionNo > revisionNo-1 {
+		return 0, 0, 0, ErrSourceRevisionInvalid
+	}
+
+	existingPaid, err := sumPaymentsVisibleUpToRevision(ctx, tx, invoiceID, sourceRevisionNo)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	expectedPaid := existingPaid + sumStagedPayments(canonical.Payments)
+	if canonical.Totals.PaidMinor != expectedPaid {
+		return 0, 0, 0, ErrPaymentTotalsMismatch
+	}
+
+	if err := insertRevisionPayments(ctx, tx, invoiceID, revisionID, canonical.Payments); err != nil {
 		return 0, 0, 0, err
 	}
 	if err := applyAutoPaidIfSettled(ctx, tx, invoiceID, canonical.Totals.TotalMinor, canonical.Totals.DepositMinor); err != nil {

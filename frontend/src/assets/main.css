@@ -160,7 +160,7 @@
     .link {
         @apply hover:text-primary text-fg cursor-pointer decoration-2 underline-offset-2 hover:underline;
         @variant dark {
-            @apply hover:text-acc;
+            @apply hover:text-sky-600;
         }
     }
 }
@@ -170,9 +170,7 @@
         @apply dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300;
     }
 }
-/* .router-active {
-    @apply text-primary dark:text-acc;
-} */
+
 @layer components {
     .main-content {
         flex-grow: 1;

@@ -74,8 +74,8 @@ func CreateInvoice(a *app.App) http.HandlerFunc {
 				res.Validation(w, res.Invalid("baseNumber", "invoice number already in use"))
 				return
 			}
-			if errors.Is(err, invoiceTx.ErrPaymentDeltaNegative) {
-				res.Validation(w, res.Invalid("totals.paidMinor", "cannot be less than payments already recorded"))
+			if errors.Is(err, invoiceTx.ErrPaymentTotalsMismatch) {
+				res.Validation(w, res.Invalid("totals.paidMinor", "must match visible payments plus staged payments"))
 				return
 			}
 
@@ -159,8 +159,12 @@ func CreateRevision(a *app.App) http.HandlerFunc {
 				res.Error(w, http.StatusConflict, "INVOICE_PAID", "Reopen invoice to issued before saving a revision")
 				return
 			}
-			if errors.Is(err, invoiceTx.ErrPaymentDeltaNegative) {
-				res.Validation(w, res.Invalid("totals.paidMinor", "cannot be less than payments already recorded"))
+			if errors.Is(err, invoiceTx.ErrSourceRevisionInvalid) {
+				res.Validation(w, res.Invalid("sourceRevisionNo", "must reference an existing revision before the new revision"))
+				return
+			}
+			if errors.Is(err, invoiceTx.ErrPaymentTotalsMismatch) {
+				res.Validation(w, res.Invalid("totals.paidMinor", "must match payments visible at source revision plus staged payments"))
 				return
 			}
 

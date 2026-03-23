@@ -5,7 +5,6 @@ import TopRightMenu from './components/UI/TopRightMenu.vue'
 import NavMain from './components/UI/NavMain.vue'
 import TheToast, { type ToastNotice } from './components/UI/TheToast.vue'
 import { onToastError } from './utils/toast'
-import PaymentDialog from './components/UI/PaymentDialog.vue'
 
 type TheToastExpose = {
   onError: (error: ToastNotice) => void
@@ -42,7 +41,6 @@ onBeforeUnmount(() => {
       <!-- Shortcuts reside here -->
       <TopRightMenu />
       <TheToast ref="toastRef" />
-      <PaymentDialog />
     </main>
   </div>
 </template>

@@ -72,4 +72,11 @@ export type InvoiceResponse = {
         lineTotalMinor: number
         sortOrder: number
     }[]
+    payments: {
+        id: number
+        amountMinor: number
+        paymentDate: string
+        paymentType: string
+        label?: string
+    }[]
 }

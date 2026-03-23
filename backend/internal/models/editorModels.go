@@ -4,6 +4,7 @@ type InvoiceEditorResponse struct {
 	Status string              `json:"status"`
 	Totals InvoiceEditorTotals `json:"totals"`
 	Lines  []InvoiceEditorLine `json:"lines"`
+	Payments []InvoiceEditorPayment `json:"payments"`
 }
 
 type InvoiceEditorTotals struct {
@@ -40,4 +41,12 @@ type InvoiceEditorLine struct {
 	UnitPriceMin  int64   `json:"unitPriceMinor"`
 	LineTotalMin  int64   `json:"lineTotalMinor"`
 	SortOrder     int64   `json:"sortOrder"`
+}
+
+type InvoiceEditorPayment struct {
+	ID          int64   `json:"id"`
+	AmountMinor int64   `json:"amountMinor"`
+	PaymentDate string  `json:"paymentDate"`
+	PaymentType string  `json:"paymentType"`
+	Label       *string `json:"label,omitempty"`
 }

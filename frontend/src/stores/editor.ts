@@ -22,6 +22,7 @@ import type {
     InvoiceLine,
     InvoiceStatus,
     LineType,
+    MoneyMinor,
     PricingMode,
 } from '@/components/invoice/invoiceTypes'
 import { useInvoiceFieldErrors } from '@/composables/useInvoiceFieldErrors'
@@ -43,20 +44,33 @@ import { NetworkError } from '@/utils/fetchHelper'
 import { newRevisionHandler } from '@/utils/invoiceHttpHandler'
 import { formatInvoiceBaseLabel } from '@/utils/invoiceLabels'
 
+type AppliedPayment = {
+    id: number
+    amountMinor: number
+    paymentDate: string
+    paymentType: string
+    label?: string
+}
+
+type PendingPayment = {
+    tempId: string
+    amountMinor: number
+    paymentDate: string
+    label?: string
+}
+
+function firstFieldErrorMessage(fields: Record<string, string>): string | null {
+    for (const msg of Object.values(fields)) {
+        if (msg) return msg
+    }
+    return null
+}
+
 function normalizeInvoiceStatus(s: string | undefined): InvoiceStatus {
     const x = (s ?? 'draft').toLowerCase()
     if (x === 'issued' || x === 'paid' || x === 'void' || x === 'draft') return x
     return 'draft'
 }
-
-/* 
-  TODO: Need to fix payments for editor and invoice dasdas
-  * invoice: payment is fine. But saving logic needs to account it into totals. 
-
-  * editor: 
-    * use an array to stick the payments 
-    ? add dates (DatePicker?) for each payment 
-*/
 
 export const useEditorStore = defineStore('editorStore', () => {
     const clientStore = useClientStore()
@@ -66,6 +80,7 @@ export const useEditorStore = defineStore('editorStore', () => {
 
     const invoiceBook = ref<InvBookInvoice[]>([])
     const activeInvoice = ref<Invoice | null>(null)
+    const activeRevisionNo = ref<number>(1)
     const activeNode = ref<ActiveEditorNode>(null)
     /**
      * draftInvoice is the editable working copy.
@@ -83,6 +98,8 @@ export const useEditorStore = defineStore('editorStore', () => {
 
     const bookError = ref('')
     const serverFieldErrors = ref<Record<string, string>>({})
+    const existingAppliedPayments = ref<AppliedPayment[]>([])
+    const pendingPayments = ref<PendingPayment[]>([])
 
     const prettyBaseNumber = computed(() =>
         formatInvoiceBaseLabel(invoicePrefix.value, draftInvoice.value?.baseNumber),
@@ -115,6 +132,41 @@ export const useEditorStore = defineStore('editorStore', () => {
     function ensureDraft(): Invoice {
         if (!draftInvoice.value) throw new Error('Invoice not initialised')
         return draftInvoice.value
+    }
+
+    function latestRevisionNoForBase(baseNo: number): number {
+        const row = invoiceBook.value.find((inv) => inv.baseNo === baseNo)
+        if (!row || row.revisions.length === 0) return 1
+        return row.revisions.reduce((max, rev) => Math.max(max, rev.revisionNo), 1)
+    }
+
+    function totalPendingPaidMinor(): MoneyMinor {
+        return pendingPayments.value.reduce((sum, p) => sum + p.amountMinor, 0) as MoneyMinor
+    }
+
+    function syncDraftPaidMinorFromPayments() {
+        const inv = draftInvoice.value
+        if (!inv) return
+        const existing = Math.max(0, Math.round(Number(activeInvoice.value?.paidMinor ?? 0)))
+        inv.paidMinor = Math.max(0, existing + totalPendingPaidMinor()) as MoneyMinor
+    }
+
+    function stagePendingPayment(payment: Omit<PendingPayment, 'tempId'>) {
+        pendingPayments.value = [
+            ...pendingPayments.value,
+            {
+                tempId: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                ...payment,
+            },
+        ]
+        syncDraftPaidMinorFromPayments()
+        scheduleServerVerify()
+    }
+
+    function removePendingPayment(tempId: string) {
+        pendingPayments.value = pendingPayments.value.filter((p) => p.tempId !== tempId)
+        syncDraftPaidMinorFromPayments()
+        scheduleServerVerify()
     }
 
     let lastBookRequestId = 0
@@ -192,7 +244,11 @@ export const useEditorStore = defineStore('editorStore', () => {
             const formatted = fmtActive(data, clientId)
 
             activeInvoice.value = formatted
+            activeRevisionNo.value = revisionNumber
             draftInvoice.value = cloneInvoice(formatted)
+            existingAppliedPayments.value = data.payments ?? []
+            pendingPayments.value = []
+            syncDraftPaidMinorFromPayments()
 
             isEditing.value = false
             serverFieldErrors.value = {}
@@ -269,7 +325,17 @@ export const useEditorStore = defineStore('editorStore', () => {
             })
             return false
         }
-        const dto = apiDTO(inv)
+        const dto = apiDTO(
+            inv,
+            pendingPayments.value.map((p) => ({
+                amountMinor: p.amountMinor,
+                paymentDate: p.paymentDate,
+                ...(p.label ? { label: p.label } : {}),
+            })),
+            {
+                sourceRevisionNo: activeRevisionNo.value,
+            },
+        )
 
         showAllValidation.value = true
         serverFieldErrors.value = {}
@@ -301,6 +367,13 @@ export const useEditorStore = defineStore('editorStore', () => {
         } catch (err: unknown) {
             if (isApiError(err) && hasFieldErrors(err)) {
                 serverFieldErrors.value = toFieldErrorMap(err.fields)
+                const firstError = firstFieldErrorMessage(serverFieldErrors.value)
+                if (firstError) {
+                    emitToastError({
+                        title: 'Cannot save revision',
+                        message: firstError,
+                    })
+                }
                 return false
             }
 
@@ -329,7 +402,7 @@ export const useEditorStore = defineStore('editorStore', () => {
             if (isApiError(err)) {
                 emitToastError({
                     id: err.id,
-                    title: 'Could not create invoice',
+                    title: 'Could not save revision',
                     message: err.message || 'Please check your data and try again.',
                 })
                 return false
@@ -344,7 +417,7 @@ export const useEditorStore = defineStore('editorStore', () => {
             }
 
             emitToastError({
-                title: 'Could not create invoice',
+                title: 'Could not save revision',
                 message: 'An unexpected error occurred. Please try again.',
             })
             console.error('[invoice create]', err)
@@ -387,7 +460,10 @@ export const useEditorStore = defineStore('editorStore', () => {
     function clearActiveInvoice() {
         lastInvoiceRequestId++
         activeInvoice.value = null
+        activeRevisionNo.value = 1
         draftInvoice.value = null
+        existingAppliedPayments.value = []
+        pendingPayments.value = []
         isEditing.value = false
         serverFieldErrors.value = {}
         showAllValidation.value = false
@@ -399,7 +475,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         const clientId = clientStore.selectedClient?.id
         if (!node || !clientId) return
         if (node.type === 'invoice') {
-            await fetchInvoice(node.baseNo, 1)
+            await fetchInvoice(node.baseNo, latestRevisionNoForBase(node.baseNo))
         } else {
             await fetchInvoice(node.baseNo, node.revisionNo)
         }
@@ -431,6 +507,8 @@ export const useEditorStore = defineStore('editorStore', () => {
         if (st === 'paid' || st === 'void') return
         clearVerifyState()
         draftInvoice.value = cloneInvoice(activeInvoice.value)
+        pendingPayments.value = []
+        syncDraftPaidMinorFromPayments()
         serverFieldErrors.value = {}
         showAllValidation.value = false
         isEditing.value = true
@@ -440,6 +518,8 @@ export const useEditorStore = defineStore('editorStore', () => {
         if (!activeInvoice.value) return
 
         draftInvoice.value = cloneInvoice(activeInvoice.value)
+        pendingPayments.value = []
+        syncDraftPaidMinorFromPayments()
         serverFieldErrors.value = {}
         showAllValidation.value = false
         isEditing.value = false
@@ -452,24 +532,18 @@ export const useEditorStore = defineStore('editorStore', () => {
         addInvoiceLine(draftInvoice.value, line)
         scheduleServerVerify()
     }
-
     function updateLine(sortOrder: number, patch: Partial<InvoiceLine>): void {
         updateInvoiceLine(ensureDraft(), sortOrder, patch)
         scheduleServerVerify()
     }
-
     function removeLine(sortOrder: number): void {
         removeInvoiceLine(ensureDraft(), sortOrder)
         scheduleServerVerify()
     }
+
     function setNote(note: string): void {
         setInvoiceNote(ensureDraft(), note)
         scheduleServerVerify()
-    }
-
-    const quickPayOpen = ref(false)
-    const setQuickPayOpen = (open: boolean) => {
-        quickPayOpen.value = open
     }
 
     watch(
@@ -505,7 +579,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         }
 
         if (node.type === 'invoice') {
-            await fetchInvoice(node.baseNo, 1)
+            await fetchInvoice(node.baseNo, latestRevisionNoForBase(node.baseNo))
             return
         }
 
@@ -528,9 +602,10 @@ export const useEditorStore = defineStore('editorStore', () => {
         errorMessage: bookError,
         isEditing,
         prettyBaseNumber,
-        quickPayOpen,
         canGoPrev,
         canGoNext,
+        existingAppliedPayments,
+        pendingPayments,
 
         fetchInvoiceBook,
         fetchInvoice,
@@ -547,7 +622,8 @@ export const useEditorStore = defineStore('editorStore', () => {
         cancelEdit,
         getFieldError,
         setNote,
-        setQuickPayOpen,
+        stagePendingPayment,
+        removePendingPayment,
 
         addLine,
         updateLine,

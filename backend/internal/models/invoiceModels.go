@@ -4,11 +4,13 @@ type FEInvoiceIn struct {
 	Overview InvoiceCreateIn
 	Lines    []LineCreateIn
 	Totals   TotalsCreateIn
+	Payments []PaymentCreateIn `json:"payments"`
 }
 
 type InvoiceCreateIn struct {
 	ClientID          int64   `json:"clientId"`
 	BaseNumber        int64   `json:"baseNumber"`
+	SourceRevisionNo  *int64  `json:"sourceRevisionNo,omitempty"`
 	IssueDate         string  `json:"issueDate"`
 	DueByDate         *string `json:"dueByDate"`
 	ClientName        string  `json:"clientName"`
@@ -48,6 +50,12 @@ type TotalsCreateIn struct {
 	SubtotalMinor     int64 `json:"subtotalMinor"`
 	TotalMinor        int64 `json:"totalMinor"`
 	BalanceDue        int64 `json:"balanceDueMinor"`
+}
+
+type PaymentCreateIn struct {
+	AmountMinor int64   `json:"amountMinor"`
+	PaymentDate string  `json:"paymentDate"`
+	Label       *string `json:"label,omitempty"`
 }
 
 type InvoicePDFIssuer struct {

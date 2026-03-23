@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
 var (
@@ -12,33 +14,86 @@ var (
 	ErrInvoiceVoidForRevision = errors.New("invoice is void; revisions are not allowed")
 	// ErrInvoicePaidForRevision is returned when appending a revision while status is paid (reopen to issued first).
 	ErrInvoicePaidForRevision = errors.New("invoice is paid; reopen to issued before revising")
-	// ErrPaymentDeltaNegative is returned when desired paid total is less than recorded payments sum.
-	ErrPaymentDeltaNegative = errors.New("paid total cannot be less than already recorded payments")
+	// ErrPaymentTotalsMismatch is returned when totals.paidMinor does not match visible + staged payments.
+	ErrPaymentTotalsMismatch = errors.New("paid total does not match staged payments for this revision")
+	// ErrSourceRevisionInvalid is returned when source revision is outside valid range.
+	ErrSourceRevisionInvalid = errors.New("source revision is invalid for this invoice")
 )
 
-// appendPaymentDelta inserts payment rows so SUM(payments) matches desiredPaidMinor (append-only).
-func appendPaymentDelta(ctx context.Context, tx *sql.Tx, invoiceID int64, desiredPaidMinor int64) error {
+func sumPaymentsByInvoice(ctx context.Context, tx *sql.Tx, invoiceID int64) (int64, error) {
 	var existing int64
 	if err := tx.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(amount_minor), 0) FROM payments WHERE invoice_id = ?
 	`, invoiceID).Scan(&existing); err != nil {
-		return fmt.Errorf("sum payments: %w", err)
+		return 0, fmt.Errorf("sum payments: %w", err)
 	}
+	return existing, nil
+}
 
-	delta := desiredPaidMinor - existing
-	if delta < 0 {
-		return ErrPaymentDeltaNegative
+func sumPaymentsVisibleUpToRevision(
+	ctx context.Context,
+	tx *sql.Tx,
+	invoiceID int64,
+	revisionNo int64,
+) (int64, error) {
+	var existing int64
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(p.amount_minor), 0)
+		FROM payments p
+		JOIN invoice_revisions ap ON ap.id = p.applied_in_revision_id
+		WHERE p.invoice_id = ?
+			AND ap.revision_no <= ?
+	`, invoiceID, revisionNo).Scan(&existing); err != nil {
+		return 0, fmt.Errorf("sum visible payments by revision: %w", err)
 	}
-	if delta == 0 {
+	return existing, nil
+}
+
+func sumStagedPayments(payments []models.PaymentCreateIn) int64 {
+	var out int64
+	for _, p := range payments {
+		out += p.AmountMinor
+	}
+	return out
+}
+
+func insertRevisionPayments(
+	ctx context.Context,
+	tx *sql.Tx,
+	invoiceID int64,
+	revisionID int64,
+	payments []models.PaymentCreateIn,
+) error {
+	if len(payments) == 0 {
 		return nil
 	}
 
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO payments (invoice_id, payment_type, amount_minor)
-		VALUES (?, 'payment', ?)
-	`, invoiceID, delta); err != nil {
-		return fmt.Errorf("insert payment: %w", err)
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO payments (invoice_id, payment_type, amount_minor, payment_date, applied_in_revision_id, label)
+		VALUES (?, 'payment', ?, ?, ?, ?)
+	`)
+	if err != nil {
+		return fmt.Errorf("prepare payments insert: %w", err)
 	}
+	defer stmt.Close()
+
+	for _, p := range payments {
+		var label any
+		if p.Label != nil {
+			label = *p.Label
+		}
+		if _, err := stmt.ExecContext(
+			ctx,
+			invoiceID,
+			p.AmountMinor,
+			p.PaymentDate,
+			revisionID,
+			label,
+		); err != nil {
+			return fmt.Errorf("insert payment row: %w", err)
+		}
+	}
+
 	return nil
 }
 

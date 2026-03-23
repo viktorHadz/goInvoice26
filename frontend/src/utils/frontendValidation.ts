@@ -17,6 +17,7 @@ type ProductFormInput = {
 
 type InvoicePayload = {
     overview: {
+        sourceRevisionNo?: number
         issueDate: string
         dueByDate?: string
         clientName: string
@@ -51,6 +52,11 @@ type InvoicePayload = {
         totalMinor: number
         balanceDueMinor: number
     }
+    payments: Array<{
+        amountMinor: number
+        paymentDate: string
+        label?: string
+    }>
 }
 
 const runeLen = (s: string) => Array.from(s).length
@@ -215,6 +221,12 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     const errors: Record<string, string> = {}
 
     const issueDate = payload.overview.issueDate?.trim() ?? ''
+    if (
+        payload.overview.sourceRevisionNo != null &&
+        (!Number.isInteger(payload.overview.sourceRevisionNo) || payload.overview.sourceRevisionNo < 1)
+    ) {
+        errors.sourceRevisionNo = 'must be a positive integer'
+    }
     if (!issueDate) {
         errors.issueDate = 'is required'
     } else if (!isValidISODate(issueDate)) {
@@ -321,6 +333,7 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     })
 
     const totals = payload.totals
+    const paymentSumMinor = payload.payments.reduce((sum, p) => sum + Math.max(0, p.amountMinor), 0)
 
     if (totals.vatRate < 0 || totals.vatRate > 10000) {
         errors['totals.vatRate'] = 'must be between 0 and 10000'
@@ -357,7 +370,7 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
 
     const maxPaidMinor = Math.max(0, totals.totalMinor - totals.depositMinor)
     if (totals.paidMinor > maxPaidMinor) {
-        errors['totals.paidMinor'] = 'cannot exceed amount owing after deposit'
+        errors['totals.paidMinor'] = 'cannot exceed amount owed after deposit'
     }
 
     if (totals.subtotalAfterDiscountMinor < 0) {
@@ -367,6 +380,31 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     if (totals.subtotalMinor < 0) errors['totals.subtotalMinor'] = 'must be 0 or greater'
     if (totals.totalMinor < 0) errors['totals.totalMinor'] = 'must be 0 or greater'
     if (totals.balanceDueMinor < 0) errors['totals.balanceDueMinor'] = 'must be 0 or greater'
+
+    payload.payments.forEach((payment, i) => {
+        const prefix = (f: string) => `payments[${i}].${f}`
+        if (!Number.isFinite(payment.amountMinor) || payment.amountMinor <= 0) {
+            errors[prefix('amountMinor')] = 'must be greater than 0'
+        }
+        const paymentDate = payment.paymentDate?.trim() ?? ''
+        if (!paymentDate) {
+            errors[prefix('paymentDate')] = 'is required'
+        } else if (!isValidISODate(paymentDate)) {
+            errors[prefix('paymentDate')] = 'must be a valid ISO date (YYYY-MM-DD)'
+        }
+        if (payment.label != null) {
+            const labelErr = validateText(payment.label, {
+                max: 120,
+                singleLine: true,
+                trim: true,
+            })
+            if (labelErr) errors[prefix('label')] = labelErr
+        }
+    })
+
+    if (paymentSumMinor > totals.paidMinor) {
+        errors['totals.paidMinor'] = 'must include all staged payments'
+    }
 
     return errors
 }

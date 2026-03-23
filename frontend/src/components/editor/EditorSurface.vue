@@ -68,6 +68,7 @@ async function generatePdfOnly() {
             <TheTooltip text="Cancel edit and revert changes">
               <TheButton
                 variant="secondary"
+                class="cursor-pointer"
                 @click="editStore.cancelEdit"
               >
                 <XCircleIcon class="size-4" />
@@ -79,6 +80,7 @@ async function generatePdfOnly() {
                 type="button"
                 variant="success"
                 :disabled="revisionLocked"
+                class="cursor-pointer"
                 @click="editStore.saveRevision(editStore.draftInvoice)"
               >
                 <DocumentArrowDownIcon class="size-4" />

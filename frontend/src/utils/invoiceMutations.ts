@@ -1,7 +1,6 @@
 import type {
     Invoice,
     InvoiceLine,
-    MoneyMinor,
     DepositType,
     DiscountType,
 } from '@/components/invoice/invoiceTypes'
@@ -133,6 +132,9 @@ export function clearInvoiceDeposit(inv: Invoice): void {
     inv.depositRate = 0
 }
 
-export function setInvoicePaidGBP(inv: Invoice, gbp: number): void {
-    inv.paidMinor = Math.max(0, toMinor(gbp))
+//*---------------------------------
+// * Payments Logic
+//*---------------------------------
+export function setInvoicePayment(inv: Invoice, amount: number): void {
+    inv.paidMinor = Math.max(0, toMinor(amount))
 }

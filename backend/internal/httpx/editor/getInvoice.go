@@ -64,6 +64,20 @@ func toEditorLines(in []invoiceTx.ItemLine) []models.InvoiceEditorLine {
 	return out
 }
 
+func toEditorPayments(in []invoiceTx.PaymentRow) []models.InvoiceEditorPayment {
+	out := make([]models.InvoiceEditorPayment, 0, len(in))
+	for _, p := range in {
+		out = append(out, models.InvoiceEditorPayment{
+			ID:          p.ID,
+			AmountMinor: p.AmountMinor,
+			PaymentDate: p.PaymentDate,
+			PaymentType: p.PaymentType,
+			Label:       nullStringPtr(p.Label),
+		})
+	}
+	return out
+}
+
 func GetInvoice(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clientID, ok := params.ValidateParam(w, r, "clientID")
@@ -105,10 +119,24 @@ func GetInvoice(a *app.App) http.HandlerFunc {
 			return
 		}
 
+		payments, err := invoiceTx.QueryInvoicePaymentsForRevision(r.Context(), a.DB, clientID, baseNo, revNo)
+		if err != nil {
+			slog.ErrorContext(
+				r.Context(), "DB_ERROR - error while getting invoice payments",
+				"err", err,
+				"clientID", clientID,
+				"baseNumber", baseNo,
+				"revisionNumber", revNo,
+			)
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
+			return
+		}
+
 		out := models.InvoiceEditorResponse{
 			Status: summary.Status,
-			Totals: toEditorTotals(*summary),
-			Lines:  toEditorLines(lines),
+			Totals:   toEditorTotals(*summary),
+			Lines:    toEditorLines(lines),
+			Payments: toEditorPayments(payments),
 		}
 
 		res.JSON(w, http.StatusOK, out)

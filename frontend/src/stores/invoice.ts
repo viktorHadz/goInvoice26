@@ -44,15 +44,27 @@ import {
     setInvoiceDueByDate,
     setInvoiceIssueDate,
     setInvoiceNote,
-    setInvoicePaidGBP,
     setInvoiceVatRateBps,
     updateInvoiceLine,
 } from '@/utils/invoiceMutations'
 import { useInvoicePricing } from '@/composables/useInvoicePricing'
+import type { DraftPaymentInput } from '@/utils/invoiceDto'
+
+type PendingPayment = DraftPaymentInput & {
+    tempId: string
+}
+
+function firstFieldErrorMessage(fields: Record<string, string>): string | null {
+    for (const msg of Object.values(fields)) {
+        if (msg) return msg
+    }
+    return null
+}
 
 // * INVOICE STORE
 export const useInvoiceStore = defineStore('invoice', () => {
     const invoice = ref<Invoice | null>(null)
+    const pendingPayments = ref<PendingPayment[]>([])
     const serverFieldErrors = ref<Record<string, string>>({})
     /**
      * showAllValidation - whether validation errors are displayed before attempting to submit.
@@ -115,6 +127,36 @@ export const useInvoiceStore = defineStore('invoice', () => {
     function ensure(): Invoice {
         if (!invoice.value) throw new Error('Invoice not initialised')
         return invoice.value
+    }
+
+    function syncInvoicePaidMinorFromPending() {
+        const inv = invoice.value
+        if (!inv) return
+        const paid = pendingPayments.value.reduce((sum, p) => sum + p.amountMinor, 0)
+        inv.paidMinor = Math.max(0, paid) as MoneyMinor
+    }
+
+    function stagePendingPayment(payment: DraftPaymentInput): void {
+        pendingPayments.value = [
+            ...pendingPayments.value,
+            {
+                tempId: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                ...payment,
+            },
+        ]
+        syncInvoicePaidMinorFromPending()
+        scheduleServerVerify()
+    }
+
+    function removePendingPayment(tempId: string): void {
+        pendingPayments.value = pendingPayments.value.filter((p) => p.tempId !== tempId)
+        syncInvoicePaidMinorFromPending()
+        scheduleServerVerify()
+    }
+
+    function clearPendingPayments(): void {
+        pendingPayments.value = []
+        syncInvoicePaidMinorFromPending()
     }
 
     const prettyBaseNumber = computed(() =>
@@ -288,6 +330,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
 
         const bNum = await getNewInvoiceNumber(lsClientId)
         invoice.value = { ...newInvoiceData, baseNumber: bNum }
+        clearPendingPayments()
     }
 
     // * -------- LINES CRUD -------- * //
@@ -366,17 +409,19 @@ export const useInvoiceStore = defineStore('invoice', () => {
         scheduleServerVerify()
     }
 
-    function setPaidGBP(gbp: number): void {
-        setInvoicePaidGBP(ensure(), gbp)
-        scheduleServerVerify()
-    }
-
     async function newDraftInvoice(inv: Invoice): Promise<boolean> {
         const clientStore = getClientStore()
         const { lsClientId, selectedClient } = clientStore
         if (!lsClientId) throw new Error('No client selected')
 
-        const dto = apiDTO(inv)
+        const dto = apiDTO(
+            inv,
+            pendingPayments.value.map((p) => ({
+                amountMinor: p.amountMinor,
+                paymentDate: p.paymentDate,
+                ...(p.label ? { label: p.label } : {}),
+            })),
+        )
 
         showAllValidation.value = true
         serverFieldErrors.value = {}
@@ -413,6 +458,13 @@ export const useInvoiceStore = defineStore('invoice', () => {
         } catch (err: unknown) {
             if (isApiError(err) && hasFieldErrors(err)) {
                 serverFieldErrors.value = toFieldErrorMap(err.fields)
+                const firstError = firstFieldErrorMessage(serverFieldErrors.value)
+                if (firstError) {
+                    emitToastError({
+                        title: 'Cannot create draft',
+                        message: firstError,
+                    })
+                }
                 return false
             }
 
@@ -464,6 +516,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
     return {
         // state
         invoice,
+        pendingPayments,
         serverFieldErrors,
         showAllValidation,
         liveFieldErrors,
@@ -505,13 +558,11 @@ export const useInvoiceStore = defineStore('invoice', () => {
         setDepositFixedGBP,
         setDepositPercent,
         clearDeposit,
-        setPaidGBP,
+        stagePendingPayment,
+        removePendingPayment,
+        clearPendingPayments,
         getInvoiceClient,
         setClientSnapshot,
-
-        // helpers exported(again) for components
-        // lineTotalMinor,
-        // toMinor,
 
         // API
         newDraftInvoice,
