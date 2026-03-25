@@ -3,6 +3,7 @@ import { useClientStore } from '@/stores/clients'
 import TheInput from '../UI/TheInput.vue'
 import TheButton from '../UI/TheButton.vue'
 import { UserPlusIcon } from '@heroicons/vue/24/outline'
+import { handleActionError } from '@/utils/errors/handleActionError'
 
 const clientStore = useClientStore()
 
@@ -14,14 +15,21 @@ const resetFormNoClient = () => {
 }
 const noClientsFormNew = { name: '', companyName: '', email: '', address: '' }
 
-function addNewClient() {
-  clientStore.createNew(noClientsFormNew)
-  resetFormNoClient()
+async function addNewClient() {
+  try {
+    await clientStore.createNew(noClientsFormNew)
+    resetFormNoClient()
+  } catch (err) {
+    handleActionError(err, {
+      toastTitle: 'Could not create client',
+      mapFields: false,
+    })
+  }
 }
 </script>
 <template>
   <div class="">
-    <h2 class="text-2xl font-bold text-sky-600">Create a client to continue:</h2>
+    <h2 class="text-2xl font-bold text-sky-600">Create a client to continue</h2>
 
     <div class="mt-8 flex w-full flex-col gap-8">
       <TheInput
@@ -67,7 +75,7 @@ function addNewClient() {
           class="flex gap-2"
         >
           <UserPlusIcon class="size-5"></UserPlusIcon>
-          <p class="text-sm capitalize">create client</p>
+          <p class="text-sm">Create client</p>
         </TheButton>
       </div>
     </div>

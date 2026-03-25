@@ -9,6 +9,8 @@ import {
     setInvoiceDepositPercent,
     setInvoiceDiscountFixedGBP,
     setInvoiceDiscountPercent,
+    setInvoiceDueByDate,
+    setInvoiceIssueDate,
     setInvoiceNote,
     setInvoicePayment,
     setInvoiceVatRateBps,
@@ -198,5 +200,17 @@ describe('misc', () => {
         expect(inv.vatRate).toBe(10000)
         setInvoiceVatRateBps(inv, -5)
         expect(inv.vatRate).toBe(0)
+    })
+
+    it('setInvoiceIssueDate trims incoming value', () => {
+        const inv = minimalInvoice()
+        setInvoiceIssueDate(inv, ' 2026-03-25 ')
+        expect(inv.issueDate).toBe('2026-03-25')
+    })
+
+    it('setInvoiceDueByDate clears to undefined when empty', () => {
+        const inv = minimalInvoice({ dueByDate: '2026-04-01' })
+        setInvoiceDueByDate(inv, '')
+        expect(inv.dueByDate).toBeUndefined()
     })
 })

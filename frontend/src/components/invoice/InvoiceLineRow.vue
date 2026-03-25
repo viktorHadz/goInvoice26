@@ -54,7 +54,7 @@ function setUnitPounds(v: unknown) {
 
 <template>
   <div
-    class="grid w-full grid-cols-[minmax(220px,1fr)_48px_64px_96px_110px_36px] items-start gap-2 px-2 py-3"
+    class="grid w-full grid-cols-[minmax(220px,1fr)_48px_64px_96px_110px_36px] items-start gap-2 px-2 pt-3 pb-2"
   >
     <!-- name -->
     <div class="min-w-0">
@@ -62,7 +62,7 @@ function setUnitPounds(v: unknown) {
         type="text"
         :modelValue="line.name"
         @update:modelValue="setName"
-        inputClass="py-1 text-sm"
+        inputClass="py-1 text-sm input-compact gap-0.5!"
         placeholder="Product name"
         :error="fieldError('name')"
       />

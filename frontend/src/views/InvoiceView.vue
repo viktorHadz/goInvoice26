@@ -2,6 +2,7 @@
 import { computed, onActivated, onMounted, watch } from 'vue'
 import { useClientStore } from '@/stores/clients'
 import { useInvoiceStore } from '@/stores/invoice'
+import { handleActionError } from '@/utils/errors/handleActionError'
 
 import InvoiceHeader from '@/components/invoice/InvoiceHeader.vue'
 import InvoiceItemPicker from '@/components/invoice/InvoiceItemPicker.vue'
@@ -49,7 +50,10 @@ watch(
       if (cancelled) return
     } catch (err) {
       if (cancelled) return
-      console.error('Failed to initialise invoice', err)
+      handleActionError(err, {
+        toastTitle: 'Could not start invoice',
+        mapFields: false,
+      })
     }
   },
   { immediate: true },
@@ -80,7 +84,7 @@ onActivated(refreshInvoiceClientSnapshot)
         <span
           class="hidden rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
         >
-          Tip: items can be modified
+          Tip: you can edit items anytime
         </span>
       </div>
 
@@ -116,14 +120,16 @@ onActivated(refreshInvoiceClientSnapshot)
             <div class="text-xs text-zinc-600 dark:text-zinc-400">Balance overview</div>
           </div>
 
-          <TheTooltip
-            text="Create a draft to save in invoice book. This lets you free edit invoice later."
-            side="top"
-            align="center"
-            class="hover:text-sky-600 dark:hover:text-emerald-400"
-          >
-            <InformationCircleIcon class="size-5" />
-          </TheTooltip>
+          <div class="flex flex-col items-end gap-y-2">
+            <TheTooltip
+              text="Save a draft to keep this invoice in your book and continue editing later."
+              side="top"
+              align="center"
+              class="hover:text-sky-600 dark:hover:text-emerald-400"
+            >
+              <InformationCircleIcon class="size-5" />
+            </TheTooltip>
+          </div>
         </div>
 
         <div class="p-3 md:p-4">

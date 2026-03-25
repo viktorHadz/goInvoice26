@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useClientStore } from '@/stores/clients'
+import { emitToastError } from '@/utils/toast'
+import { getApiErrorMessage, isApiError } from '@/utils/apiErrors'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -37,7 +39,17 @@ router.beforeEach(async (to) => {
     clientStore.syncClientIdWithLS()
 
     if ((to.meta.requiresClients || to.meta.requiresSelectedClient) && !clientStore.hasLoaded) {
-        await clientStore.load()
+        try {
+            await clientStore.load()
+        } catch (err) {
+            emitToastError({
+                title: 'Could not load clients',
+                message: isApiError(err)
+                    ? getApiErrorMessage(err)
+                    : 'Please check your connection and try again.',
+            })
+            return { name: 'home' }
+        }
     }
 
     if (to.meta.requiresClients && !clientStore.hasClients) {

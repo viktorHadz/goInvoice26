@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import InvoiceBook from '@/components/editor/InvoiceBook.vue'
 import DecorGradient from '@/components/UI/DecorGradient.vue'
 import { DocumentIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'

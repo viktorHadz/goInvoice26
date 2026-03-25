@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, useTemplateRef, watch } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useClientStore } from '@/stores/clients'
 import type { Product, ProductType, PricingMode, ProductUpsert } from '@/utils/productHttpHandler'
@@ -41,7 +41,11 @@ const selectedId = ref<number | null>(null)
 const fieldErrors = ref<Record<string, string>>({})
 const isSaving = ref(false)
 const isDeleting = ref(false)
+type FocusableInput = {
+  focus: () => void
+}
 
+const tabNameRef = useTemplateRef<FocusableInput>('tabNameRef')
 type Form = {
   id: number | null
   productName: string
@@ -107,11 +111,23 @@ const filtered = computed(() => {
 watch(
   () => store.open,
   (v) => {
-    if (v) void store.reload()
+    if (!v) return
+    void focusNameInput()
+    void store.reload().catch((err) => {
+      handleActionError(err, {
+        toastTitle: 'Could not load products',
+        mapFields: false,
+      })
+    })
   },
 )
 
 watch(tab, () => reset())
+
+async function focusNameInput() {
+  await nextTick()
+  tabNameRef.value?.focus()
+}
 
 function reset() {
   selectedId.value = null
@@ -125,6 +141,7 @@ function reset() {
   form.createdAt = null
   form.updatedAt = null
   fieldErrors.value = {}
+  void focusNameInput()
 }
 
 function pick(p: Product) {
@@ -180,6 +197,7 @@ async function save() {
       emitToastSuccess('Created successfully.', {
         title: `${labelForTab(tab.value)} ${created.productName}`,
       })
+      void focusNameInput()
       // pick(created) - prefer new style menu
     } else {
       const updated = await store.update(form.id!, payload)
@@ -192,6 +210,7 @@ async function save() {
     handleActionError(err, {
       toastTitle: isEditing ? 'Update failed' : 'Create failed',
       mapFields: true,
+      fieldErrors,
     })
   } finally {
     isSaving.value = false
@@ -439,6 +458,13 @@ useEscape(
               Select an item to edit
             </div>
 
+            <div
+              v-if="store.loadError"
+              class="mx-2 mb-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-400/40 dark:bg-amber-950/30 dark:text-amber-200"
+            >
+              {{ store.loadError }}
+            </div>
+
             <div class="px-2 pb-3">
               <button
                 type="button"
@@ -495,6 +521,7 @@ useEscape(
 
             <div class="mt-4 space-y-4 pb-12 sm:pb-0">
               <TheInput
+                ref="tabNameRef"
                 v-model="form.productName"
                 :label="tab + ' name'"
                 class="w-full capitalize"

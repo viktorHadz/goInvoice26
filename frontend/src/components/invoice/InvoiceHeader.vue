@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { DocumentTextIcon } from '@heroicons/vue/24/outline'
-import DatePick from '@/components/invoice/DatePick.vue'
+import DateField from '@/components/invoice/DateField.vue'
 import { useClientStore } from '@/stores/clients'
 import { useInvoiceStore } from '@/stores/invoice'
 import DecorGradient from '../UI/DecorGradient.vue'
@@ -11,7 +11,7 @@ const invStore = useInvoiceStore()
 
 const client = computed(() => clients.selectedClient)
 
-// Computed proxies so DatePick can use v-model without touching store state directly
+// Computed proxies so DateField can use v-model without touching store state directly
 const issueDate = computed<string | null>({
   get: () => invStore.invoice?.issueDate ?? null,
   set: (v) => invStore.setIssueDate(v ?? ''),
@@ -63,7 +63,7 @@ const dueByDate = computed<string | null>({
                 <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   Issue date
                 </div>
-                <DatePick
+                <DateField
                   v-model="issueDate"
                   placeholder="Select issue date"
                   :error="invStore.getFieldError('issueDate')"
@@ -73,7 +73,7 @@ const dueByDate = computed<string | null>({
 
               <div>
                 <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">Due by</div>
-                <DatePick
+                <DateField
                   v-model="dueByDate"
                   placeholder="Select due date"
                   :error="invStore.getFieldError('dueByDate')"

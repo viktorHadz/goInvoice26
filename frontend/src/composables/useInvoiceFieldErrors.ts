@@ -1,5 +1,6 @@
 import { computed, type Ref } from 'vue'
 import type { Invoice } from '@/components/invoice/invoiceTypes'
+import type { InvoicePricing } from '@/composables/useInvoicePricing'
 import { validateInvoicePayload } from '@/utils/frontendValidation'
 import { apiDTO } from '@/utils/invoiceDto'
 
@@ -31,12 +32,13 @@ import { apiDTO } from '@/utils/invoiceDto'
 export function useInvoiceFieldErrors(
     invoice: Ref<Invoice | null>,
     serverFieldErrors: Ref<Record<string, string>>,
+    pricing?: Ref<InvoicePricing | null>,
 ) {
     const liveFieldErrors = computed<Record<string, string>>(() => {
         const inv = invoice.value
         if (!inv) return {}
 
-        const dto = apiDTO(inv)
+        const dto = apiDTO(inv, [], { pricing: pricing?.value ?? undefined })
         return validateInvoicePayload(dto)
     })
 

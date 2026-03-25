@@ -53,10 +53,11 @@ export function removeInvoiceLine(inv: Invoice, sortOrder: number): void {
 }
 
 export function setInvoiceIssueDate(inv: Invoice, v: string): void {
-    inv.issueDate = String(v ?? '')
+    inv.issueDate = String(v ?? '').trim()
 }
 export function setInvoiceDueByDate(inv: Invoice, v: string): void {
-    inv.dueByDate = String(v ?? '')
+    const next = String(v ?? '').trim()
+    inv.dueByDate = next ? next : undefined
 }
 
 export function setInvoiceNote(inv: Invoice, note: string): void {

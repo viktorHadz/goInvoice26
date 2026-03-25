@@ -30,6 +30,8 @@ import { cloneInvoice } from '@/utils/cloneInvoice'
 import {
     addInvoiceLine,
     removeInvoiceLine,
+    setInvoiceDueByDate,
+    setInvoiceIssueDate,
     setInvoiceNote,
     updateInvoiceLine,
 } from '@/utils/invoiceMutations'
@@ -37,7 +39,7 @@ import { useSettingsStore } from './settings'
 import { useInvoiceVerification } from '@/composables/useInvoiceVerification'
 import { useInvoicePricing } from '@/composables/useInvoicePricing'
 import { validateInvoicePayload } from '@/utils/frontendValidation'
-import { emitToastError, emitToastSuccess } from '@/utils/toast'
+import { emitToastError, emitToastInfo, emitToastSuccess } from '@/utils/toast'
 import { apiDTO } from '@/utils/invoiceDto'
 import { flattenValidationErrors } from './pdf'
 import { NetworkError } from '@/utils/fetchHelper'
@@ -72,6 +74,35 @@ function normalizeInvoiceStatus(s: string | undefined): InvoiceStatus {
     return 'draft'
 }
 
+function invoiceValidationSignal(inv: Invoice | null): string {
+    if (!inv) return ''
+    const linesSignal = inv.lines
+        .map(
+            (line) =>
+                `${line.sortOrder}:${line.productId ?? ''}:${line.name}:${line.lineType}:${line.pricingMode}:${line.quantity}:${line.unitPriceMinor}:${line.minutesWorked ?? ''}`,
+        )
+        .join('|')
+    return [
+        inv.clientId,
+        inv.issueDate,
+        inv.dueByDate ?? '',
+        inv.clientSnapshot.name,
+        inv.clientSnapshot.companyName,
+        inv.clientSnapshot.address,
+        inv.clientSnapshot.email,
+        inv.note ?? '',
+        inv.vatRate,
+        inv.discountType,
+        inv.discountRate,
+        inv.discountMinor,
+        inv.depositType,
+        inv.depositRate,
+        inv.depositMinor,
+        inv.paidMinor,
+        linesSignal,
+    ].join('~')
+}
+
 export const useEditorStore = defineStore('editorStore', () => {
     const clientStore = useClientStore()
     const setsStore = useSettingsStore()
@@ -100,6 +131,7 @@ export const useEditorStore = defineStore('editorStore', () => {
     const serverFieldErrors = ref<Record<string, string>>({})
     const existingAppliedPayments = ref<AppliedPayment[]>([])
     const pendingPayments = ref<PendingPayment[]>([])
+    const editBaselineSnapshot = ref('')
 
     const prettyBaseNumber = computed(() =>
         formatInvoiceBaseLabel(invoicePrefix.value, draftInvoice.value?.baseNumber),
@@ -112,7 +144,7 @@ export const useEditorStore = defineStore('editorStore', () => {
     const canGoPrev = computed(() => offset.value > 0)
     const canGoNext = computed(() => hasMore.value)
 
-    const { totals, depositMinor, balanceDueMinor } = useInvoicePricing(draftInvoice)
+    const { pricing, totals, depositMinor, balanceDueMinor } = useInvoicePricing(draftInvoice)
 
     const {
         verifyStatus,
@@ -150,6 +182,31 @@ export const useEditorStore = defineStore('editorStore', () => {
         const existing = Math.max(0, Math.round(Number(activeInvoice.value?.paidMinor ?? 0)))
         inv.paidMinor = Math.max(0, existing + totalPendingPaidMinor()) as MoneyMinor
     }
+
+    function revisionPayloadSnapshot(inv: Invoice | null): string {
+        if (!inv) return ''
+        const dto = apiDTO(
+            inv,
+            pendingPayments.value.map((p) => ({
+                amountMinor: p.amountMinor,
+                paymentDate: p.paymentDate,
+                ...(p.label ? { label: p.label } : {}),
+            })),
+            {
+                sourceRevisionNo: activeRevisionNo.value,
+            },
+        )
+        return JSON.stringify(dto)
+    }
+
+    function refreshEditBaselineSnapshot() {
+        editBaselineSnapshot.value = revisionPayloadSnapshot(draftInvoice.value)
+    }
+
+    const hasUnsavedChanges = computed(() => {
+        if (!isEditing.value || !draftInvoice.value) return false
+        return revisionPayloadSnapshot(draftInvoice.value) !== editBaselineSnapshot.value
+    })
 
     function stagePendingPayment(payment: Omit<PendingPayment, 'tempId'>) {
         pendingPayments.value = [
@@ -210,12 +267,6 @@ export const useEditorStore = defineStore('editorStore', () => {
                 : error instanceof Error && error.message.trim().length > 0
                   ? error.message
                   : 'Failed to load invoice book'
-
-            handleActionError(error, {
-                toastTitle: 'Failed to load invoice book',
-                supportMessage: 'Please contact support',
-                mapFields: false,
-            })
         } finally {
             if (requestId === lastBookRequestId) {
                 isLoadingBook.value = false
@@ -249,6 +300,7 @@ export const useEditorStore = defineStore('editorStore', () => {
             existingAppliedPayments.value = data.payments ?? []
             pendingPayments.value = []
             syncDraftPaidMinorFromPayments()
+            refreshEditBaselineSnapshot()
 
             isEditing.value = false
             serverFieldErrors.value = {}
@@ -323,6 +375,10 @@ export const useEditorStore = defineStore('editorStore', () => {
                         ? 'This invoice is void.'
                         : 'Reopen the invoice to issued before saving a revision.',
             })
+            return false
+        }
+        if (!hasUnsavedChanges.value) {
+            emitToastInfo('No changes to save.')
             return false
         }
         const dto = apiDTO(
@@ -429,6 +485,7 @@ export const useEditorStore = defineStore('editorStore', () => {
     const { liveFieldErrors, getFieldError } = useInvoiceFieldErrors(
         draftInvoice,
         serverFieldErrors,
+        pricing,
     )
 
     async function nextPage() {
@@ -465,6 +522,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         existingAppliedPayments.value = []
         pendingPayments.value = []
         isEditing.value = false
+        editBaselineSnapshot.value = ''
         serverFieldErrors.value = {}
         showAllValidation.value = false
         clearVerifyState()
@@ -512,6 +570,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         serverFieldErrors.value = {}
         showAllValidation.value = false
         isEditing.value = true
+        refreshEditBaselineSnapshot()
     }
 
     function cancelEdit() {
@@ -523,6 +582,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         serverFieldErrors.value = {}
         showAllValidation.value = false
         isEditing.value = false
+        refreshEditBaselineSnapshot()
         clearVerifyState()
     }
 
@@ -546,15 +606,21 @@ export const useEditorStore = defineStore('editorStore', () => {
         scheduleServerVerify()
     }
 
-    watch(
-        draftInvoice,
-        () => {
-            if (Object.keys(serverFieldErrors.value).length > 0) {
-                serverFieldErrors.value = {}
-            }
-        },
-        { deep: true },
-    )
+    function setIssueDate(value: string): void {
+        setInvoiceIssueDate(ensureDraft(), value)
+        scheduleServerVerify()
+    }
+
+    function setDueByDate(value: string): void {
+        setInvoiceDueByDate(ensureDraft(), value)
+        scheduleServerVerify()
+    }
+
+    watch(() => invoiceValidationSignal(draftInvoice.value), () => {
+        if (Object.keys(serverFieldErrors.value).length > 0) {
+            serverFieldErrors.value = {}
+        }
+    })
     // Reset invoice book on client change
     watch(
         () => clientStore.selectedClient?.id,
@@ -606,6 +672,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         canGoNext,
         existingAppliedPayments,
         pendingPayments,
+        hasUnsavedChanges,
 
         fetchInvoiceBook,
         fetchInvoice,
@@ -622,6 +689,8 @@ export const useEditorStore = defineStore('editorStore', () => {
         cancelEdit,
         getFieldError,
         setNote,
+        setIssueDate,
+        setDueByDate,
         stagePendingPayment,
         removePendingPayment,
 

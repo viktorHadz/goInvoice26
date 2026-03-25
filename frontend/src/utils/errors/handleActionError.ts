@@ -26,7 +26,7 @@ export function handleActionError(err: unknown, options: HandleActionErrorOption
         fieldErrors,
         toastTitle,
         mapFields = true,
-        supportMessage = 'Something unexpected went wrong. Please contact support.',
+        supportMessage = 'We hit a snag. Please try again.',
     } = options
 
     if (fieldErrors) fieldErrors.value = {}
@@ -43,7 +43,7 @@ export function handleActionError(err: unknown, options: HandleActionErrorOption
             title: toastTitle,
             message:
                 isSupportOnlyApiError(err) && err.id
-                    ? `Something went wrong. Please contact support and quote error ${err.id}.`
+                    ? `We hit a snag. Please contact support and quote reference ${err.id}.`
                     : isSupportOnlyApiError(err)
                       ? supportMessage
                       : getApiErrorMessage(err),

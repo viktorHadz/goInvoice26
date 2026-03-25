@@ -1,31 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterView } from 'vue-router'
 import TopRightMenu from './components/UI/TopRightMenu.vue'
 import NavMain from './components/UI/NavMain.vue'
-import TheToast, { type ToastNotice } from './components/UI/TheToast.vue'
-import { onToastError } from './utils/toast'
-
-type TheToastExpose = {
-  onError: (error: ToastNotice) => void
-  dismissToast: () => void
-  clearErrors: () => void
-}
-
-const toastRef = ref<TheToastExpose | null>(null)
-
-let stopToastErrors: (() => void) | null = null
-
-onMounted(() => {
-  stopToastErrors = onToastError((error) => {
-    toastRef.value?.onError(error)
-  })
-})
-
-onBeforeUnmount(() => {
-  stopToastErrors?.()
-  stopToastErrors = null
-})
+import TheToast from './components/UI/TheToast.vue'
 </script>
 
 <template>
@@ -40,7 +17,7 @@ onBeforeUnmount(() => {
 
       <!-- Shortcuts reside here -->
       <TopRightMenu />
-      <TheToast ref="toastRef" />
+      <TheToast />
     </main>
   </div>
 </template>

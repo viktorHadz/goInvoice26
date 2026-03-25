@@ -18,12 +18,13 @@ export const useClientStore = defineStore('clients', () => {
         try {
             const data = await getClients()
             clients.value = Array.isArray(data) ? data : []
+            hasLoaded.value = true
         } catch (err) {
             clients.value = []
+            hasLoaded.value = false
             throw err
         } finally {
             isLoading.value = false
-            hasLoaded.value = true
         }
     }
 

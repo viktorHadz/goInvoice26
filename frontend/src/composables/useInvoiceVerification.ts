@@ -5,6 +5,7 @@ import { apiDTO } from '@/utils/invoiceDto'
 import { lineTotalMinor } from '@/utils/money'
 import { isApiError, hasFieldErrors, toFieldErrorMap } from '@/utils/apiErrors'
 import { NetworkError } from '@/utils/fetchHelper'
+import { emitToastError } from '@/utils/toast'
 
 type VerifyStatus = 'idle' | 'checking' | 'ok' | 'mismatch' | 'invalid' | 'error'
 
@@ -18,6 +19,7 @@ export function useInvoiceVerification(
     const lastVerifyAt = ref<number | null>(null)
     const serverCanonicalTotals = ref<Totals | null>(null)
     const serverCanonicalLineTotals = ref<Record<number, MoneyMinor>>({})
+    const lastVerifyFailureToastedAt = ref<number | null>(null)
 
     let verifyTimer: number | null = null
     let verifyAbort: AbortController | null = null
@@ -100,6 +102,7 @@ export function useInvoiceVerification(
             serverCanonicalLineTotals.value = canonicalBySort
             serverCanonicalTotals.value = parsedTotals
             lastVerifyAt.value = Date.now()
+            lastVerifyFailureToastedAt.value = null
 
             const optimisticTotals = totals.value
             let mismatch = false
@@ -126,7 +129,17 @@ export function useInvoiceVerification(
 
             verifyStatus.value = mismatch ? 'mismatch' : 'ok'
         } catch (err: unknown) {
-            if (err instanceof NetworkError) return
+            if (err instanceof NetworkError) {
+                verifyStatus.value = 'error'
+                if (lastVerifyFailureToastedAt.value == null) {
+                    lastVerifyFailureToastedAt.value = Date.now()
+                    emitToastError({
+                        title: 'Verification unavailable',
+                        message: 'Could not verify totals right now. Check your connection and try again.',
+                    })
+                }
+                return
+            }
 
             if (isApiError(err) && err.code === 'VALIDATION_FAILED') {
                 verifyStatus.value = 'invalid'
@@ -137,6 +150,16 @@ export function useInvoiceVerification(
             }
 
             verifyStatus.value = 'error'
+            if (lastVerifyFailureToastedAt.value == null) {
+                lastVerifyFailureToastedAt.value = Date.now()
+                emitToastError({
+                    title: 'Verification failed',
+                    message:
+                        isApiError(err) && err.message.trim().length > 0
+                            ? err.message
+                            : 'Could not verify totals right now. Please try again.',
+                })
+            }
             console.error('[editor verify]', err)
         }
     }

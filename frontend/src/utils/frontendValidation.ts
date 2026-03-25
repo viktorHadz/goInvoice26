@@ -1,3 +1,5 @@
+import { isValidISODate } from '@/utils/dates'
+
 type TextRules = {
     required?: boolean
     min?: number
@@ -83,15 +85,15 @@ function validateText(value: unknown, rules: TextRules): string | null {
     const out = rules.trim ? input.trim() : input
 
     if (!out) {
-        return rules.required ? 'is required' : null
+        return rules.required ? 'Please enter a value.' : null
     }
 
     const n = runeLen(out)
-    if (rules.min && n < rules.min) return 'too short'
-    if (rules.max && n > rules.max) return 'too long'
+    if (rules.min && n < rules.min) return `Please enter at least ${rules.min} characters.`
+    if (rules.max && n > rules.max) return `Please keep this under ${rules.max} characters.`
 
-    if (hasControlOrInvalidSeparators(out)) return 'contains invalid characters'
-    if (rules.singleLine && hasNewlineOrTab(out)) return 'must be single-line'
+    if (hasControlOrInvalidSeparators(out)) return 'Please remove unsupported characters.'
+    if (rules.singleLine && hasNewlineOrTab(out)) return 'Use a single line only.'
 
     return null
 }
@@ -100,24 +102,14 @@ function validateEmail(value: unknown, maxRunes: number): string | null {
     const out = normalizeText(value).trim()
     if (!out) return null
 
-    if (maxRunes > 0 && runeLen(out) > maxRunes) return 'too long'
-    if (hasControlOrInvalidSeparators(out)) return 'contains invalid characters'
+    if (maxRunes > 0 && runeLen(out) > maxRunes)
+        return `Please keep this under ${maxRunes} characters.`
+    if (hasControlOrInvalidSeparators(out)) return 'Please remove unsupported characters.'
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(out)) return 'email format is invalid'
+    if (!emailRegex.test(out)) return 'Enter a valid email address.'
 
     return null
-}
-
-function isValidISODate(value: string): boolean {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-    const parts = value.split('-').map(Number)
-    const y = parts[0] ?? Number.NaN
-    const m = parts[1] ?? Number.NaN
-    const d = parts[2] ?? Number.NaN
-    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return false
-    const dt = new Date(Date.UTC(y, m - 1, d))
-    return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
 }
 
 export function validateClientForm(input: {
@@ -170,38 +162,38 @@ export function validateProductForm(input: ProductFormInput): Record<string, str
     if (nameErr) errors.productName = nameErr
 
     if (input.productType !== 'style' && input.productType !== 'sample') {
-        errors.productType = 'invalid value'
+        errors.productType = 'Choose a valid product type.'
     }
 
     if (input.pricingMode !== 'flat' && input.pricingMode !== 'hourly') {
-        errors.pricingMode = 'invalid value'
+        errors.pricingMode = 'Choose a valid pricing mode.'
     }
 
     if (input.productType === 'style' && input.pricingMode === 'hourly') {
-        errors.pricingMode = "must be 'flat' for style"
+        errors.pricingMode = 'Styles must use flat pricing.'
     }
 
     if (input.pricingMode === 'flat') {
         if (input.flatPrice == null) {
-            errors.flatPrice = 'is required'
+            errors.flatPrice = 'Enter a flat price.'
         } else if (!Number.isFinite(input.flatPrice) || input.flatPrice < 0) {
-            errors.flatPrice = 'value below minimum'
+            errors.flatPrice = 'Enter a value of 0 or higher.'
         }
     }
 
     if (input.pricingMode === 'hourly') {
         if (input.hourlyRate == null) {
-            errors.hourlyRate = 'is required'
+            errors.hourlyRate = 'Enter an hourly rate.'
         } else if (!Number.isFinite(input.hourlyRate) || input.hourlyRate < 0) {
-            errors.hourlyRate = 'value below minimum'
+            errors.hourlyRate = 'Enter a value of 0 or higher.'
         }
 
         if (input.minutesWorked == null) {
-            errors.minutesWorked = 'is required'
+            errors.minutesWorked = 'Enter minutes worked.'
         } else if (!Number.isFinite(input.minutesWorked) || input.minutesWorked < 0) {
-            errors.minutesWorked = 'value below minimum'
+            errors.minutesWorked = 'Enter a value of 0 or higher.'
         } else if (!Number.isInteger(input.minutesWorked)) {
-            errors.minutesWorked = 'must be an integer'
+            errors.minutesWorked = 'Use a whole number.'
         }
     }
 
@@ -228,13 +220,13 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
         errors.sourceRevisionNo = 'must be a positive integer'
     }
     if (!issueDate) {
-        errors.issueDate = 'is required'
+        errors.issueDate = 'Choose an issue date.'
     } else if (!isValidISODate(issueDate)) {
-        errors.issueDate = 'must be a valid ISO date (YYYY-MM-DD)'
+        errors.issueDate = 'Use a valid date in YYYY-MM-DD format.'
     }
 
     if (payload.overview.dueByDate?.trim() && !isValidISODate(payload.overview.dueByDate.trim())) {
-        errors.dueByDate = 'must be a valid ISO date (YYYY-MM-DD)'
+        errors.dueByDate = 'Use a valid date in YYYY-MM-DD format.'
     }
 
     const note = payload.overview.note ?? ''
@@ -271,14 +263,14 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     if (clientEmailErr) errors.clientEmail = clientEmailErr
 
     if (payload.lines.length === 0) {
-        errors.lines = 'must contain at least one item'
+        errors.lines = 'Add at least one line item.'
     }
 
     payload.lines.forEach((line, i) => {
         const prefix = (f: string) => `lines[${i}].${f}`
 
         if (line.productId != null && line.productId < 1) {
-            errors[prefix('productId')] = 'must be greater than 0'
+            errors[prefix('productId')] = 'Choose a valid product.'
         }
 
         const lineNameErr = validateText(line.name, {
@@ -291,43 +283,43 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
         if (lineNameErr) errors[prefix('name')] = lineNameErr
 
         if (!['custom', 'style', 'sample'].includes(line.lineType)) {
-            errors[prefix('lineType')] = 'must be one of: custom, style, sample'
+            errors[prefix('lineType')] = 'Choose a valid line type.'
         }
 
         if (!['flat', 'hourly'].includes(line.pricingMode)) {
-            errors[prefix('pricingMode')] = 'must be one of: flat, hourly'
+            errors[prefix('pricingMode')] = 'Choose a valid pricing mode.'
         }
 
         if (line.quantity < 1) {
-            errors[prefix('quantity')] = 'must be greater than 0'
+            errors[prefix('quantity')] = 'Enter a quantity greater than 0.'
         }
 
         if (line.minutesWorked != null && line.minutesWorked < 0) {
-            errors[prefix('minutesWorked')] = 'must be 0 or greater'
+            errors[prefix('minutesWorked')] = 'Enter minutes of 0 or more.'
         }
 
         if (line.pricingMode === 'hourly' && line.minutesWorked == null) {
-            errors[prefix('minutesWorked')] = 'is required'
+            errors[prefix('minutesWorked')] = 'Enter minutes worked.'
         }
 
         if (line.unitPriceMinor < 0) {
-            errors[prefix('unitPriceMinor')] = 'must be 0 or greater'
+            errors[prefix('unitPriceMinor')] = 'Enter a unit price of 0 or more.'
         }
 
         if (line.sortOrder < 0) {
-            errors[prefix('sortOrder')] = 'must be 0 or greater'
+            errors[prefix('sortOrder')] = 'Sort order must be 0 or more.'
         }
 
         if (line.lineTotalMinor < 0) {
-            errors[prefix('lineTotalMinor')] = 'must be 0 or greater'
+            errors[prefix('lineTotalMinor')] = 'Line total must be 0 or more.'
         } else {
             const expected = calcExpectedLineTotalMinor(line)
 
             if (line.lineTotalMinor !== expected) {
                 errors[prefix('lineTotalMinor')] =
                     line.pricingMode === 'hourly'
-                        ? 'does not match rounded(quantity * unitPriceMinor * minutesWorked / 60)'
-                        : 'does not match quantity * unitPriceMinor'
+                        ? 'Line total does not match the quantity, rate, and time.'
+                        : 'Line total does not match quantity and unit price.'
             }
         }
     })
@@ -336,61 +328,61 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     const paymentSumMinor = payload.payments.reduce((sum, p) => sum + Math.max(0, p.amountMinor), 0)
 
     if (totals.vatRate < 0 || totals.vatRate > 10000) {
-        errors['totals.vatRate'] = 'must be between 0 and 10000'
+        errors['totals.vatRate'] = 'Enter a VAT rate between 0% and 100%.'
     }
 
-    if (totals.vatMinor < 0) errors['totals.vatMinor'] = 'must be 0 or greater'
+    if (totals.vatMinor < 0) errors['totals.vatMinor'] = 'VAT amount must be 0 or more.'
 
     if (!['none', 'percent', 'fixed'].includes(totals.depositType)) {
-        errors['totals.depositType'] = 'must be one of: none, percent, fixed'
+        errors['totals.depositType'] = 'Choose a valid deposit type.'
     }
 
     if (!['none', 'percent', 'fixed'].includes(totals.discountType)) {
-        errors['totals.discountType'] = 'must be one of: none, percent, fixed'
+        errors['totals.discountType'] = 'Choose a valid discount type.'
     }
 
-    if (totals.depositMinor < 0) errors['totals.depositMinor'] = 'must be 0 or greater'
+    if (totals.depositMinor < 0) errors['totals.depositMinor'] = 'Deposit must be 0 or more.'
     if (totals.depositRate < 0 || totals.depositRate > 10000) {
-        errors['totals.depositRate'] = 'must be between 0 and 10000'
+        errors['totals.depositRate'] = 'Deposit rate must be between 0% and 100%.'
     }
 
     if (totals.depositType !== 'percent' && totals.depositRate !== 0) {
-        errors['totals.depositRate'] = 'must be 0 unless depositType is percent'
+        errors['totals.depositRate'] = 'Deposit rate must be 0 unless deposit type is percent.'
     }
     if (totals.discountType !== 'percent' && totals.discountRate !== 0) {
-        errors['totals.discountRate'] = 'must be 0 unless discountType is percent'
+        errors['totals.discountRate'] = 'Discount rate must be 0 unless discount type is percent.'
     }
 
     if (totals.discountRate < 0 || totals.discountRate > 10000) {
-        errors['totals.discountRate'] = 'must be between 0 and 10000'
+        errors['totals.discountRate'] = 'Discount rate must be between 0% and 100%.'
     }
-    if (totals.discountMinor < 0) errors['totals.discountMinor'] = 'must be 0 or greater'
+    if (totals.discountMinor < 0) errors['totals.discountMinor'] = 'Discount must be 0 or more.'
 
-    if (totals.paidMinor < 0) errors['totals.paidMinor'] = 'must be 0 or greater'
+    if (totals.paidMinor < 0) errors['totals.paidMinor'] = 'Paid amount must be 0 or more.'
 
     const maxPaidMinor = Math.max(0, totals.totalMinor - totals.depositMinor)
     if (totals.paidMinor > maxPaidMinor) {
-        errors['totals.paidMinor'] = 'cannot exceed amount owed after deposit'
+        errors['totals.paidMinor'] = 'Paid amount cannot exceed the balance after deposit.'
     }
 
     if (totals.subtotalAfterDiscountMinor < 0) {
-        errors['totals.subtotalAfterDiscountMinor'] = 'must be 0 or greater'
+        errors['totals.subtotalAfterDiscountMinor'] = 'Subtotal after discount must be 0 or more.'
     }
 
-    if (totals.subtotalMinor < 0) errors['totals.subtotalMinor'] = 'must be 0 or greater'
-    if (totals.totalMinor < 0) errors['totals.totalMinor'] = 'must be 0 or greater'
-    if (totals.balanceDueMinor < 0) errors['totals.balanceDueMinor'] = 'must be 0 or greater'
+    if (totals.subtotalMinor < 0) errors['totals.subtotalMinor'] = 'Subtotal must be 0 or more.'
+    if (totals.totalMinor < 0) errors['totals.totalMinor'] = 'Total must be 0 or more.'
+    if (totals.balanceDueMinor < 0) errors['totals.balanceDueMinor'] = 'Balance due must be 0 or more.'
 
     payload.payments.forEach((payment, i) => {
         const prefix = (f: string) => `payments[${i}].${f}`
         if (!Number.isFinite(payment.amountMinor) || payment.amountMinor <= 0) {
-            errors[prefix('amountMinor')] = 'must be greater than 0'
+            errors[prefix('amountMinor')] = 'Payment amount must be greater than 0.'
         }
         const paymentDate = payment.paymentDate?.trim() ?? ''
         if (!paymentDate) {
-            errors[prefix('paymentDate')] = 'is required'
+            errors[prefix('paymentDate')] = 'Choose a payment date.'
         } else if (!isValidISODate(paymentDate)) {
-            errors[prefix('paymentDate')] = 'must be a valid ISO date (YYYY-MM-DD)'
+            errors[prefix('paymentDate')] = 'Use a valid date in YYYY-MM-DD format.'
         }
         if (payment.label != null) {
             const labelErr = validateText(payment.label, {
@@ -403,7 +395,7 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     })
 
     if (paymentSumMinor > totals.paidMinor) {
-        errors['totals.paidMinor'] = 'must include all staged payments'
+        errors['totals.paidMinor'] = 'Paid amount must include all staged payments.'
     }
 
     return errors

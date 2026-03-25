@@ -45,6 +45,7 @@ const emit = defineEmits<{
 const auto = useId()
 const inputId = computed(() => (props.id?.trim() ? props.id : `in_${auto}`))
 const errId = computed(() => `${inputId.value}_err`)
+const inputEl = ref<HTMLInputElement | null>(null)
 
 // touched
 const isTouched = ref(false)
@@ -116,6 +117,14 @@ function onFocus(e: FocusEvent) {
 function onBlur() {
   touch()
 }
+
+function focus() {
+  inputEl.value?.focus()
+}
+
+defineExpose({
+  focus,
+})
 </script>
 
 <template>
@@ -132,6 +141,7 @@ function onBlur() {
     </label>
 
     <input
+      ref="inputEl"
       v-bind="$attrs"
       :id="inputId"
       :name="props.name"

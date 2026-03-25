@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import DatePick from '@/components/invoice/DatePick.vue'
+import DateField from '@/components/invoice/DateField.vue'
 import TheDropdown from '@/components/UI/TheDropdown.vue'
 import { useEditorStore } from '@/stores/editor'
 import { computed } from 'vue'
@@ -24,6 +24,16 @@ const selectedInvoiceStatus = computed({
     editStore.setInvoiceLifecycleStatus(next)
   },
 })
+
+const issueDate = computed<string | null>({
+  get: () => inv.value?.issueDate ?? null,
+  set: (v) => editStore.setIssueDate(v ?? ''),
+})
+
+const dueByDate = computed<string | null>({
+  get: () => inv.value?.dueByDate ?? null,
+  set: (v) => editStore.setDueByDate(v ?? ''),
+})
 </script>
 
 <template>
@@ -41,8 +51,8 @@ const selectedInvoiceStatus = computed({
             </div>
 
             <div class="mt-1.5">
-              <DatePick
-                v-model="inv.issueDate"
+              <DateField
+                v-model="issueDate"
                 placeholder="Select issue date"
                 :error="editStore.getFieldError('issueDate')"
                 :forceShowError="editStore.showAllValidation"
@@ -56,8 +66,8 @@ const selectedInvoiceStatus = computed({
             </div>
 
             <div class="mt-1.5">
-              <DatePick
-                v-model="inv.dueByDate"
+              <DateField
+                v-model="dueByDate"
                 placeholder="Select due date"
                 :error="editStore.getFieldError('dueByDate')"
                 :forceShowError="editStore.showAllValidation"

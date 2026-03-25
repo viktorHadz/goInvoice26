@@ -53,6 +53,6 @@ export async function request<T>(input: RequestInfo, init?: RequestInit): Promis
     try {
         return JSON.parse(text) as T
     } catch (err) {
-        throw new ParseError('Response JSON parse failed', res.status, text, err)
+        throw new ParseError('Received an unreadable response from the server.', res.status, text, err)
     }
 }

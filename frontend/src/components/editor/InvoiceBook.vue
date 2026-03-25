@@ -46,6 +46,7 @@ const { invoiceBook, isLoadingBook, canGoPrev, canGoNext, offset, total, errorMe
 const invoices = computed<InvBookInvoice[]>(() => invoiceBook.value)
 
 const bookInvoicePrefix = computed(() => setStore.settings?.invoicePrefix ?? '')
+const dateFormat = computed(() => setStore.settings?.dateFormat ?? 'dd/mm/yyyy')
 
 const filteredInvoices = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -98,12 +99,9 @@ function placePanel() {
 
 async function openDropdown() {
   isOpen.value = true
+  await bookStore.fetchInvoiceBook(true)
   await nextTick()
   placePanel()
-
-  if (!invoiceBook.value.length && clientStore.selectedClient?.id) {
-    await bookStore.fetchInvoiceBook(true)
-  }
 }
 
 async function toggleDropdown() {
@@ -438,11 +436,17 @@ useEscape(() => closeDropdown())
                                   </div>
                                   <span>
                                     <span class="font-bold">Issued at:</span>
-                                    {{ rev.issueDate ? fmtStrDate(rev.issueDate) : 'not set' }}
+                                    {{
+                                      rev.issueDate
+                                        ? fmtStrDate(rev.issueDate, dateFormat)
+                                        : 'not set'
+                                    }}
                                   </span>
                                   <span>
                                     <span class="font-bold">Due by:</span>
-                                    {{ rev.dueByDate ? fmtStrDate(rev.dueByDate) : 'not set' }}
+                                    {{
+                                      rev.dueByDate ? fmtStrDate(rev.dueByDate, dateFormat) : 'not set'
+                                    }}
                                   </span>
                                 </div>
                               </template>

@@ -4,6 +4,7 @@ import TheInput from '@/components/UI/TheInput.vue'
 import TheButton from '@/components/UI/TheButton.vue'
 import TheDropdown from '@/components/UI/TheDropdown.vue'
 import { useInvoiceStore } from '@/stores/invoice'
+import { useSettingsStore } from '@/stores/settings'
 import TheTooltip from '../UI/TheTooltip.vue'
 import { ChevronUpDownIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { fmtGBPMinor, fromMinor, toMinor } from '@/utils/money'
@@ -11,9 +12,12 @@ import { emitToastError } from '@/utils/toast'
 import { cloneInvoice } from '@/utils/cloneInvoice'
 import { validateInvoicePayload } from '@/utils/frontendValidation'
 import { apiDTO } from '@/utils/invoiceDto'
-import { fmtStrDate } from '@/utils/dates'
+import { fmtStrDate, todayISO } from '@/utils/dates'
+import DateField from './DateField.vue'
 
 const inv = useInvoiceStore()
+const settingsStore = useSettingsStore()
+const dateFormat = computed(() => settingsStore.settings?.dateFormat ?? 'dd/mm/yyyy')
 
 const paymentAmount = ref<number | null>(0)
 const paymentDate = ref(todayISO())
@@ -78,10 +82,6 @@ watch(
   () => syncFromInvoice(),
   { immediate: true },
 )
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10)
-}
 
 const canAddPayment = computed(() => inv.balanceDueMinor > 0)
 
@@ -338,7 +338,7 @@ function applyVat() {
       <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
         <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Payments</div>
         <TheTooltip
-          text="Use when you have already received a client payment for the invoice."
+          text="Use when you have already received a client payment for the invoice. Otherwise leave blank."
           side="top"
           align="center"
           class="hover:text-sky-400 dark:hover:text-emerald-400"
@@ -360,7 +360,7 @@ function applyVat() {
           class="flex items-center justify-between rounded-md border border-dashed border-sky-300 bg-sky-50/60 px-2 py-1.5 text-xs dark:border-emerald-700 dark:bg-emerald-950/20"
         >
           <div class="text-zinc-700 dark:text-zinc-200">
-            {{ fmtStrDate(payment.paymentDate) }}
+            {{ fmtStrDate(payment.paymentDate, dateFormat) }}
           </div>
           <div class="flex items-center gap-2">
             <span class="font-medium text-zinc-800 tabular-nums dark:text-zinc-100">
@@ -389,20 +389,16 @@ function applyVat() {
           :disabled="!canAddPayment"
           inputClass="w-full py-1"
         />
-        <TheInput
-          v-model="paymentDate"
-          type="date"
-          labelHidden
-          :reserveErrorSpace="false"
-          inputClass="w-full py-1"
-        />
-        <TheButton
-          class="w-full py-1.5!"
-          :disabled="!canAddPayment"
-          @click="addPendingPayment"
-        >
-          Add
-        </TheButton>
+        <DateField v-model="paymentDate" />
+        <div>
+          <TheButton
+            class="w-full py-1.5!"
+            :disabled="!canAddPayment"
+            @click="addPendingPayment"
+          >
+            Add
+          </TheButton>
+        </div>
       </div>
       <p
         v-if="paymentError || inv.getFieldError('totals.paidMinor')"

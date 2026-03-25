@@ -64,7 +64,10 @@ async function openSettings() {
     logoFile.value = null
     settingsOpen.value = true
   } catch (err) {
-    emitToastError({ message: getErrorMessage(err, 'Failed to load settings.') })
+    emitToastError({
+      title: 'Could not load settings',
+      message: getErrorMessage(err, 'Failed to load settings.'),
+    })
   }
 }
 
@@ -90,7 +93,10 @@ async function onLogoChange(e: Event) {
   } catch (err) {
     logoFile.value = null
     logoPreview.value = form.value.logoUrl || null
-    emitToastError({ message: getErrorMessage(err, 'Failed to read selected image.') })
+    emitToastError({
+      title: 'Could not read image',
+      message: getErrorMessage(err, 'Failed to read selected image.'),
+    })
   }
 }
 
@@ -125,7 +131,10 @@ async function save() {
     emitToastSuccess('Settings saved.')
     forceCloseSettings()
   } catch (err) {
-    emitToastError({ message: getErrorMessage(err, 'Failed to save settings.') })
+    emitToastError({
+      title: 'Could not save settings',
+      message: getErrorMessage(err, 'Failed to save settings.'),
+    })
   } finally {
     isSaving.value = false
   }

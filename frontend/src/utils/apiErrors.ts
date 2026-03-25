@@ -18,11 +18,11 @@ type APIErrorEnvelope = {
 
 const ERROR_CODE_MESSAGES: Record<string, string> = {
     VALIDATION_FAILED: 'Please review the highlighted fields.',
-    BAD_JSON: 'The submitted data format is invalid.',
+    BAD_JSON: 'We could not read that request. Please try again.',
     NOT_FOUND: 'The requested resource was not found.',
-    DATABASE_ERROR: 'A database error occurred. Please try again.',
-    INTERNAL: 'An internal server error occurred. Please try again.',
-    INVALID_ID: 'The provided id is invalid.',
+    DATABASE_ERROR: 'Something went wrong while saving data. Please try again.',
+    INTERNAL: 'Something went wrong on our side. Please try again.',
+    INVALID_ID: 'The selected item is invalid.',
 }
 
 export class ApiError extends Error {
@@ -126,7 +126,7 @@ export function parseApiError(status: number, bodyText: string): ApiError {
     }
 
     const code = `HTTP_${status}`
-    const message = bodyText?.trim() || `Response status: ${status}`
+    const message = bodyText?.trim() || `Request failed (${status}).`
 
     return new ApiError({ code, message, fields: [] }, status)
 }

@@ -14,7 +14,6 @@ import {
 } from '@heroicons/vue/24/outline'
 import TheTooltip from '@/components/UI/TheTooltip.vue'
 import { useProductStore } from '@/stores/products'
-import DecorGradient from '@/components/UI/DecorGradient.vue'
 
 // The idea is to disable invoice and editor if no client is selected
 const clientStore = useClientStore()

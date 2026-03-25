@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { request } from '@/utils/fetchHelper'
 
 export type CurrencyCode = 'GBP' | 'EUR' | 'USD'
 export type DateFormat = 'dd/mm/yyyy' | 'mm/dd/yyyy' | 'yyyy-mm-dd'
@@ -38,10 +39,7 @@ export const useSettingsStore = defineStore('settings', () => {
     async function fetchSettings() {
         isLoading.value = true
         try {
-            const res = await fetch('/api/settings')
-            if (!res.ok) throw new Error(`Failed to fetch settings (${res.status})`)
-
-            const data = (await res.json()) as Settings
+            const data = await request<Settings>('/api/settings')
             settings.value = data
             needsSetup.value = !isSettingsComplete(data)
 
@@ -52,17 +50,11 @@ export const useSettingsStore = defineStore('settings', () => {
     }
 
     async function saveSettings(payload: Settings) {
-        const res = await fetch('/api/settings', {
+        const data = await request<Settings>('/api/settings', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         })
-
-        if (!res.ok) {
-            throw new Error(`Failed to save settings (${res.status})`)
-        }
-
-        const data = (await res.json()) as Settings
         settings.value = data
         needsSetup.value = !isSettingsComplete(data)
 

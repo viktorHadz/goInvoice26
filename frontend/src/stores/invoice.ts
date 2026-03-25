@@ -61,6 +61,35 @@ function firstFieldErrorMessage(fields: Record<string, string>): string | null {
     return null
 }
 
+function invoiceValidationSignal(inv: Invoice | null): string {
+    if (!inv) return ''
+    const linesSignal = inv.lines
+        .map(
+            (line) =>
+                `${line.sortOrder}:${line.productId ?? ''}:${line.name}:${line.lineType}:${line.pricingMode}:${line.quantity}:${line.unitPriceMinor}:${line.minutesWorked ?? ''}`,
+        )
+        .join('|')
+    return [
+        inv.clientId,
+        inv.issueDate,
+        inv.dueByDate ?? '',
+        inv.clientSnapshot.name,
+        inv.clientSnapshot.companyName,
+        inv.clientSnapshot.address,
+        inv.clientSnapshot.email,
+        inv.note ?? '',
+        inv.vatRate,
+        inv.discountType,
+        inv.discountRate,
+        inv.discountMinor,
+        inv.depositType,
+        inv.depositRate,
+        inv.depositMinor,
+        inv.paidMinor,
+        linesSignal,
+    ].join('~')
+}
+
 // * INVOICE STORE
 export const useInvoiceStore = defineStore('invoice', () => {
     const invoice = ref<Invoice | null>(null)
@@ -163,7 +192,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
         formatInvoiceBaseLabel(invoicePrefix.value, invoice.value?.baseNumber),
     )
     // Pricing is a single computed that derives all pricing in one pass
-    const { totals, depositMinor, balanceDueMinor } = useInvoicePricing(invoice)
+    const { pricing, totals, depositMinor, balanceDueMinor } = useInvoicePricing(invoice)
 
     let verifyTimer: number | null = null
     let verifyAbort: AbortController | null = null
@@ -239,6 +268,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
             serverCanonicalLineTotals.value = canonicalBySort
             serverCanonicalTotals.value = serverTotals
             lastVerifyAt.value = Date.now()
+            lastVerifyFailureToastedAt.value = null
 
             const optimisticTotals = totals.value
             let mismatch = false
@@ -264,9 +294,18 @@ export const useInvoiceStore = defineStore('invoice', () => {
             }
 
             verifyStatus.value = mismatch ? 'mismatch' : 'ok'
-            if (verifyStatus.value === 'ok') lastVerifyFailureToastedAt.value = null
         } catch (err: unknown) {
-            if (err instanceof NetworkError) return
+            if (err instanceof NetworkError) {
+                verifyStatus.value = 'error'
+                if (lastVerifyFailureToastedAt.value == null) {
+                    lastVerifyFailureToastedAt.value = Date.now()
+                    emitToastError({
+                        title: 'Verification unavailable',
+                        message: 'Could not verify totals right now. Check your connection and try again.',
+                    })
+                }
+                return
+            }
 
             if (isApiError(err) && err.code === 'VALIDATION_FAILED') {
                 verifyStatus.value = 'invalid'
@@ -279,16 +318,17 @@ export const useInvoiceStore = defineStore('invoice', () => {
             verifyStatus.value = 'error'
             if (
                 isApiError(err) &&
-                isSupportOnlyApiError(err) &&
                 lastVerifyFailureToastedAt.value == null
             ) {
                 lastVerifyFailureToastedAt.value = Date.now()
                 emitToastError({
                     id: err.id,
-                    title: 'Server error',
-                    message: err.id
-                        ? `Something went wrong. Please quote error ID: ${err.id}`
-                        : 'Something went wrong. Please try again later.',
+                    title: isSupportOnlyApiError(err) ? 'Server error' : 'Verification failed',
+                    message: isSupportOnlyApiError(err)
+                        ? err.id
+                            ? `Something went wrong. Please quote error ID: ${err.id}`
+                            : 'Something went wrong. Please try again later.'
+                        : err.message || 'Could not verify totals right now. Please try again.',
                 })
             }
             console.error('[invoice verify]', err)
@@ -312,15 +352,11 @@ export const useInvoiceStore = defineStore('invoice', () => {
         }, debounceDur)
     }
 
-    watch(
-        invoice,
-        () => {
-            if (Object.keys(serverFieldErrors.value).length > 0) {
-                serverFieldErrors.value = {}
-            }
-        },
-        { deep: true },
-    )
+    watch(() => invoiceValidationSignal(invoice.value), () => {
+        if (Object.keys(serverFieldErrors.value).length > 0) {
+            serverFieldErrors.value = {}
+        }
+    })
 
     async function initInvoiceFromServer(
         newInvoiceData: Omit<Invoice, 'baseNumber'>,
@@ -352,6 +388,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
     // * ----- Setters ----- * //
     function setIssueDate(v: string): void {
         setInvoiceIssueDate(ensure(), v)
+        scheduleServerVerify()
     }
 
     function setDueByDate(v: string): void {
@@ -507,7 +544,11 @@ export const useInvoiceStore = defineStore('invoice', () => {
             return false
         }
     }
-    const { liveFieldErrors, getFieldError } = useInvoiceFieldErrors(invoice, serverFieldErrors)
+    const { liveFieldErrors, getFieldError } = useInvoiceFieldErrors(
+        invoice,
+        serverFieldErrors,
+        pricing,
+    )
 
     function clearServerFieldErrors() {
         serverFieldErrors.value = {}

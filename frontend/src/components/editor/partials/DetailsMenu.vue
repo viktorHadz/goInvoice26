@@ -15,7 +15,7 @@ export type MenuOption = {
 }
 function onOptionClick(option: MenuOption) {
   if (option.disabled) {
-    emitToastInfo(option.disabledReason ?? 'This action is currently unavailable')
+    emitToastInfo(option.disabledReason ?? 'You cannot do that right now.')
     return
   }
 

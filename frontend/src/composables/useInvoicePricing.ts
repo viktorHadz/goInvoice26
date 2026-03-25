@@ -2,8 +2,14 @@ import { computed, type Ref } from 'vue'
 import type { Invoice, Totals, MoneyMinor } from '@/components/invoice/invoiceTypes'
 import { calcTotals, calcDepositMinor, calcBalanceDueMinor } from '@/utils/money'
 
+export type InvoicePricing = {
+    totals: Totals
+    depositMinor: MoneyMinor
+    balanceDueMinor: MoneyMinor
+}
+
 export function useInvoicePricing(invoice: Ref<Invoice | null>) {
-    const pricing = computed(() => {
+    const pricing = computed<InvoicePricing | null>(() => {
         const inv = invoice.value
         if (!inv) return null
 

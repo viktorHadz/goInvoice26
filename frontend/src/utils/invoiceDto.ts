@@ -1,4 +1,5 @@
 import type { Invoice } from '@/components/invoice/invoiceTypes'
+import type { InvoicePricing } from '@/composables/useInvoicePricing'
 import { asNum } from '@/utils/numbers'
 import { calcBalanceDueMinor, calcDepositMinor, calcTotals, lineTotalMinor } from '@/utils/money'
 
@@ -10,6 +11,7 @@ export type DraftPaymentInput = {
 
 export type InvoiceDtoOptions = {
     sourceRevisionNo?: number
+    pricing?: InvoicePricing
 }
 
 export function apiDTO(
@@ -17,9 +19,12 @@ export function apiDTO(
     payments: DraftPaymentInput[] = [],
     options: InvoiceDtoOptions = {},
 ) {
-    const totals = calcTotals(inv)
-    const depositMinor = calcDepositMinor(inv, totals.totalMinor)
-    const balanceDueMinor = calcBalanceDueMinor(totals.totalMinor, depositMinor, inv.paidMinor)
+    const totals = options.pricing?.totals ?? calcTotals(inv)
+    const depositMinor =
+        options.pricing?.depositMinor ?? calcDepositMinor(inv, totals.totalMinor)
+    const balanceDueMinor =
+        options.pricing?.balanceDueMinor ??
+        calcBalanceDueMinor(totals.totalMinor, depositMinor, inv.paidMinor)
 
     return {
         overview: {

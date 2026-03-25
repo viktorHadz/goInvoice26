@@ -79,7 +79,7 @@ async function generatePdfOnly() {
               <TheButton
                 type="button"
                 variant="success"
-                :disabled="revisionLocked"
+                :disabled="revisionLocked || !editStore.hasUnsavedChanges"
                 class="cursor-pointer"
                 @click="editStore.saveRevision(editStore.draftInvoice)"
               >

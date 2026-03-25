@@ -50,6 +50,7 @@ const balanceDueMinor = computed(() => {
 })
 
 const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
+const dateFormat = computed(() => setsStore.settings?.dateFormat ?? 'dd/mm/yyyy')
 
 const invoiceDisplayLabel = computed(() => {
   const i = inv.value
@@ -154,7 +155,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                     Issue date
                   </div>
                   <div class="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    {{ fmtStrDate(inv.issueDate) }}
+                    {{ fmtStrDate(inv.issueDate, dateFormat) }}
                   </div>
                 </div>
 
@@ -165,7 +166,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                     Due by
                   </div>
                   <div class="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    {{ inv.dueByDate ? fmtStrDate(inv.dueByDate) : '—' }}
+                    {{ inv.dueByDate ? fmtStrDate(inv.dueByDate, dateFormat) : '—' }}
                   </div>
                 </div>
 

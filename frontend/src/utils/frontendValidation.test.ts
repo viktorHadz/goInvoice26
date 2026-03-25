@@ -60,7 +60,7 @@ describe('validateInvoicePayload payments', () => {
         const payload = basePayload()
         payload.payments[0]!.paymentDate = '23/03/2026'
         const errors = validateInvoicePayload(payload)
-        expect(errors['payments[0].paymentDate']).toContain('valid ISO date')
+        expect(errors['payments[0].paymentDate']).toContain('YYYY-MM-DD')
     })
 
     it('rejects paidMinor lower than staged payment sum', () => {
@@ -75,5 +75,12 @@ describe('validateInvoicePayload payments', () => {
         payload.overview.sourceRevisionNo = 0
         const errors = validateInvoicePayload(payload)
         expect(errors.sourceRevisionNo).toContain('positive integer')
+    })
+
+    it('returns human-readable payment date guidance', () => {
+        const payload = basePayload()
+        payload.payments[0]!.paymentDate = ''
+        const errors = validateInvoicePayload(payload)
+        expect(errors['payments[0].paymentDate']).toBe('Choose a payment date.')
     })
 })

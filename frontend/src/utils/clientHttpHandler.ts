@@ -19,8 +19,6 @@ export async function getClients(): Promise<Client[]> {
 }
 
 export function createNewClient(client: Omit<Client, 'id'>): Promise<Client> {
-    console.log('Preparing to send client to backend', client)
-
     return request<Client>('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

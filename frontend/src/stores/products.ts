@@ -14,6 +14,7 @@ export const useProductStore = defineStore('products', () => {
     const open = ref(false)
     const products = ref<Product[]>([])
     const isLoading = ref(false)
+    const loadError = ref<string | null>(null)
 
     const byType = computed(() => {
         const style: Product[] = []
@@ -33,16 +34,22 @@ export const useProductStore = defineStore('products', () => {
         if (!clientId) {
             products.value = []
             isLoading.value = false
+            loadError.value = null
             return
         }
 
         const token = ++loadToken
         isLoading.value = true
+        loadError.value = null
 
         try {
             const data = await listClientProducts(clientId)
             if (token !== loadToken) return
             products.value = data
+        } catch (err) {
+            if (token !== loadToken) return
+            loadError.value = err instanceof Error ? err.message : 'Could not load products.'
+            throw err
         } finally {
             if (token === loadToken) {
                 isLoading.value = false
@@ -52,7 +59,7 @@ export const useProductStore = defineStore('products', () => {
 
     watch(
         () => clientStore.lsClientId,
-        () => void reload(),
+        () => void reload().catch(() => {}),
         { immediate: true },
     )
 
@@ -87,6 +94,7 @@ export const useProductStore = defineStore('products', () => {
         open,
         byType,
         isLoading,
+        loadError,
         reload,
         create,
         update,

@@ -11,6 +11,24 @@ import { apiDTO } from '@/utils/invoiceDto'
 export function flattenValidationErrors(
     errors: Record<string, string | string[] | undefined>,
 ): string {
+    const toLabel = (field: string) => {
+        const lineMatch = field.match(/^lines\[(\d+)\]\.(.+)$/)
+        if (lineMatch) {
+            const idx = Number(lineMatch[1]) + 1
+            const nested = (lineMatch[2] ?? '').split('.').join(' ')
+            return `Line ${idx} ${nested}`
+        }
+
+        const paymentMatch = field.match(/^payments\[(\d+)\]\.(.+)$/)
+        if (paymentMatch) {
+            const idx = Number(paymentMatch[1]) + 1
+            const nested = (paymentMatch[2] ?? '').split('.').join(' ')
+            return `Payment ${idx} ${nested}`
+        }
+
+        return field.split('.').join(' ')
+    }
+
     const parts: string[] = []
 
     for (const [field, value] of Object.entries(errors)) {
@@ -18,14 +36,14 @@ export function flattenValidationErrors(
 
         if (Array.isArray(value)) {
             for (const msg of value) {
-                parts.push(`${field}: ${msg}`)
+                parts.push(`${toLabel(field)}: ${msg}`)
             }
         } else {
-            parts.push(`${field}: ${value}`)
+            parts.push(`${toLabel(field)}: ${value}`)
         }
     }
 
-    return parts.join(', ')
+    return parts.join('; ')
 }
 
 export const usePdfStore = defineStore('pdf', () => {
