@@ -1,6 +1,16 @@
 import type { ActiveEditorNode } from '@/components/editor/invBookTypes'
 import { fmtPrettyInvoiceNumber } from '@/utils/numbers'
 
+/**
+ * Display mapping contract for user-facing invoice numbering:
+ * - DB revision 1 is the base invoice => no dotted suffix.
+ * - DB revision N>1 maps to display suffix (N-1): base.1, base.2, ...
+ */
+export function toDisplayRevisionNo(revisionNo?: number | null): number | null {
+    if (revisionNo == null || revisionNo <= 1) return null
+    return revisionNo - 1
+}
+
 export function formatInvoiceBaseLabel(
     prefix: string,
     baseNumber?: number | null,
@@ -15,8 +25,9 @@ export function formatInvoiceDisplayLabel(
 ): string {
     const base = formatInvoiceBaseLabel(prefix, baseNumber)
     if (!base) return ''
-    if (revisionNo == null) return base
-    return `${base}.${revisionNo}`
+    const displayRevisionNo = toDisplayRevisionNo(revisionNo)
+    if (displayRevisionNo == null) return base
+    return `${base}.${displayRevisionNo}`
 }
 
 export function formatActiveEditorNodeLabel(

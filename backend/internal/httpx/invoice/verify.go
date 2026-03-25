@@ -33,10 +33,10 @@ func VerifyInvoice() http.HandlerFunc {
 		// Route/body consistency
 		var routeErrs []res.FieldError
 		if invoice.Overview.ClientID != clientID {
-			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route param"))
+			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route parameter"))
 		}
 		if invoice.Overview.BaseNumber != baseNumber {
-			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route param"))
+			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route parameter"))
 		}
 		if len(routeErrs) > 0 {
 			res.Validation(w, routeErrs...)

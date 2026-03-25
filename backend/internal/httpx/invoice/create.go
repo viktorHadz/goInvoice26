@@ -118,10 +118,10 @@ func CreateRevision(a *app.App) http.HandlerFunc {
 
 		var routeErrs []res.FieldError
 		if dtoInvoice.Overview.ClientID != clientID {
-			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route param"))
+			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route parameter"))
 		}
 		if dtoInvoice.Overview.BaseNumber != baseNumber {
-			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route param"))
+			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route parameter"))
 		}
 		if len(routeErrs) > 0 {
 			res.Validation(w, routeErrs...)

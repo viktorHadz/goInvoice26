@@ -35,7 +35,7 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 
 		next := strings.TrimSpace(strings.ToLower(body.Status))
 		if next == "" {
-			res.Validation(w, res.Invalid("status", "required"))
+		res.Validation(w, res.Required("status"))
 			return
 		}
 

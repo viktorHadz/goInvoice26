@@ -40,9 +40,11 @@ async function generatePdfOnly() {
   const inv = editStore.draftInvoice
   if (!inv || isGeneratingPdf.value) return
 
+  const selectedRevisionNo = editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
+
   isGeneratingPdf.value = true
   try {
-    await pdfStore.quickGeneratePDF(inv)
+    await pdfStore.quickGeneratePDF(inv, selectedRevisionNo)
   } finally {
     isGeneratingPdf.value = false
   }

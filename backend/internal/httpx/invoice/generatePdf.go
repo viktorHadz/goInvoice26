@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/params"
@@ -59,7 +58,7 @@ func handlePdfGeneration(
 		return
 	}
 
-	filename := buildPDFFilename(doc.InvoiceNumberLabel)
+	filename := buildPDFFilename(baseNumber, revisionNo)
 
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
@@ -123,10 +122,10 @@ func QuickPDFHandler(a *app.App) http.HandlerFunc {
 
 		var routeErrs []res.FieldError
 		if dtoInvoice.Overview.ClientID != clientID {
-			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route param"))
+			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route parameter"))
 		}
 		if dtoInvoice.Overview.BaseNumber != baseNumber {
-			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route param"))
+			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route parameter"))
 		}
 		if len(routeErrs) > 0 {
 			res.Validation(w, routeErrs...)
@@ -156,25 +155,12 @@ func QuickPDFHandler(a *app.App) http.HandlerFunc {
 	}
 }
 
-func buildPDFFilename(invoiceNumber string) string {
-	name := strings.TrimSpace(invoiceNumber)
-	if name == "" {
-		return "invoice.pdf"
+func buildPDFFilename(baseNumber int64, revisionNo int64) string {
+	if baseNumber < 1 {
+		return "Invoice.pdf"
 	}
-
-	replacer := strings.NewReplacer(
-		"/", "-",
-		"\\", "-",
-		":", "-",
-		"*", "",
-		"?", "",
-		"\"", "",
-		"<", "",
-		">", "",
-		"|", "",
-		" ", "-",
-	)
-	name = replacer.Replace(name)
-
-	return name + ".pdf"
+	if revisionNo <= 1 {
+		return fmt.Sprintf("Invoice-%d.pdf", baseNumber)
+	}
+	return fmt.Sprintf("Invoice-%d-Rev-%d.pdf", baseNumber, revisionNo-1)
 }

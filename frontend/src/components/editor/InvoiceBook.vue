@@ -19,6 +19,18 @@ import { useClientStore } from '@/stores/clients'
 import { fmtStrDate } from '@/utils/dates'
 import { formatInvoiceBaseLabel, formatInvoiceDisplayLabel } from '@/utils/invoiceLabels'
 
+/** Revision 1 is represented by the parent row; only show later revisions under it. */
+function revisionsForBookSublist(revisions: InvBookRevision[]): InvBookRevision[] {
+  return revisions.filter((r) => r.revisionNo > 1)
+}
+
+function bookSublistRevisionBadge(revisions: InvBookRevision[]): string {
+  const n = revisionsForBookSublist(revisions).length
+  if (n === 0) return 'No revisions'
+  if (n === 1) return '1 revision'
+  return `${n} revisions`
+}
+
 const props = defineProps<{
   activeNode: ActiveEditorNode
 }>()
@@ -60,12 +72,13 @@ const filteredInvoices = computed(() => {
 
       const invoiceMatch = invoiceLabel.includes(q)
 
-      const revisions = invoice.revisions.filter((rev) =>
+      // Match revision labels exactly as users see them in the sublist.
+      const matchingRevisions = invoice.revisions.filter((rev) =>
         formatInvoiceDisplayLabel(prefix, invoice.baseNo, rev.revisionNo).toLowerCase().includes(q),
       )
 
       if (invoiceMatch) return invoice
-      if (revisions.length) return { ...invoice, revisions }
+      if (matchingRevisions.length) return { ...invoice, revisions: matchingRevisions }
       return null
     })
     .filter((x): x is InvBookInvoice => x !== null)
@@ -322,13 +335,20 @@ useEscape(() => closeDropdown())
                       <button
                         type="button"
                         class="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-700 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-200"
-                        :disabled="!invoice.revisions.length"
-                        @click="toggleInvoice(invoice.id, !!invoice.revisions.length)"
+                        :disabled="!revisionsForBookSublist(invoice.revisions).length"
+                        @click="
+                          toggleInvoice(
+                            invoice.id,
+                            !!revisionsForBookSublist(invoice.revisions).length,
+                          )
+                        "
                       >
                         <ChevronRightIcon
                           class="size-4 transition-transform"
                           :class="{
-                            'rotate-90': openId === invoice.id && invoice.revisions.length,
+                            'rotate-90':
+                              openId === invoice.id &&
+                              !!revisionsForBookSublist(invoice.revisions).length,
                           }"
                         />
                       </button>
@@ -370,29 +390,26 @@ useEscape(() => closeDropdown())
                               <span
                                 class="text-tiny shrink-0 rounded-full border px-2 py-0.5 font-medium"
                                 :class="
-                                  invoice.revisions.length
+                                  revisionsForBookSublist(invoice.revisions).length
                                     ? 'border-zinc-200 bg-white/90 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400'
                                     : 'border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500'
                                 "
                               >
-                                {{
-                                  invoice.revisions.length === 1
-                                    ? 1 + ' revision'
-                                    : invoice.revisions.length > 1
-                                      ? `${invoice.revisions.length} revisions`
-                                      : 'No revisions'
-                                }}
+                                {{ bookSublistRevisionBadge(invoice.revisions) }}
                               </span>
                             </TheTooltip>
                           </div>
                         </button>
 
                         <div
-                          v-if="openId === invoice.id && invoice.revisions.length"
+                          v-if="
+                            openId === invoice.id &&
+                            revisionsForBookSublist(invoice.revisions).length
+                          "
                           class="mt-2 space-y-2 pl-8"
                         >
                           <button
-                            v-for="rev in invoice.revisions"
+                            v-for="rev in revisionsForBookSublist(invoice.revisions)"
                             :key="rev.id"
                             type="button"
                             :class="rowClass(isActiveRevision(rev))"
@@ -445,7 +462,9 @@ useEscape(() => closeDropdown())
                                   <span>
                                     <span class="font-bold">Due by:</span>
                                     {{
-                                      rev.dueByDate ? fmtStrDate(rev.dueByDate, dateFormat) : 'not set'
+                                      rev.dueByDate
+                                        ? fmtStrDate(rev.dueByDate, dateFormat)
+                                        : 'not set'
                                     }}
                                   </span>
                                 </div>

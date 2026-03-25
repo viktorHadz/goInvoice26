@@ -15,7 +15,7 @@ func ValidateParam(w http.ResponseWriter, r *http.Request, param string) (valid 
 	s := chi.URLParam(r, param)
 	valid, err := strconv.ParseInt(s, 10, 64)
 	if err != nil || valid < 1 {
-		res.Validation(w, res.Invalid(param, "invalid route param"))
+		res.Validation(w, res.Invalid(param, "invalid route parameter"))
 		return 0, false
 	}
 

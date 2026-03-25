@@ -2,6 +2,7 @@ package editor
 
 import (
 	"database/sql"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -95,6 +96,10 @@ func GetInvoice(a *app.App) http.HandlerFunc {
 
 		summary, err := invoiceTx.QueryInvoiceSummary(r.Context(), a.DB, clientID, baseNo, revNo)
 		if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			res.NotFound(w, "Invoice revision not found")
+			return
+		}
 			slog.ErrorContext(
 				r.Context(), "DB_ERROR - error while getting invoice summary",
 				"err", err,

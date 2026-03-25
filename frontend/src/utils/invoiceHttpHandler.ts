@@ -1,6 +1,7 @@
 import type { Invoice } from '@/components/invoice/invoiceTypes'
 import { NetworkError, request } from './fetchHelper'
 import { parseApiError } from './apiErrors'
+import { toDisplayRevisionNo } from './invoiceLabels'
 
 export async function getNewInvoiceNumber(clientId: number): Promise<number> {
     const n = await request<number>(`api/clients/${clientId}/invoice`)
@@ -76,6 +77,30 @@ function downloadBlob(blob: Blob, filename: string) {
     }
 }
 
+function filenameFromContentDisposition(header: string | null): string | null {
+    if (!header) return null
+
+    const utf8Match = header.match(/filename\*\s*=\s*UTF-8''([^;]+)/i)
+    if (utf8Match?.[1]) {
+        const encoded = utf8Match[1].trim()
+        try {
+            return decodeURIComponent(encoded)
+        } catch {
+            return encoded
+        }
+    }
+
+    const plainMatch = header.match(/filename\s*=\s*"([^"]+)"/i) ?? header.match(/filename\s*=\s*([^;]+)/i)
+    if (!plainMatch?.[1]) return null
+    return plainMatch[1].trim()
+}
+
+function fallbackPdfFilename(baseNumber: number, revisionNumber: number): string {
+    const displayRevisionNo = toDisplayRevisionNo(revisionNumber)
+    if (displayRevisionNo == null) return `Invoice-${baseNumber}.pdf`
+    return `Invoice-${baseNumber}-Rev-${displayRevisionNo}.pdf`
+}
+
 export async function generatePdfHandler(
     clientId: number,
     baseNumber: number,
@@ -113,5 +138,6 @@ export async function generatePdfHandler(
     }
 
     const blob = await res.blob()
-    downloadBlob(blob, `invoice-${baseNumber}-rev-${revisionNumber}.pdf`)
+    const serverFilename = filenameFromContentDisposition(res.headers.get('content-disposition'))
+    downloadBlob(blob, serverFilename ?? fallbackPdfFilename(baseNumber, revisionNumber))
 }

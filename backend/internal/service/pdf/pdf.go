@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/viktorHadz/goInvoice26/internal/models"
+	"github.com/viktorHadz/goInvoice26/internal/service/invoiceformat"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/invoiceTx"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/settingsTx"
 )
@@ -145,14 +146,9 @@ func buildInvoicePDFData(
 		balanceDue = 0
 	}
 
-	prefix := s.InvoicePrefix
-	if prefix == "" {
-		prefix = "INV-"
-	}
-
 	return models.InvoicePDFData{
 		Title:              "Invoice",
-		InvoiceNumberLabel: fmt.Sprintf("%s%d.%d", prefix, o.BaseNumber, o.RevisionNo),
+		InvoiceNumberLabel: invoiceformat.FormatInvoiceNumber(s.InvoicePrefix, o.BaseNumber, o.RevisionNo),
 		Currency:           fallbackCurrency(s.Currency),
 
 		IssueAt: formatDate(o.IssueDate, s.DateFormat),
