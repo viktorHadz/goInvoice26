@@ -35,7 +35,7 @@ const logoFile = ref<File | null>(null)
 const isSaving = ref(false)
 
 const title = 'Invoice Settings'
-const subtitle = 'Manage business identity, invoice defaults and PDF display options'
+const subtitle = 'Manage business identity, and invoice display'
 
 const currencyOptions: CurrencyCode[] = ['GBP', 'EUR', 'USD']
 const dateFormatOptions: DateFormat[] = ['dd/mm/yyyy', 'mm/dd/yyyy', 'yyyy-mm-dd']
@@ -180,7 +180,7 @@ useEscape(closeSettings, {
       class="flex cursor-pointer rounded-lg border border-zinc-300 p-1 text-zinc-600 hover:text-sky-600 dark:border-transparent dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
       @click="() => openSettings()"
     >
-      <Cog6ToothIcon class="size-6 stroke-1" />
+      <Cog6ToothIcon class="size-6" />
     </button>
   </TheTooltip>
 
@@ -229,28 +229,19 @@ useEscape(closeSettings, {
                   </div>
                 </div>
 
-                <p class="mt-1 text-sm tracking-tight text-zinc-500 dark:text-zinc-300">
+                <p class="mt-1 text-sm tracking-tight text-zinc-600 dark:text-zinc-300">
                   {{ subtitle }}
                 </p>
               </div>
             </div>
 
-            <TheTooltip side="bottom">
-              <template #content>
-                <div class="flex items-center text-start">
-                  <span class="mr-1 text-sky-600 dark:text-emerald-400">Shortcut:</span>
-                  <kbd>Esc</kbd>
-                </div>
-              </template>
-
-              <button
-                type="button"
-                class="shrink-0 cursor-pointer rounded-lg p-2 text-zinc-600 transition hover:bg-rose-50 hover:text-rose-500 dark:text-zinc-300 dark:hover:bg-rose-400/15 dark:hover:text-rose-300"
-                @click="() => closeSettings()"
-              >
-                <XMarkIcon class="size-5" />
-              </button>
-            </TheTooltip>
+            <button
+              type="button"
+              class="shrink-0 cursor-pointer rounded-lg p-2 text-zinc-600 transition hover:bg-rose-50 hover:text-rose-500 dark:text-zinc-300 dark:hover:bg-rose-400/15 dark:hover:text-rose-300"
+              @click="() => closeSettings()"
+            >
+              <XMarkIcon class="size-5" />
+            </button>
           </div>
         </header>
 
@@ -352,7 +343,7 @@ useEscape(closeSettings, {
                 </div>
 
                 <label
-                  class="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-zinc-200 bg-white px-4 py-3 transition hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900/60 dark:hover:border-zinc-600"
+                  class="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-zinc-200 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:hover:border-zinc-600"
                 >
                   <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">

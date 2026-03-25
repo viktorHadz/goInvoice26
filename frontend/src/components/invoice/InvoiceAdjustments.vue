@@ -248,7 +248,7 @@ function applyVat() {
         <TheTooltip
           side="top"
           align="center"
-          class="hover:text-sky-400 dark:hover:text-emerald-400"
+          class="hover:text-sky-600 dark:hover:text-emerald-400"
           text="Reduce the invoice by a fixed amount or a percentage. Applied before VAT"
         >
           <InformationCircleIcon class="size-5" />
@@ -294,7 +294,7 @@ function applyVat() {
         <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Deposit</div>
         <TheTooltip
           text="Take payment upfront as a fixed amount or percentage. Applied after VAT."
-          class="hover:text-sky-400 dark:hover:text-emerald-400"
+          class="hover:text-sky-600 dark:hover:text-emerald-400"
         >
           <InformationCircleIcon class="size-5" />
         </TheTooltip>
@@ -341,7 +341,7 @@ function applyVat() {
           text="Use when you have already received a client payment for the invoice. Otherwise leave blank."
           side="top"
           align="center"
-          class="hover:text-sky-400 dark:hover:text-emerald-400"
+          class="hover:text-sky-600 dark:hover:text-emerald-400"
         >
           <InformationCircleIcon class="size-5" />
         </TheTooltip>
@@ -419,7 +419,7 @@ function applyVat() {
           text="Set to 0% to exclude VAT from the invoice."
           side="top"
           align="center"
-          class="hover:text-sky-400 dark:hover:text-emerald-400"
+          class="hover:text-sky-600 dark:hover:text-emerald-400"
         >
           <InformationCircleIcon class="size-5" />
         </TheTooltip>

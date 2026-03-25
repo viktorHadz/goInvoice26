@@ -274,7 +274,7 @@ useEscape(
       class="flex cursor-pointer rounded-lg border border-zinc-300 p-1 text-zinc-600 hover:text-sky-600 dark:border-transparent dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
     >
       <SquaresPlusIcon
-        class="size-6 stroke-1"
+        class="size-6"
         @click="store.open = true"
       />
     </button>

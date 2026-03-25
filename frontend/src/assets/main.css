@@ -107,7 +107,7 @@
 
     /* Accent variant */
     .input-accent {
-        @apply hover:ring-sky-500/60 focus:border-sky-500 focus:ring-sky-500/50;
+        @apply hover:ring-sky-600 focus:border-sky-600 focus:ring-sky-600;
         @apply dark:hover:ring-emerald-400/50 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/60;
     }
 

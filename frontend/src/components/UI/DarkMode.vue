@@ -27,7 +27,7 @@ const { mode } = useTheme()
         class="flex cursor-pointer rounded-lg border border-zinc-300 p-1 hover:text-sky-600"
         @click="mode = 'dark'"
       >
-        <SunIcon class="size-6 stroke-1"></SunIcon>
+        <SunIcon class="size-6"></SunIcon>
       </button>
     </div>
     <div v-if="mode === 'dark'">
@@ -36,7 +36,7 @@ const { mode } = useTheme()
         class="flex cursor-pointer rounded-lg p-1 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
         @click="((mode = 'light'), console.log(mode))"
       >
-        <MoonIcon class="size-6 stroke-1"></MoonIcon>
+        <MoonIcon class="size-6"></MoonIcon>
       </button>
     </div>
   </TheTooltip>
