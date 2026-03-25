@@ -2,6 +2,7 @@ package settings
 
 import (
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -27,9 +28,22 @@ func Get(a *app.App) http.HandlerFunc {
 func Put(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in models.Settings
+		var raw map[string]json.RawMessage
 
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			slog.ErrorContext(r.Context(), "read settings body failed", "err", err)
+			res.Error(w, http.StatusBadRequest, "BAD_DATA", "Invalid request body")
+			return
+		}
+
+		if err := json.Unmarshal(body, &in); err != nil {
 			slog.ErrorContext(r.Context(), "decode settings failed", "err", err)
+			res.Error(w, http.StatusBadRequest, "BAD_DATA", "Invalid request body")
+			return
+		}
+		if err := json.Unmarshal(body, &raw); err != nil {
+			slog.ErrorContext(r.Context(), "decode settings raw failed", "err", err)
 			res.Error(w, http.StatusBadRequest, "BAD_DATA", "Invalid request body")
 			return
 		}
@@ -44,8 +58,8 @@ func Put(a *app.App) http.HandlerFunc {
 		if in.DateFormat == "" {
 			in.DateFormat = "dd/mm/yyyy"
 		}
-		if in.PaymentTerms == "" {
-			in.PaymentTerms = "Please make payment within 14 days."
+		if _, ok := raw["showItemTypeHeaders"]; !ok {
+			in.ShowItemTypeHeaders = true
 		}
 
 		if err := settingsTx.Upsert(r.Context(), a.DB, in); err != nil {

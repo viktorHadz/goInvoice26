@@ -93,18 +93,47 @@ function lineOrFallback(value: string, fallback: string) {
 
         <div class="py-4">
           <div
-            class="text-tiny grid grid-cols-[1fr_1fr_auto] gap-3 border-b border-zinc-200 pb-2 font-semibold tracking-[0.14em] text-zinc-500 uppercase dark:border-zinc-800 dark:text-zinc-400"
+            class="text-tiny grid grid-cols-[1fr_auto] gap-3 border-b border-zinc-200 pb-2 font-semibold tracking-[0.14em] text-zinc-500 uppercase dark:border-zinc-800 dark:text-zinc-400"
           >
-            <div>Description</div>
-            <div>Type</div>
+            <div>Items</div>
             <div>Total</div>
           </div>
 
-          <div class="space-y-2 pt-3">
-            <div class="text-mini grid grid-cols-[1fr_1fr_auto] gap-3">
-              <div class="text-zinc-700 dark:text-zinc-300">Sample service line</div>
-              <div class="text-zinc-700 dark:text-zinc-300">sample</div>
+          <div class="space-y-2 pt-3 text-zinc-700 dark:text-zinc-300">
+            <template v-if="form.showItemTypeHeaders">
+              <div
+                class="text-tiny font-semibold tracking-[0.14em] text-zinc-500 uppercase dark:text-zinc-400"
+              >
+                Styles
+              </div>
+            </template>
+            <div class="text-mini grid grid-cols-[1fr_auto] gap-3">
+              <div>Style line item</div>
+              <div class="font-medium text-zinc-900 dark:text-zinc-100">75.00</div>
+            </div>
+
+            <template v-if="form.showItemTypeHeaders">
+              <div
+                class="text-tiny pt-1 font-semibold tracking-[0.14em] text-zinc-500 uppercase dark:text-zinc-400"
+              >
+                Samples
+              </div>
+            </template>
+            <div class="text-mini grid grid-cols-[1fr_auto] gap-3">
+              <div>Sample service line</div>
               <div class="font-medium text-zinc-900 dark:text-zinc-100">120.00</div>
+            </div>
+
+            <template v-if="form.showItemTypeHeaders">
+              <div
+                class="text-tiny pt-1 font-semibold tracking-[0.14em] text-zinc-500 uppercase dark:text-zinc-400"
+              >
+                Other Items
+              </div>
+            </template>
+            <div class="text-mini grid grid-cols-[1fr_auto] gap-3">
+              <div>Custom item</div>
+              <div class="font-medium text-zinc-900 dark:text-zinc-100">45.00</div>
             </div>
           </div>
         </div>
@@ -156,7 +185,7 @@ function lineOrFallback(value: string, fallback: string) {
 
         <div class="border-t border-zinc-200 pt-4 dark:border-zinc-800">
           <div class="text-tiny leading-relaxed text-zinc-500 dark:text-zinc-400">
-            {{ lineOrFallback(form.notesFooter, 'Footer note will appear here.') }}
+            {{ lineOrFallback(form.notesFooter, 'Footer note will appear here on each page.') }}
           </div>
         </div>
       </div>

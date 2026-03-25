@@ -12,4 +12,5 @@ type Settings struct {
 	PaymentDetails string `json:"paymentDetails"`
 	NotesFooter    string `json:"notesFooter"`
 	LogoURL        string `json:"logoUrl"`
+	ShowItemTypeHeaders bool `json:"showItemTypeHeaders"`
 }

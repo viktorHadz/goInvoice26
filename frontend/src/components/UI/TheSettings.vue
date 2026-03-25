@@ -202,9 +202,8 @@ useEscape(closeSettings, {
         <header
           class="relative overflow-hidden border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/80"
         >
-          <DecorGradient></DecorGradient>
+          <DecorGradient variant="gradientAndGrid"></DecorGradient>
           <!-- More glow -->
-          <DecorGradient></DecorGradient>
 
           <div class="relative z-10 flex items-start justify-between gap-4 px-5 py-4">
             <div class="flex min-w-0 items-center gap-4">
@@ -215,9 +214,20 @@ useEscape(closeSettings, {
               </div>
 
               <div class="min-w-0">
-                <h2 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                  {{ title }}
-                </h2>
+                <div class="flex items-center gap-2">
+                  <h2
+                    class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+                  >
+                    {{ title }}
+                  </h2>
+                  <div>
+                    <span
+                      class="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
+                    >
+                      All input fields are optional
+                    </span>
+                  </div>
+                </div>
 
                 <p class="mt-1 text-sm tracking-tight text-zinc-500 dark:text-zinc-300">
                   {{ subtitle }}
@@ -268,7 +278,7 @@ useEscape(closeSettings, {
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <TheInput
                     v-model="form.companyName"
-                    label="Name"
+                    label="Company Name"
                     :input-max-length="50"
                     placeholder="Your business name"
                     autocomplete="name"
@@ -308,10 +318,10 @@ useEscape(closeSettings, {
                   <textarea
                     id="setts-c-addr"
                     v-model="form.companyAddress"
-                    rows="4"
+                    rows="3"
                     maxlength="160"
-                    class="input input-accent min-h-28 w-full resize-y rounded-xl px-3 py-2"
-                    placeholder="Company name&#10;Street&#10;City&#10;Postcode"
+                    class="input input-accent min-h-28 w-full resize-y rounded-lg px-3 py-2"
+                    placeholder="Street&#10;City&#10;Postcode"
                   />
                 </div>
               </section>
@@ -340,6 +350,36 @@ useEscape(closeSettings, {
                     select-title="Date format"
                   />
                 </div>
+
+                <label
+                  class="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-zinc-200 bg-white px-4 py-3 transition hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900/60 dark:hover:border-zinc-600"
+                >
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        Show item type headers
+                      </span>
+                    </div>
+
+                    <p class="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                      Add section labels over Styles, Samples, and Other Items in the invoice.
+                    </p>
+                  </div>
+
+                  <span class="relative mt-0.5 shrink-0">
+                    <input
+                      v-model="form.showItemTypeHeaders"
+                      type="checkbox"
+                      class="peer sr-only"
+                    />
+                    <span
+                      class="block h-6 w-11 rounded-full border border-zinc-300 bg-zinc-200 transition peer-checked:border-sky-600 peer-checked:bg-sky-600 dark:border-zinc-600 dark:bg-zinc-700 dark:peer-checked:border-emerald-400 dark:peer-checked:bg-emerald-400"
+                    />
+                    <span
+                      class="pointer-events-none absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition peer-checked:translate-x-5"
+                    />
+                  </span>
+                </label>
               </section>
 
               <!-- Payment -->
@@ -366,7 +406,7 @@ useEscape(closeSettings, {
                       id="setts-payment-terms"
                       rows="3"
                       :maxlength="PAYMENT_TERMS_MAX"
-                      class="input input-accent w-full resize-y rounded-xl px-3 py-2"
+                      class="input input-accent w-full resize-y rounded-lg px-3 py-2"
                       placeholder="Payment terms shown on invoices"
                     />
                     <div
@@ -395,7 +435,7 @@ useEscape(closeSettings, {
                       v-model="form.paymentDetails"
                       rows="3"
                       :maxlength="PAYMENT_DETAILS_MAX"
-                      class="input input-accent w-full resize-y rounded-xl px-3 py-2"
+                      class="input input-accent w-full resize-y rounded-lg px-3 py-2"
                       placeholder="Bank transfer details, sort code, account number, IBAN, etc."
                     />
                     <div
@@ -424,7 +464,7 @@ useEscape(closeSettings, {
                       v-model="form.notesFooter"
                       rows="3"
                       :maxlength="FOOTER_NOTE_MAX"
-                      class="input input-accent w-full resize-y rounded-xl px-3 py-2"
+                      class="input input-accent w-full resize-y rounded-lg px-3 py-2"
                       placeholder="Optional footer or thank-you note"
                     />
 
@@ -470,7 +510,7 @@ useEscape(closeSettings, {
                     <img
                       :src="logoPreview!"
                       alt="Invoice logo preview"
-                      class="max-h-36 rounded-xl object-contain"
+                      class="max-h-36 rounded-lg object-contain"
                     />
 
                     <div class="flex flex-wrap justify-center gap-2">

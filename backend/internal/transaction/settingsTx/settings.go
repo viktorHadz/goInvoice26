@@ -21,7 +21,8 @@ func Get(ctx context.Context, db *sql.DB) (models.Settings, error) {
 			payment_terms,
 			payment_details,
 			notes_footer,
-			logo_url
+			logo_url,
+			show_item_type_headers
 		FROM user_settings
 		WHERE id = 1;
 	`
@@ -40,6 +41,7 @@ func Get(ctx context.Context, db *sql.DB) (models.Settings, error) {
 		&s.PaymentDetails,
 		&s.NotesFooter,
 		&s.LogoURL,
+		&s.ShowItemTypeHeaders,
 	)
 	if err != nil {
 		return models.Settings{}, fmt.Errorf("get settings: %w", err)
@@ -62,8 +64,9 @@ func Upsert(ctx context.Context, db *sql.DB, s models.Settings) error {
 			payment_terms,
 			payment_details,
 			notes_footer,
-			logo_url
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			logo_url,
+			show_item_type_headers
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			company_name = excluded.company_name,
 			email = excluded.email,
@@ -75,7 +78,8 @@ func Upsert(ctx context.Context, db *sql.DB, s models.Settings) error {
 			payment_terms = excluded.payment_terms,
 			payment_details = excluded.payment_details,
 			notes_footer = excluded.notes_footer,
-			logo_url = excluded.logo_url;
+			logo_url = excluded.logo_url,
+			show_item_type_headers = excluded.show_item_type_headers;
 	`
 
 	_, err := db.ExecContext(
@@ -93,6 +97,7 @@ func Upsert(ctx context.Context, db *sql.DB, s models.Settings) error {
 		s.PaymentDetails,
 		s.NotesFooter,
 		s.LogoURL,
+		s.ShowItemTypeHeaders,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert settings: %w", err)

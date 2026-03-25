@@ -53,6 +53,40 @@ const balanceDueMinor = computed(() => {
 
 const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
 const dateFormat = computed(() => setsStore.settings?.dateFormat ?? 'dd/mm/yyyy')
+const showItemTypeHeaders = computed(() => setsStore.settings?.showItemTypeHeaders !== false)
+
+type LineGroup = {
+  title: string
+  lines: NonNullable<typeof inv.value>['lines']
+}
+
+const groupedLines = computed<LineGroup[]>(() => {
+  const lines = inv.value?.lines ?? []
+  const sorted = [...lines].sort((a, b) => a.sortOrder - b.sortOrder)
+  const groups: LineGroup[] = [
+    { title: 'Styles', lines: [] },
+    { title: 'Samples', lines: [] },
+    { title: 'Other Items', lines: [] },
+  ]
+  const styleGroup = groups[0]
+  const sampleGroup = groups[1]
+  const otherGroup = groups[2]
+  if (!styleGroup || !sampleGroup || !otherGroup) return []
+
+  for (const line of sorted) {
+    if (line.lineType === 'style') {
+      styleGroup.lines.push(line)
+      continue
+    }
+    if (line.lineType === 'sample') {
+      sampleGroup.lines.push(line)
+      continue
+    }
+    otherGroup.lines.push(line)
+  }
+
+  return groups.filter((group) => group.lines.length > 0)
+})
 
 const invoiceDisplayLabel = computed(() => {
   const i = inv.value
@@ -274,10 +308,9 @@ const menuOpts = computed<MenuOption[]>(() => [
           <div class="overflow-x-auto">
             <div class="min-w-180">
               <div
-                class="grid grid-cols-[minmax(240px,1fr)_88px_64px_110px_120px] items-center gap-3 px-2 py-2 text-sm font-semibold text-zinc-600 dark:text-zinc-200"
+                class="grid grid-cols-[minmax(240px,1fr)_64px_110px_120px] items-center gap-3 px-2 py-2 text-sm font-semibold text-zinc-600 dark:text-zinc-200"
               >
                 <div>Product name</div>
-                <div>Type</div>
                 <div class="text-right">Qty</div>
                 <div class="text-right">Unit</div>
                 <div class="text-right">Total</div>
@@ -296,40 +329,48 @@ const menuOpts = computed<MenuOption[]>(() => [
                 v-else
                 class="max-h-136 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-800"
               >
-                <div
-                  v-for="(line, i) in inv.lines"
-                  :key="i"
-                  class="grid grid-cols-[minmax(240px,1fr)_88px_64px_110px_120px] items-start gap-3 px-2 py-3 text-sm"
+                <template
+                  v-for="group in groupedLines"
+                  :key="group.title"
                 >
-                  <div class="min-w-0">
-                    <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                      {{ line.name }}
+                  <div
+                    v-if="showItemTypeHeaders"
+                    class="px-2 py-2 text-xs font-semibold tracking-wide text-zinc-600 uppercase dark:text-zinc-300"
+                  >
+                    {{ group.title }}
+                  </div>
+
+                  <div
+                    v-for="line in group.lines"
+                    :key="line.sortOrder"
+                    class="grid grid-cols-[minmax(240px,1fr)_64px_110px_120px] items-start gap-3 px-2 py-3 text-sm"
+                  >
+                    <div class="min-w-0">
+                      <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
+                        {{ line.name }}
+                      </div>
+
+                      <div class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">
+                        {{ line.pricingMode }}
+                        <span v-if="line.pricingMode === 'hourly' && line.minutesWorked">
+                          · {{ line.minutesWorked }} min
+                        </span>
+                      </div>
                     </div>
 
-                    <div class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">
-                      {{ line.pricingMode }}
-                      <span v-if="line.pricingMode === 'hourly' && line.minutesWorked">
-                        · {{ line.minutesWorked }} min
-                      </span>
+                    <div class="text-right text-zinc-700 tabular-nums dark:text-zinc-300">
+                      {{ line.quantity }}
+                    </div>
+
+                    <div class="text-right text-zinc-700 tabular-nums dark:text-zinc-300">
+                      {{ fmtGBPMinor(line.unitPriceMinor) }}
+                    </div>
+
+                    <div class="text-right font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
+                      {{ fmtGBPMinor(line.quantity * line.unitPriceMinor) }}
                     </div>
                   </div>
-
-                  <div class="truncate text-zinc-600 capitalize dark:text-zinc-400">
-                    {{ line.lineType }}
-                  </div>
-
-                  <div class="text-right text-zinc-700 tabular-nums dark:text-zinc-300">
-                    {{ line.quantity }}
-                  </div>
-
-                  <div class="text-right text-zinc-700 tabular-nums dark:text-zinc-300">
-                    {{ fmtGBPMinor(line.unitPriceMinor) }}
-                  </div>
-
-                  <div class="text-right font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
-                    {{ fmtGBPMinor(line.quantity * line.unitPriceMinor) }}
-                  </div>
-                </div>
+                </template>
               </div>
             </div>
           </div>

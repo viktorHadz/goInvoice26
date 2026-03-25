@@ -18,6 +18,14 @@ export type Settings = {
     paymentDetails: string
     notesFooter: string
     logoUrl: string
+    showItemTypeHeaders: boolean
+}
+
+function normalizeSettings(data: Settings): Settings {
+    return {
+        ...data,
+        showItemTypeHeaders: data.showItemTypeHeaders !== false,
+    }
 }
 
 function isSettingsComplete(s: Settings): boolean {
@@ -40,10 +48,11 @@ export const useSettingsStore = defineStore('settings', () => {
         isLoading.value = true
         try {
             const data = await request<Settings>('/api/settings')
-            settings.value = data
-            needsSetup.value = !isSettingsComplete(data)
+            const normalized = normalizeSettings(data)
+            settings.value = normalized
+            needsSetup.value = !isSettingsComplete(normalized)
 
-            return data
+            return normalized
         } finally {
             isLoading.value = false
         }
@@ -55,10 +64,11 @@ export const useSettingsStore = defineStore('settings', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         })
-        settings.value = data
-        needsSetup.value = !isSettingsComplete(data)
+        const normalized = normalizeSettings(data)
+        settings.value = normalized
+        needsSetup.value = !isSettingsComplete(normalized)
 
-        return data
+        return normalized
     }
 
     return {

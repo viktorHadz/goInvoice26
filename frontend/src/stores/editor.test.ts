@@ -31,7 +31,7 @@ vi.mock('@/stores/clients', () => ({
 
 vi.mock('@/stores/settings', () => ({
     useSettingsStore: () => ({
-        settings: { invoicePrefix: 'INV' },
+        settings: { invoicePrefix: 'INV', showItemTypeHeaders: true },
     }),
 }))
 

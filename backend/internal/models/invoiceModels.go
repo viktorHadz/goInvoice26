@@ -79,6 +79,7 @@ type InvoicePDFData struct {
 	Title              string
 	InvoiceNumberLabel string
 	Currency           string
+	ShowItemTypeHeaders bool
 
 	IssueAt string
 	DueDate *string

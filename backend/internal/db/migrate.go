@@ -5,6 +5,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/viktorHadz/goInvoice26/internal/transaction/settingsTx"
 )
 
 // ---------------------
@@ -48,7 +50,8 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			payment_terms TEXT NOT NULL DEFAULT 'Please make payment within 14 days.',
 			payment_details TEXT NOT NULL DEFAULT '',
 			notes_footer TEXT NOT NULL DEFAULT '',
-			logo_url TEXT NOT NULL DEFAULT ''
+			logo_url TEXT NOT NULL DEFAULT '',
+			show_item_type_headers INTEGER NOT NULL DEFAULT 1
 		);`,
 		`INSERT OR IGNORE INTO user_settings (
 			id,
@@ -62,7 +65,8 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			payment_terms,
 			payment_details,
 			notes_footer,
-			logo_url
+			logo_url,
+			show_item_type_headers
 		) VALUES (
 			1,
 			'',
@@ -75,7 +79,8 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			'Please make payment within 14 days.',
 			'',
 			'',
-			''
+			'',
+			1
 		);`,
 		// -----------------------
 		// Clients
@@ -380,6 +385,10 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("migration step %d failed: %w\nSQL: %s,\nctx: %v,", i+1, err, stmt, ctx)
 		}
+	}
+
+	if err := settingsTx.EnsureShowItemTypeHeadersColumn(ctx, tx); err != nil {
+		return err
 	}
 
 	if err := tx.Commit(); err != nil {

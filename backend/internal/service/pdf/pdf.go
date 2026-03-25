@@ -150,6 +150,7 @@ func buildInvoicePDFData(
 		Title:              "Invoice",
 		InvoiceNumberLabel: invoiceformat.FormatInvoiceNumber(s.InvoicePrefix, o.BaseNumber, o.RevisionNo),
 		Currency:           fallbackCurrency(s.Currency),
+		ShowItemTypeHeaders: s.ShowItemTypeHeaders,
 
 		IssueAt: formatDate(o.IssueDate, s.DateFormat),
 		DueDate: dueDate,

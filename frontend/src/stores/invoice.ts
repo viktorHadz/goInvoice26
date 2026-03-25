@@ -49,7 +49,7 @@ import {
 } from '@/utils/invoiceMutations'
 import { useInvoicePricing } from '@/composables/useInvoicePricing'
 import type { DraftPaymentInput } from '@/utils/invoiceDto'
-
+// TODO: HOURLY LINES DO NOT RENDER PROPERLY ON THE INVOICE
 type PendingPayment = DraftPaymentInput & {
     tempId: string
 }
@@ -301,7 +301,8 @@ export const useInvoiceStore = defineStore('invoice', () => {
                     lastVerifyFailureToastedAt.value = Date.now()
                     emitToastError({
                         title: 'Verification unavailable',
-                        message: 'Could not verify totals right now. Check your connection and try again.',
+                        message:
+                            'Could not verify totals right now. Check your connection and try again.',
                     })
                 }
                 return
@@ -316,10 +317,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
             }
 
             verifyStatus.value = 'error'
-            if (
-                isApiError(err) &&
-                lastVerifyFailureToastedAt.value == null
-            ) {
+            if (isApiError(err) && lastVerifyFailureToastedAt.value == null) {
                 lastVerifyFailureToastedAt.value = Date.now()
                 emitToastError({
                     id: err.id,
@@ -352,11 +350,14 @@ export const useInvoiceStore = defineStore('invoice', () => {
         }, debounceDur)
     }
 
-    watch(() => invoiceValidationSignal(invoice.value), () => {
-        if (Object.keys(serverFieldErrors.value).length > 0) {
-            serverFieldErrors.value = {}
-        }
-    })
+    watch(
+        () => invoiceValidationSignal(invoice.value),
+        () => {
+            if (Object.keys(serverFieldErrors.value).length > 0) {
+                serverFieldErrors.value = {}
+            }
+        },
+    )
 
     async function initInvoiceFromServer(
         newInvoiceData: Omit<Invoice, 'baseNumber'>,
