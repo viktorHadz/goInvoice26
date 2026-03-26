@@ -36,11 +36,30 @@ const revisionLocked = computed(() => {
   return st === 'paid' || st === 'void'
 })
 
+const saveTooltipText = computed(() => {
+  const status = editStore.draftInvoice?.status ?? 'draft'
+
+  if (status === 'paid') {
+    return 'This invoice is marked as paid, so saving a new revision is disabled.'
+  }
+
+  if (status === 'void') {
+    return 'This invoice is void, so saving a new revision is disabled.'
+  }
+
+  if (!editStore.hasUnsavedChanges) {
+    return 'Make a change to this invoice before saving a new revision.'
+  }
+
+  return 'Save your edits as a new invoice revision.'
+})
+
 async function generatePdfOnly() {
   const inv = editStore.draftInvoice
   if (!inv || isGeneratingPdf.value) return
 
-  const selectedRevisionNo = editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
+  const selectedRevisionNo =
+    editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
 
   isGeneratingPdf.value = true
   try {
@@ -77,7 +96,7 @@ async function generatePdfOnly() {
                 Cancel
               </TheButton>
             </TheTooltip>
-            <TheTooltip text="Saves invoice into a new revision">
+            <TheTooltip :text="saveTooltipText">
               <TheButton
                 type="button"
                 variant="success"

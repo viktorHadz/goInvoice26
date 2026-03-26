@@ -23,7 +23,8 @@ async function generatePdfOnly() {
   const inv = editStore.activeInvoice
   if (!inv || isGeneratingPdf.value) return
 
-  const selectedRevisionNo = editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
+  const selectedRevisionNo =
+    editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
 
   isGeneratingPdf.value = true
   try {
@@ -335,7 +336,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                 >
                   <div
                     v-if="showItemTypeHeaders"
-                    class="px-2 py-2 text-xs font-semibold tracking-wide text-zinc-600 uppercase dark:text-zinc-300"
+                    class="px-2 py-2 text-xs font-semibold tracking-wide text-sky-600 uppercase dark:text-emerald-300"
                   >
                     {{ group.title }}
                   </div>
@@ -366,7 +367,9 @@ const menuOpts = computed<MenuOption[]>(() => [
                       {{ fmtGBPMinor(line.unitPriceMinor) }}
                     </div>
 
-                    <div class="text-right font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
+                    <div
+                      class="text-right font-medium text-zinc-900 tabular-nums dark:text-zinc-100"
+                    >
                       {{ fmtGBPMinor(line.quantity * line.unitPriceMinor) }}
                     </div>
                   </div>

@@ -343,7 +343,7 @@ useEscape(closeSettings, {
                 </div>
 
                 <label
-                  class="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-zinc-200 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:hover:border-zinc-600"
+                  class="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-zinc-200 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:hover:border-emerald-400"
                 >
                   <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
