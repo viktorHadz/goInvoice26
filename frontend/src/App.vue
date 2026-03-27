@@ -3,6 +3,7 @@ import { RouterView } from 'vue-router'
 import TopRightMenu from './components/UI/TopRightMenu.vue'
 import NavMain from './components/UI/NavMain.vue'
 import TheToast from './components/UI/TheToast.vue'
+import TheConfirmDialog from './components/UI/TheConfirmDialog.vue'
 </script>
 
 <template>
@@ -18,6 +19,7 @@ import TheToast from './components/UI/TheToast.vue'
       <!-- Shortcuts reside here -->
       <TopRightMenu />
       <TheToast />
+      <TheConfirmDialog />
     </main>
   </div>
 </template>

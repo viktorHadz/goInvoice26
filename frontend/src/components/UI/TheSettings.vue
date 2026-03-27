@@ -343,7 +343,7 @@ useEscape(closeSettings, {
                 </div>
 
                 <label
-                  class="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-zinc-200 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:hover:border-emerald-400"
+                  class="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-zinc-200 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-800/60 dark:hover:border-emerald-400/50 dark:hover:bg-zinc-800"
                 >
                   <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
@@ -364,7 +364,7 @@ useEscape(closeSettings, {
                       class="peer sr-only"
                     />
                     <span
-                      class="block h-6 w-11 rounded-full border border-zinc-300 bg-zinc-200 transition peer-checked:border-sky-600 peer-checked:bg-sky-600 dark:border-zinc-600 dark:bg-zinc-700 dark:peer-checked:border-emerald-400 dark:peer-checked:bg-emerald-400"
+                      class="block h-6 w-11 rounded-full border border-zinc-300 bg-zinc-200 transition peer-checked:border-sky-600 peer-checked:bg-sky-600/50 dark:border-zinc-600 dark:bg-zinc-700 dark:peer-checked:border-emerald-400 dark:peer-checked:bg-emerald-400/50"
                     />
                     <span
                       class="pointer-events-none absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition peer-checked:translate-x-5"

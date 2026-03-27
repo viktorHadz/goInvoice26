@@ -67,18 +67,20 @@ type InvoicePDFIssuer struct {
 }
 
 type InvoicePDFItem struct {
-	Name      string
-	LineType  string
-	Quantity  string
-	ItemPrice string
-	ItemTotal string
-	SortOrder int64
+	Name       string
+	LineType   string
+	Quantity   string
+	ItemPrice  string
+	TimeWorked string
+	HourlyRate string
+	ItemTotal  string
+	SortOrder  int64
 }
 
 type InvoicePDFData struct {
-	Title              string
-	InvoiceNumberLabel string
-	Currency           string
+	Title               string
+	InvoiceNumberLabel  string
+	Currency            string
 	ShowItemTypeHeaders bool
 
 	IssueAt string

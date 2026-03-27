@@ -49,13 +49,21 @@ func BuildInvoiceFromDB(
 
 	lines := make([]models.InvoicePDFItem, 0, len(rawItems))
 	for _, it := range rawItems {
+		pricingMode := ""
+		if it.PricingMode != nil {
+			pricingMode = *it.PricingMode
+		}
+		pricing := buildInvoicePDFPricing(pricingMode, it.UnitPriceMin, it.MinutesWorked, settings.Currency)
+
 		lines = append(lines, models.InvoicePDFItem{
-			Name:      it.Name,
-			LineType:  it.LineType,
-			Quantity:  formatQuantity(it.Quantity),
-			ItemPrice: formatMoney(it.UnitPriceMin, settings.Currency),
-			ItemTotal: formatMoney(it.LineTotalMin, settings.Currency),
-			SortOrder: it.SortOrder,
+			Name:       it.Name,
+			LineType:   it.LineType,
+			Quantity:   formatQuantity(it.Quantity),
+			ItemPrice:  pricing.itemPrice,
+			TimeWorked: pricing.timeWorked,
+			HourlyRate: pricing.hourlyRate,
+			ItemTotal:  formatMoney(it.LineTotalMin, settings.Currency),
+			SortOrder:  it.SortOrder,
 		})
 	}
 
@@ -70,13 +78,22 @@ func BuildQuickInvoice(
 ) models.InvoicePDFData {
 	lines := make([]models.InvoicePDFItem, 0, len(invoice.Lines))
 	for _, line := range invoice.Lines {
+		pricing := buildInvoicePDFPricing(
+			line.PricingMode,
+			line.UnitPriceMinor,
+			line.MinutesWorked,
+			settings.Currency,
+		)
+
 		lines = append(lines, models.InvoicePDFItem{
-			Name:      line.Name,
-			LineType:  line.LineType,
-			Quantity:  formatQuantity(line.Quantity),
-			ItemPrice: formatMoney(line.UnitPriceMinor, settings.Currency),
-			ItemTotal: formatMoney(line.LineTotalMinor, settings.Currency),
-			SortOrder: line.SortOrder,
+			Name:       line.Name,
+			LineType:   line.LineType,
+			Quantity:   formatQuantity(line.Quantity),
+			ItemPrice:  pricing.itemPrice,
+			TimeWorked: pricing.timeWorked,
+			HourlyRate: pricing.hourlyRate,
+			ItemTotal:  formatMoney(line.LineTotalMinor, settings.Currency),
+			SortOrder:  line.SortOrder,
 		})
 	}
 
@@ -147,9 +164,9 @@ func buildInvoicePDFData(
 	}
 
 	return models.InvoicePDFData{
-		Title:              "Invoice",
-		InvoiceNumberLabel: invoiceformat.FormatInvoiceNumber(s.InvoicePrefix, o.BaseNumber, o.RevisionNo),
-		Currency:           fallbackCurrency(s.Currency),
+		Title:               "Invoice",
+		InvoiceNumberLabel:  invoiceformat.FormatInvoiceNumber(s.InvoicePrefix, o.BaseNumber, o.RevisionNo),
+		Currency:            fallbackCurrency(s.Currency),
 		ShowItemTypeHeaders: s.ShowItemTypeHeaders,
 
 		IssueAt: formatDate(o.IssueDate, s.DateFormat),

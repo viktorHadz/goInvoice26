@@ -4,12 +4,14 @@ import type { Invoice } from '@/components/invoice/invoiceTypes'
 import { useEditorStore } from '@/stores/editor'
 
 const {
+    deleteInvoiceMock,
     getInvAndRevNumsMock,
     newRevisionHandlerMock,
     emitToastErrorMock,
     emitToastInfoMock,
     emitToastSuccessMock,
 } = vi.hoisted(() => ({
+    deleteInvoiceMock: vi.fn(async () => undefined),
     getInvAndRevNumsMock: vi.fn(async () => ({
         items: [],
         total: 0,
@@ -36,6 +38,7 @@ vi.mock('@/stores/settings', () => ({
 }))
 
 vi.mock('@/utils/editorHttpHandler', () => ({
+    deleteInvoice: deleteInvoiceMock,
     getInvAndRevNums: getInvAndRevNumsMock,
     getInvoice: vi.fn(),
     patchInvoiceStatus: vi.fn(),
@@ -167,5 +170,22 @@ describe('editor store no-change save guard', () => {
         expect(result).toBe(false)
         expect(newRevisionHandlerMock).not.toHaveBeenCalled()
         expect(emitToastInfoMock).toHaveBeenCalledWith('No changes to save.')
+    })
+
+    it('deletes the active invoice and clears the editor state', async () => {
+        const store = useEditorStore()
+        store.activeNode = { type: 'invoice', id: 7, baseNo: 101 }
+        store.activeInvoice = makeInvoice()
+        store.invoiceBook = [{ id: 7, baseNo: 101, status: 'issued', revisions: [] }]
+
+        const result = await store.deleteActiveInvoice()
+
+        expect(result).toBe(true)
+        expect(deleteInvoiceMock).toHaveBeenCalledWith(42, 101)
+        expect(store.activeNode).toBe(null)
+        expect(store.activeInvoice).toBe(null)
+        expect(store.draftInvoice).toBe(null)
+        expect(getInvAndRevNumsMock).toHaveBeenCalled()
+        expect(emitToastSuccessMock).toHaveBeenCalledWith('INV - 101 deleted.')
     })
 })

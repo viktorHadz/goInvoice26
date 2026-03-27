@@ -101,7 +101,11 @@ async function generatePdfOnly() {
                 type="button"
                 variant="success"
                 :disabled="revisionLocked || !editStore.hasUnsavedChanges"
-                class="cursor-pointer"
+                :class="
+                  revisionLocked || !editStore.hasUnsavedChanges
+                    ? 'cursor-not-allowed'
+                    : 'cursor-pointer'
+                "
                 @click="editStore.saveRevision(editStore.draftInvoice)"
               >
                 <DocumentArrowDownIcon class="size-4" />
@@ -129,7 +133,7 @@ async function generatePdfOnly() {
         >
           <div class="min-w-0">
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Adjustments</div>
-            <div class="text-xs text-zinc-600 dark:text-zinc-400">
+            <div class="text-xs text-sky-600 dark:text-emerald-400">
               Paid, deposit, discount, VAT and note
             </div>
           </div>
@@ -146,7 +150,7 @@ async function generatePdfOnly() {
         >
           <div class="min-w-0">
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-            <div class="text-xs text-zinc-600 dark:text-zinc-400">Balance overview</div>
+            <div class="text-xs text-sky-600 dark:text-emerald-400">Balance overview</div>
           </div>
         </div>
         <div class="p-3 md:p-4">

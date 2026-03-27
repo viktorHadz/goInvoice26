@@ -8,7 +8,7 @@ import type { Component } from 'vue'
 export type MenuOption = {
   id: number
   name: string
-  effect: () => void
+  effect: () => void | Promise<void>
   icon?: Component
   disabled?: boolean
   disabledReason?: string
@@ -19,7 +19,7 @@ function onOptionClick(option: MenuOption) {
     return
   }
 
-  option.effect()
+  void option.effect()
 }
 
 defineProps<{

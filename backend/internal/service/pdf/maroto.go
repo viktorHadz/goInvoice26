@@ -11,6 +11,7 @@ import (
 	"github.com/johnfercher/maroto/v2/pkg/components/col"
 	"github.com/johnfercher/maroto/v2/pkg/components/image"
 	"github.com/johnfercher/maroto/v2/pkg/components/line"
+	"github.com/johnfercher/maroto/v2/pkg/components/page"
 	"github.com/johnfercher/maroto/v2/pkg/components/row"
 	"github.com/johnfercher/maroto/v2/pkg/components/text"
 	"github.com/johnfercher/maroto/v2/pkg/config"
@@ -50,8 +51,7 @@ func (m *MarotoRenderer) RenderPDF(ctx context.Context, doc models.InvoicePDFDat
 	renderHeader(mr, doc)
 	renderMeta(mr, doc)
 	renderItemTable(mr, doc)
-	renderTotalsBlock(mr, doc)
-	renderPaymentBlock(mr, doc)
+	renderClosingBlocks(mr, doc)
 
 	out, err := mr.Generate()
 	if err != nil {
@@ -82,22 +82,18 @@ func renderHeader(mr core.Maroto, doc models.InvoicePDFData) {
 		numberLabel = "—"
 	}
 
-	issueText := compactMeta("Issued", clean(doc.IssueAt))
-	dueText := compactMeta("Due", cleanPtr(doc.DueDate))
+	issueDate := clean(doc.IssueAt)
+	dueDate := cleanPtr(doc.DueDate)
+	logoPath, hasLogo := resolveLocalLogoPath(doc.Issuer.LogoURL)
 
-	if path, ok := resolveLocalLogoPath(doc.Issuer.LogoURL); ok {
+	if hasLogo {
 		mr.AddRow(invoiceTheme.row.headerLogo,
-			image.NewFromFileCol(4, path, props.Rect{Percent: 78, Top: 1}),
-			text.NewCol(8, title, invoiceTheme.titleText(align.Right)),
+			image.NewFromFileCol(5, logoPath, props.Rect{Percent: 100, Top: 0.4}),
+			text.NewCol(7, title, invoiceTheme.titleText(align.Right)),
 		)
 		mr.AddRow(invoiceTheme.row.headerText,
-			col.New(4),
-			text.NewCol(8, numberLabel, invoiceTheme.documentNoText(align.Right)),
-		)
-		mr.AddRow(invoiceTheme.row.headerMeta,
-			col.New(4),
-			text.NewCol(4, issueText, invoiceTheme.metaText(align.Right)),
-			text.NewCol(4, dueText, invoiceTheme.metaText(align.Right)),
+			col.New(5),
+			text.NewCol(7, numberLabel, invoiceTheme.documentNoText(align.Right)),
 		)
 	} else {
 		mr.AddRow(invoiceTheme.row.headerLogo,
@@ -106,11 +102,10 @@ func renderHeader(mr core.Maroto, doc models.InvoicePDFData) {
 		mr.AddRow(invoiceTheme.row.headerText,
 			text.NewCol(12, numberLabel, invoiceTheme.documentNoText(align.Right)),
 		)
-		mr.AddRow(invoiceTheme.row.headerMeta,
-			text.NewCol(6, issueText, invoiceTheme.metaText(align.Left)),
-			text.NewCol(6, dueText, invoiceTheme.metaText(align.Right)),
-		)
 	}
+
+	renderHeaderMetaRow(mr, hasLogo, headerMetaValue("Issued", issueDate))
+	renderHeaderMetaRow(mr, hasLogo, headerMetaValue("Due", dueDate))
 
 	mr.AddRow(invoiceTheme.space.lg)
 }
@@ -126,24 +121,8 @@ func renderMeta(mr core.Maroto, doc models.InvoicePDFData) {
 
 	leftRows := left.rows()
 	rightRows := right.rows()
-	rowCount := maxInt(len(leftRows), len(rightRows))
-
-	for i := 0; i < rowCount; i++ {
-		l := blankPartyRow()
-		if i < len(leftRows) {
-			l = leftRows[i]
-		}
-
-		r := blankPartyRow()
-		if i < len(rightRows) {
-			r = rightRows[i]
-		}
-
-		mr.AddAutoRow(
-			text.NewCol(6, l.text, l.style).WithStyle(invoiceTheme.cell.party),
-			text.NewCol(6, r.text, r.style).WithStyle(invoiceTheme.cell.party),
-		)
-	}
+	ensureFitsOrNewPage(mr, estimateDualPanelHeight(leftRows, rightRows, 42))
+	renderDualPanelRows(mr, leftRows, rightRows, invoiceTheme.cell.party, invoiceTheme.cell.party, blankPartyRow())
 
 	mr.AddRow(invoiceTheme.space.xl)
 }
@@ -155,12 +134,15 @@ func renderItemTable(mr core.Maroto, doc models.InvoicePDFData) {
 		row.New(invoiceTheme.row.tableHeader).
 			WithStyle(invoiceTheme.cell.tableHeader).
 			Add(
-				text.NewCol(7, "Description", invoiceTheme.tableHeaderText(align.Left)),
+				text.NewCol(6, "Description", invoiceTheme.tableHeaderText(align.Left)),
 				text.NewCol(1, "Qty", invoiceTheme.tableHeaderText(align.Center)),
-				text.NewCol(2, "Unit Price", invoiceTheme.tableHeaderText(align.Right)),
+				text.NewCol(1, "Time", invoiceTheme.tableHeaderText(align.Center)),
+				text.NewCol(1, "Rate", invoiceTheme.tableHeaderText(align.Right)),
+				text.NewCol(1, "Price", invoiceTheme.tableHeaderText(align.Right)),
 				text.NewCol(2, "Amount", invoiceTheme.tableHeaderText(align.Right)),
 			),
 	)
+	renderFullDivider(mr, invoiceTheme.line.divider)
 
 	if len(doc.Lines) == 0 {
 		mr.AddAutoRow(text.NewCol(12, "No line items.", invoiceTheme.text.emptyState))
@@ -169,7 +151,7 @@ func renderItemTable(mr core.Maroto, doc models.InvoicePDFData) {
 	}
 
 	groups := groupInvoicePDFItems(doc.Lines)
-	rendered := 0
+	renderedRows := 0
 
 	for _, group := range groups {
 		if len(group.Lines) == 0 {
@@ -177,90 +159,68 @@ func renderItemTable(mr core.Maroto, doc models.InvoicePDFData) {
 		}
 
 		if doc.ShowItemTypeHeaders {
-			if rendered > 0 {
+			if renderedRows > 0 {
 				mr.AddRow(invoiceTheme.space.sm)
 			}
 			mr.AddRow(invoiceTheme.row.groupLabel,
 				text.NewCol(12, strings.ToUpper(group.Title), invoiceTheme.sectionLabelText(align.Left)),
 			)
+			renderFullDivider(mr, invoiceTheme.line.soft)
 		}
 
-		for _, ln := range group.Lines {
-			if rendered > 0 {
-				mr.AddRow(invoiceTheme.space.xxs, line.NewCol(12, invoiceTheme.line.soft))
-			}
-
+		for i, ln := range group.Lines {
 			mr.AddAutoRow(
-				text.NewCol(7, clean(ln.Name), invoiceTheme.tableCellText(align.Left)),
+				text.NewCol(6, clean(ln.Name), invoiceTheme.tableCellText(align.Left)),
 				text.NewCol(1, clean(ln.Quantity), invoiceTheme.tableCellText(align.Center)),
-				text.NewCol(2, clean(ln.ItemPrice), invoiceTheme.tableCellText(align.Right)),
+				text.NewCol(1, clean(ln.TimeWorked), invoiceTheme.tableCellText(align.Center)),
+				text.NewCol(1, clean(ln.HourlyRate), invoiceTheme.tableCellText(align.Right)),
+				text.NewCol(1, clean(ln.ItemPrice), invoiceTheme.tableCellText(align.Right)),
 				text.NewCol(2, clean(ln.ItemTotal), invoiceTheme.tableCellText(align.Right)),
 			)
-			rendered++
+			renderedRows++
+
+			if doc.ShowItemTypeHeaders && i < len(group.Lines)-1 {
+				renderFullDivider(mr, invoiceTheme.line.soft)
+			}
+			if !doc.ShowItemTypeHeaders && renderedRows < len(doc.Lines) {
+				renderFullDivider(mr, invoiceTheme.line.soft)
+			}
 		}
 	}
 
 	mr.AddRow(invoiceTheme.space.lg)
 }
 
-func renderTotalsBlock(mr core.Maroto, doc models.InvoicePDFData) {
-	renderSectionLabel(mr, "Summary")
-
-	noteRows := buildNoteRows(doc.Note)
+func renderClosingBlocks(mr core.Maroto, doc models.InvoicePDFData) {
 	totalRows := buildTotalRows(doc)
-	rowCount := maxInt(len(noteRows), len(totalRows))
+	noteRows := buildNoteRows(doc.Note)
+	paymentSections := buildPaymentSections(doc)
 
-	for i := 0; i < rowCount; i++ {
-		if i < len(totalRows) && totalRows[i].ruleAbove {
-			mr.AddRow(invoiceTheme.space.xxs, col.New(6), line.NewCol(6, invoiceTheme.line.divider))
-		}
+	renderTotalsBlock(mr, totalRows, noteRows)
 
-		note := blankSectionLine(invoiceTheme.text.noteBody)
-		if i < len(noteRows) {
-			note = noteRows[i]
-		}
+	if len(paymentSections) > 0 {
+		renderPaymentBlock(mr, paymentSections)
+	}
+}
 
-		if i >= len(totalRows) {
-			mr.AddAutoRow(
-				text.NewCol(6, note.text, note.style),
-				col.New(4),
-				col.New(2),
-			)
-			continue
-		}
+func renderTotalsBlock(mr core.Maroto, totalRows []totalLine, noteRows []styledTextLine) {
+	ensureFitsOrNewPage(mr, estimateSummaryHeight(totalRows, noteRows))
+	renderOffsetSectionLabel(mr, "Summary", 7, 5)
+	renderTotalsPanel(mr, totalRows)
 
-		total := totalRows[i]
-		mr.AddAutoRow(
-			text.NewCol(6, note.text, note.style),
-			text.NewCol(4, total.label, total.labelStyle).WithStyle(total.cellStyle),
-			text.NewCol(2, total.value, total.valueStyle).WithStyle(total.cellStyle),
-		)
+	if len(noteRows) > 0 {
+		mr.AddRow(invoiceTheme.space.xl)
+		renderNotePanel(mr, noteRows)
 	}
 
 	mr.AddRow(invoiceTheme.space.xl)
 }
 
-func renderPaymentBlock(mr core.Maroto, doc models.InvoicePDFData) {
-	sections := make([]paymentSection, 0, 2)
-	if clean(doc.PaymentTerms) != "" {
-		sections = append(sections, paymentSection{
-			Title: "PAYMENT TERMS",
-			Lines: linesOf(doc.PaymentTerms),
-		})
-	}
-	if clean(doc.PaymentDetails) != "" {
-		sections = append(sections, paymentSection{
-			Title: "PAYMENT DETAILS",
-			Lines: linesOf(doc.PaymentDetails),
-		})
-	}
-	if len(sections) == 0 {
-		return
-	}
-
+func renderPaymentBlock(mr core.Maroto, sections []paymentSection) {
+	ensureFitsOrNewPage(mr, estimatePaymentHeight(sections))
 	renderSectionLabel(mr, "Payment")
 
-	if len(sections) == 2 && fitsPaymentColumns(mr, sections[0], sections[1]) {
+	if len(sections) == 2 {
 		renderPaymentColumns(mr, sections[0], sections[1])
 		return
 	}
@@ -303,7 +263,7 @@ type itemGroup struct {
 func buildPartyBlock(label, name, address, email, phone string) partyBlock {
 	details := make([]string, 0, 3)
 
-	addrOneLine := strings.Join(linesOf(address), ", ")
+	addrOneLine := joinAddressParts(address)
 	if addrOneLine != "" {
 		details = append(details, addrOneLine)
 	}
@@ -335,11 +295,12 @@ func (p partyBlock) rows() []styledTextLine {
 }
 
 func buildNoteRows(note *string) []styledTextLine {
-	rows := []styledTextLine{
-		{text: "NOTES", style: invoiceTheme.text.noteLabel},
+	if cleanPtr(note) == "" {
+		return nil
 	}
 
-	for _, ln := range linesOf(cleanPtr(note)) {
+	rows := make([]styledTextLine, 0, len(linesOf(*note)))
+	for _, ln := range linesOf(*note) {
 		rows = append(rows, styledTextLine{text: ln, style: invoiceTheme.text.noteBody})
 	}
 
@@ -352,7 +313,7 @@ func buildTotalRows(doc models.InvoicePDFData) []totalLine {
 	}
 
 	if doc.Totals.DiscountMinor > 0 {
-		rows = append(rows, newTotalLine("Discount", "−"+formatMoney(doc.Totals.DiscountMinor, doc.Currency)))
+		rows = append(rows, newTotalLine("Discount", formatMoney(-doc.Totals.DiscountMinor, doc.Currency)))
 	}
 
 	rows = append(rows,
@@ -361,10 +322,10 @@ func buildTotalRows(doc models.InvoicePDFData) []totalLine {
 	)
 
 	if doc.Totals.DepositMinor > 0 {
-		rows = append(rows, newTotalLine("Deposit", "−"+formatMoney(doc.Totals.DepositMinor, doc.Currency)))
+		rows = append(rows, newTotalLine("Deposit", formatMoney(-doc.Totals.DepositMinor, doc.Currency)))
 	}
 	if doc.Totals.PaidMinor > 0 {
-		rows = append(rows, newTotalLine("Paid", "−"+formatMoney(doc.Totals.PaidMinor, doc.Currency)))
+		rows = append(rows, newTotalLine("Paid", formatMoney(-doc.Totals.PaidMinor, doc.Currency)))
 	}
 
 	rows = append(rows, totalLine{
@@ -390,83 +351,244 @@ func newTotalLine(label, value string) totalLine {
 }
 
 func renderSectionLabel(mr core.Maroto, title string) {
-	if !mr.FitlnCurrentPage(invoiceTheme.row.sectionLabel + invoiceTheme.row.tableHeader) {
-		mr.AddRow(999)
-	}
-
 	mr.AddRow(invoiceTheme.row.sectionLabel,
 		text.NewCol(12, strings.ToUpper(title), invoiceTheme.sectionLabelText(align.Left)),
 	)
 	mr.AddRow(invoiceTheme.space.xs)
 }
 
-func fitsPaymentColumns(mr core.Maroto, left, right paymentSection) bool {
-	bodyRows := maxInt(len(left.Lines), len(right.Lines))
-	estimatedHeight := invoiceTheme.row.tableHeader + float64(bodyRows)*6 + invoiceTheme.space.lg
-	return mr.FitlnCurrentPage(estimatedHeight)
+func renderOffsetSectionLabel(mr core.Maroto, title string, offset, span int) {
+	mr.AddRow(invoiceTheme.row.sectionLabel,
+		col.New(offset),
+		text.NewCol(span, strings.ToUpper(title), invoiceTheme.sectionLabelText(align.Left)),
+	)
+	mr.AddRow(invoiceTheme.space.xs)
 }
 
 func renderPaymentColumns(mr core.Maroto, left, right paymentSection) {
-	mr.AddRows(
-		row.New(invoiceTheme.row.tableHeader).
-			Add(
-				text.NewCol(6, left.Title, invoiceTheme.text.paymentLabel).WithStyle(invoiceTheme.cell.payment),
-				text.NewCol(6, right.Title, invoiceTheme.text.paymentLabel).WithStyle(invoiceTheme.cell.payment),
-			),
-	)
-
-	rows := maxInt(len(left.Lines), len(right.Lines))
-	for i := 0; i < rows; i++ {
-		leftText := ""
-		if i < len(left.Lines) {
-			leftText = left.Lines[i]
-		}
-
-		rightText := ""
-		if i < len(right.Lines) {
-			rightText = right.Lines[i]
-		}
-
-		mr.AddAutoRow(
-			text.NewCol(6, leftText, invoiceTheme.text.paymentBody).WithStyle(invoiceTheme.cell.payment),
-			text.NewCol(6, rightText, invoiceTheme.text.paymentBody).WithStyle(invoiceTheme.cell.payment),
-		)
-	}
-
+	leftRows := buildPaymentRows(left)
+	rightRows := buildPaymentRows(right)
+	renderDualPanelRows(mr, leftRows, rightRows, invoiceTheme.cell.payment, invoiceTheme.cell.payment, blankStyledLine(invoiceTheme.text.paymentBody))
 	mr.AddRow(invoiceTheme.space.lg)
 }
 
 func renderPaymentSection(mr core.Maroto, section paymentSection) {
-	estimatedHeight := invoiceTheme.row.tableHeader + float64(len(section.Lines))*6 + invoiceTheme.space.md
-	if !mr.FitlnCurrentPage(estimatedHeight) {
-		mr.AddRow(999)
-	}
-
-	mr.AddRows(
-		row.New(invoiceTheme.row.tableHeader).
-			Add(text.NewCol(12, section.Title, invoiceTheme.text.paymentLabel).WithStyle(invoiceTheme.cell.payment)),
-	)
-
-	for _, ln := range section.Lines {
-		mr.AddAutoRow(text.NewCol(12, ln, invoiceTheme.text.paymentBody).WithStyle(invoiceTheme.cell.payment))
-	}
-
+	renderSinglePanelRows(mr, buildPaymentRows(section), invoiceTheme.cell.payment)
 	mr.AddRow(invoiceTheme.space.md)
+}
+
+func renderNotePanel(mr core.Maroto, rows []styledTextLine) {
+	mr.AddRow(invoiceTheme.row.sectionLabel,
+		text.NewCol(12, "NOTES", invoiceTheme.text.noteLabel),
+	)
+	renderSinglePanelRows(mr, rows, invoiceTheme.cell.note)
 }
 
 func blankPartyRow() styledTextLine {
 	return styledTextLine{style: invoiceTheme.text.partyBody}
 }
 
-func blankSectionLine(style props.Text) styledTextLine {
+func blankStyledLine(style props.Text) styledTextLine {
 	return styledTextLine{style: style}
 }
 
-func compactMeta(label, value string) string {
+func buildPaymentRows(section paymentSection) []styledTextLine {
+	rows := []styledTextLine{
+		{text: section.Title, style: invoiceTheme.text.paymentLabel},
+	}
+	for _, ln := range section.Lines {
+		rows = append(rows, styledTextLine{text: ln, style: invoiceTheme.text.paymentBody})
+	}
+	return rows
+}
+
+func buildPaymentSections(doc models.InvoicePDFData) []paymentSection {
+	sections := make([]paymentSection, 0, 2)
+
+	if clean(doc.PaymentTerms) != "" {
+		sections = append(sections, paymentSection{
+			Title: "PAYMENT TERMS",
+			Lines: linesOf(doc.PaymentTerms),
+		})
+	}
+	if clean(doc.PaymentDetails) != "" {
+		sections = append(sections, paymentSection{
+			Title: "PAYMENT DETAILS",
+			Lines: linesOf(doc.PaymentDetails),
+		})
+	}
+
+	return sections
+}
+
+func headerMetaValue(label, value string) string {
 	if value == "" {
 		return ""
 	}
 	return label + " " + value
+}
+
+func renderHeaderMetaRow(mr core.Maroto, hasLogo bool, value string) {
+	if value == "" {
+		return
+	}
+
+	if hasLogo {
+		mr.AddRow(invoiceTheme.row.headerMeta,
+			col.New(5),
+			text.NewCol(7, value, invoiceTheme.metaText(align.Right)),
+		)
+		return
+	}
+
+	mr.AddRow(invoiceTheme.row.headerMeta,
+		text.NewCol(12, value, invoiceTheme.metaText(align.Right)),
+	)
+}
+
+func renderTotalsPanel(mr core.Maroto, rows []totalLine) {
+	for i, total := range rows {
+		if i == 0 {
+			mr.AddRow(invoiceTheme.space.xs,
+				col.New(7),
+				col.New(5).WithStyle(total.cellStyle),
+			)
+		}
+		if total.ruleAbove {
+			mr.AddRow(invoiceTheme.space.xxs,
+				col.New(7),
+				line.NewCol(5, invoiceTheme.line.divider),
+			)
+		}
+
+		mr.AddAutoRow(
+			col.New(7),
+			text.NewCol(3, total.label, total.labelStyle).WithStyle(total.cellStyle),
+			text.NewCol(2, total.value, total.valueStyle).WithStyle(total.cellStyle),
+		)
+
+		if i == len(rows)-1 {
+			mr.AddRow(invoiceTheme.space.xs,
+				col.New(7),
+				col.New(5).WithStyle(total.cellStyle),
+			)
+		}
+	}
+}
+
+func renderSinglePanelRows(mr core.Maroto, rows []styledTextLine, style *props.Cell) {
+	if len(rows) == 0 {
+		return
+	}
+
+	mr.AddRow(invoiceTheme.space.xs, col.New(12).WithStyle(style))
+	for _, item := range rows {
+		mr.AddAutoRow(text.NewCol(12, item.text, item.style).WithStyle(style))
+	}
+	mr.AddRow(invoiceTheme.space.xs, col.New(12).WithStyle(style))
+}
+
+func renderDualPanelRows(
+	mr core.Maroto,
+	leftRows []styledTextLine,
+	rightRows []styledTextLine,
+	leftStyle *props.Cell,
+	rightStyle *props.Cell,
+	blank styledTextLine,
+) {
+	rowCount := maxInt(len(leftRows), len(rightRows))
+
+	mr.AddRow(invoiceTheme.space.sm,
+		col.New(5).WithStyle(leftStyle),
+		col.New(2),
+		col.New(5).WithStyle(rightStyle),
+	)
+
+	for i := 0; i < rowCount; i++ {
+		left := blank
+		if i < len(leftRows) {
+			left = leftRows[i]
+		}
+
+		right := blank
+		if i < len(rightRows) {
+			right = rightRows[i]
+		}
+
+		mr.AddAutoRow(
+			text.NewCol(5, left.text, left.style).WithStyle(leftStyle),
+			col.New(2),
+			text.NewCol(5, right.text, right.style).WithStyle(rightStyle),
+		)
+	}
+
+	mr.AddRow(invoiceTheme.space.sm,
+		col.New(5).WithStyle(leftStyle),
+		col.New(2),
+		col.New(5).WithStyle(rightStyle),
+	)
+}
+
+func renderFullDivider(mr core.Maroto, rule props.Line) {
+	mr.AddRow(invoiceTheme.space.xxs, line.NewCol(12, rule))
+}
+
+func ensureFitsOrNewPage(mr core.Maroto, estimatedHeight float64) {
+	if !mr.FitlnCurrentPage(estimatedHeight) {
+		mr.AddPages(page.New())
+	}
+}
+
+func estimateDualPanelHeight(leftRows, rightRows []styledTextLine, charsPerLine int) float64 {
+	lines := maxInt(estimateStyledRows(leftRows, charsPerLine), estimateStyledRows(rightRows, charsPerLine))
+	return invoiceTheme.space.sm*2 + float64(lines)*5.6
+}
+
+func estimateSummaryHeight(totalRows []totalLine, noteRows []styledTextLine) float64 {
+	height := invoiceTheme.row.sectionLabel + invoiceTheme.space.xs + invoiceTheme.space.xs*2 + float64(len(totalRows))*6.2 + invoiceTheme.space.xl
+	if len(noteRows) > 0 {
+		height += invoiceTheme.space.md + invoiceTheme.row.sectionLabel + invoiceTheme.space.xs*2 + float64(estimateStyledRows(noteRows, 92))*5.6
+	}
+	return height
+}
+
+func estimatePaymentHeight(sections []paymentSection) float64 {
+	base := invoiceTheme.row.sectionLabel + invoiceTheme.space.xs
+	if len(sections) == 1 {
+		return base + invoiceTheme.space.xs*2 + float64(estimateStyledRows(buildPaymentRows(sections[0]), 92))*5.6 + invoiceTheme.space.md
+	}
+
+	leftRows := buildPaymentRows(sections[0])
+	rightRows := buildPaymentRows(sections[1])
+	return base + estimateDualPanelHeight(leftRows, rightRows, 42) + invoiceTheme.space.lg
+}
+
+func estimateStyledRows(rows []styledTextLine, charsPerLine int) int {
+	total := 0
+	for _, row := range rows {
+		total += estimateTextLines(row.text, charsPerLine)
+	}
+	return total
+}
+
+func estimateTextLines(text string, charsPerLine int) int {
+	if strings.TrimSpace(text) == "" {
+		return 1
+	}
+
+	lines := 0
+	for _, part := range linesOf(text) {
+		runes := len([]rune(part))
+		count := (runes + charsPerLine - 1) / charsPerLine
+		if count < 1 {
+			count = 1
+		}
+		lines += count
+	}
+	if lines == 0 {
+		return 1
+	}
+	return lines
 }
 
 func groupInvoicePDFItems(lines []models.InvoicePDFItem) []itemGroup {
@@ -499,10 +621,17 @@ func resolveLocalLogoPath(v string) (string, bool) {
 	if v == "" {
 		return "", false
 	}
-	v = strings.TrimPrefix(v, "/")
 	if _, err := os.Stat(v); err == nil {
 		return v, true
 	}
+
+	trimmed := strings.TrimPrefix(v, "/")
+	if trimmed != v {
+		if _, err := os.Stat(trimmed); err == nil {
+			return trimmed, true
+		}
+	}
+
 	return "", false
 }
 
@@ -519,6 +648,14 @@ func linesOf(v string) []string {
 		}
 	}
 	return out
+}
+
+func joinAddressParts(v string) string {
+	parts := linesOf(v)
+	for i, part := range parts {
+		parts[i] = strings.TrimRight(strings.TrimSpace(part), ",")
+	}
+	return strings.Join(parts, ", ")
 }
 
 func clean(v string) string { return strings.TrimSpace(v) }

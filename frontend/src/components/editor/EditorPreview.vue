@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ChevronUpDownIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 import { fmtGBPMinor, calcTotals, calcDepositMinor, calcBalanceDueMinor } from '@/utils/money'
 import { fmtStrDate } from '@/utils/dates'
+import { editorPreviewLineTotalMinor, formatEditorPreviewLineMeta } from '@/utils/editorPreview'
 import { formatActiveEditorNodeLabel, formatInvoiceBaseLabel } from '@/utils/invoiceLabels'
 import TheDropdown from '@/components/UI/TheDropdown.vue'
 import DetailsMenu, { type MenuOption } from '@/components/editor/partials/DetailsMenu.vue'
 import { usePdfStore } from '@/stores/pdf'
 import type { InvoiceStatus } from '@/components/invoice/invoiceTypes'
 import { reachableStatuses } from '@/utils/invoiceStatusOptions'
+import { requestConfirmation } from '@/utils/confirm'
 
 const editStore = useEditorStore()
 const setsStore = useSettingsStore()
@@ -115,6 +117,27 @@ const selectedStatus = computed({
   },
 })
 
+async function confirmDeleteInvoice() {
+  const invoice = editStore.activeInvoice
+  if (!invoice) return
+
+  const invoiceLabel = formatInvoiceBaseLabel(invoicePrefix.value, invoice.baseNumber)
+
+  const confirmed = await requestConfirmation({
+    title: 'Delete invoice?',
+    message: `Delete ${invoiceLabel} from the invoice book?`,
+    details:
+      'This permanently removes the invoice, all saved revisions, and any recorded payments for it.',
+    confirmLabel: 'Delete invoice',
+    cancelLabel: 'Keep invoice',
+    confirmVariant: 'danger',
+  })
+
+  if (!confirmed) return
+
+  await editStore.deleteActiveInvoice()
+}
+
 const menuOpts = computed<MenuOption[]>(() => [
   {
     id: 1,
@@ -129,7 +152,7 @@ const menuOpts = computed<MenuOption[]>(() => [
     name: 'Delete invoice',
     disabled: !canStartEdit.value,
     disabledReason: 'Cannot delete when status is "paid" or "void"',
-    effect: () => console.log('Deleting invoice'),
+    effect: confirmDeleteInvoice,
     icon: TrashIcon,
   },
 ])
@@ -168,7 +191,7 @@ const menuOpts = computed<MenuOption[]>(() => [
               <h2 class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
                 {{ invoiceDisplayLabel }}
               </h2>
-              <p class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">Read-only preview</p>
+              <p class="mt-0.5 text-xs text-sky-600 dark:text-emerald-400">Read-only preview</p>
             </div>
             <div class="flex items-center gap-2">
               <DetailsMenu
@@ -293,7 +316,7 @@ const menuOpts = computed<MenuOption[]>(() => [
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
               Invoice items
             </div>
-            <div class="text-xs text-zinc-600 dark:text-zinc-400">
+            <div class="text-xs text-sky-600 dark:text-emerald-400">
               Saved line items for the current invoice
             </div>
           </div>
@@ -352,10 +375,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                       </div>
 
                       <div class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">
-                        {{ line.pricingMode }}
-                        <span v-if="line.pricingMode === 'hourly' && line.minutesWorked">
-                          · {{ line.minutesWorked }} min
-                        </span>
+                        {{ formatEditorPreviewLineMeta(line) }}
                       </div>
                     </div>
 
@@ -370,7 +390,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                     <div
                       class="text-right font-medium text-zinc-900 tabular-nums dark:text-zinc-100"
                     >
-                      {{ fmtGBPMinor(line.quantity * line.unitPriceMinor) }}
+                      {{ fmtGBPMinor(editorPreviewLineTotalMinor(line)) }}
                     </div>
                   </div>
                 </template>
@@ -387,7 +407,7 @@ const menuOpts = computed<MenuOption[]>(() => [
         >
           <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-            <div class="text-xs text-zinc-600 dark:text-zinc-400">Balance overview</div>
+            <div class="text-xs text-sky-600 dark:text-emerald-400">Balance overview</div>
           </div>
 
           <div
@@ -473,7 +493,7 @@ const menuOpts = computed<MenuOption[]>(() => [
         >
           <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Note</div>
-            <div class="text-xs text-zinc-600 dark:text-zinc-400">
+            <div class="text-xs text-sky-600 dark:text-emerald-400">
               Extra text shown on the invoice
             </div>
           </div>

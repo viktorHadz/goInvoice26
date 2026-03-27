@@ -22,6 +22,7 @@ import DecorGradient from '../UI/DecorGradient.vue'
 import TheTooltip from '../UI/TheTooltip.vue'
 import { emitToastSuccess } from '@/utils/toast'
 import { handleActionError } from '@/utils/errors/handleActionError'
+import { requestConfirmation } from '@/utils/confirm'
 
 const clientStore = useClientStore()
 
@@ -169,12 +170,24 @@ async function saveEdit() {
   }
 }
 
-async function removeClient(id: number) {
+async function removeClient(client: Client) {
+  const confirmed = await requestConfirmation({
+    title: 'Delete client?',
+    message: `Delete ${client.name || 'this client'} from your clients list?`,
+    details:
+      'This action cannot be undone. If the client is linked to saved invoices, deletion may be blocked.',
+    confirmLabel: 'Delete client',
+    cancelLabel: 'Keep client',
+    confirmVariant: 'danger',
+  })
+
+  if (!confirmed) return
+
   try {
-    await clientStore.remove(id)
+    await clientStore.remove(client.id)
     emitToastSuccess('Client removed')
-    if (openId.value === id) openId.value = null
-    if (editingId.value === id) cancelEdit()
+    if (openId.value === client.id) openId.value = null
+    if (editingId.value === client.id) cancelEdit()
   } catch (err) {
     handleActionError(err, {
       toastTitle: 'Delete client failed',
@@ -435,7 +448,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
                 <button
                   type="button"
                   class="cursor-pointer rounded-md border border-transparent p-1 text-zinc-600 hover:border-rose-600/20 hover:bg-rose-50 hover:text-rose-500 dark:text-zinc-300 dark:hover:border-rose-300/20 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
-                  @click.stop="removeClient(c.id)"
+                  @click.stop="removeClient(c)"
                 >
                   <TrashIcon class="size-5" />
                 </button>

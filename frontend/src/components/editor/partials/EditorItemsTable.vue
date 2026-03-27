@@ -18,7 +18,9 @@ const lines = computed(() => {
     <div class="flex gap-3 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
       <div class="min-w-0">
         <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
-        <div class="text-xs text-zinc-600 dark:text-zinc-400">Edit line items for this invoice</div>
+        <div class="text-xs text-sky-600 dark:text-emerald-400">
+          Edit line items for this invoice
+        </div>
       </div>
     </div>
 

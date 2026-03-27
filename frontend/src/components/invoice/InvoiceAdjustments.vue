@@ -127,19 +127,16 @@ function addPendingPayment() {
   if (minor <= 0) {
     paymentError.value = 'Enter an amount greater than zero.'
     paymentAmount.value = 0
-    emitToastError({ title: 'Invalid payment', message: paymentError.value })
     return
   }
   if (minor > inv.balanceDueMinor) {
     paymentError.value = 'Amount cannot exceed outstanding balance.'
     paymentAmount.value = 0
-    emitToastError({ title: 'Invalid payment', message: paymentError.value })
     return
   }
   if (!paymentDate.value) {
     paymentError.value = 'Payment date is required.'
     paymentAmount.value = 0
-    emitToastError({ title: 'Invalid payment', message: paymentError.value })
     return
   }
 
@@ -406,7 +403,7 @@ function applyVat() {
       >
         {{ paymentError || inv.getFieldError('totals.paidMinor') }}
       </p>
-      <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+      <p class="mt-1 text-xs text-sky-600 dark:text-emerald-400">
         Outstanding: {{ fmtGBPMinor(inv.balanceDueMinor) }}
       </p>
     </section>

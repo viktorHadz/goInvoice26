@@ -76,7 +76,7 @@ onActivated(refreshInvoiceClientSnapshot)
       >
         <div class="min-w-0">
           <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
-          <div class="text-xs text-zinc-600 dark:text-zinc-400">
+          <div class="text-xs text-sky-600 dark:text-emerald-400">
             {{ invStore.prettyBaseNumber ? 'For ' + invStore.prettyBaseNumber : '' }}
           </div>
         </div>
@@ -100,7 +100,7 @@ onActivated(refreshInvoiceClientSnapshot)
         <div class="flex justify-between border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
           <div>
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Adjustments</div>
-            <div class="text-xs text-zinc-600 dark:text-zinc-400">
+            <div class="text-xs text-sky-600 dark:text-emerald-400">
               Paid, deposit, discount, VAT and note
             </div>
           </div>
@@ -117,7 +117,7 @@ onActivated(refreshInvoiceClientSnapshot)
         <div class="flex justify-between border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
           <div>
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-            <div class="text-xs text-zinc-600 dark:text-zinc-400">Balance overview</div>
+            <div class="text-xs text-sky-600 dark:text-emerald-400">Balance overview</div>
           </div>
 
           <div class="flex flex-col items-end gap-y-2">

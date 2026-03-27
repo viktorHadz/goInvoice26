@@ -31,3 +31,10 @@ export async function patchInvoiceStatus(
         body: JSON.stringify({ status }),
     })
 }
+
+export async function deleteInvoice(clientId: number, baseNumber: number): Promise<void> {
+    const url = `/api/clients/${clientId}/invoice/${baseNumber}`
+    return await request<void>(url, {
+        method: 'DELETE',
+    })
+}

@@ -40,6 +40,7 @@ type marotoTheme struct {
 		tableHeader *props.Cell
 		total       *props.Cell
 		balance     *props.Cell
+		note        *props.Cell
 		payment     *props.Cell
 	}
 	space struct {
@@ -64,13 +65,13 @@ type marotoTheme struct {
 func newMarotoTheme() marotoTheme {
 	t := marotoTheme{}
 
-	inkStrong := &props.Color{Red: 22, Green: 22, Blue: 22}
-	inkBody := &props.Color{Red: 78, Green: 78, Blue: 78}
-	inkMuted := &props.Color{Red: 122, Green: 122, Blue: 122}
-	ruleSoft := &props.Color{Red: 220, Green: 220, Blue: 216}
-	ruleStrong := &props.Color{Red: 192, Green: 192, Blue: 188}
-	panelSoft := &props.Color{Red: 247, Green: 247, Blue: 244}
-	panelStrong := &props.Color{Red: 239, Green: 239, Blue: 235}
+	inkStrong := &props.Color{Red: 18, Green: 18, Blue: 18}
+	inkBody := &props.Color{Red: 48, Green: 48, Blue: 48}
+	inkMuted := &props.Color{Red: 80, Green: 80, Blue: 80}
+	ruleSoft := &props.Color{Red: 216, Green: 216, Blue: 216}
+	ruleStrong := &props.Color{Red: 188, Green: 188, Blue: 188}
+	panelSoft := &props.Color{Red: 244, Green: 244, Blue: 244}
+	panelStrong := &props.Color{Red: 235, Green: 235, Blue: 235}
 
 	t.text.title = props.Text{
 		Size:  25,
@@ -79,19 +80,20 @@ func newMarotoTheme() marotoTheme {
 		Top:   1.2,
 	}
 	t.text.documentNo = props.Text{
-		Size:  11.5,
+		Size:  12,
 		Color: inkBody,
+		Style: fontstyle.Bold,
 		Top:   0.8,
 	}
 	t.text.meta = props.Text{
-		Size:  8.1,
-		Color: inkMuted,
-		Top:   0.8,
+		Size:  8.8,
+		Color: inkBody,
+		Top:   0.7,
 	}
 	t.text.sectionLabel = props.Text{
-		Size:  7.6,
+		Size:  7.8,
 		Style: fontstyle.Bold,
-		Color: inkMuted,
+		Color: inkBody,
 		Top:   0.5,
 	}
 	t.text.partyLabel = props.Text{
@@ -123,7 +125,7 @@ func newMarotoTheme() marotoTheme {
 	t.text.tableHeader = props.Text{
 		Size:   7.7,
 		Style:  fontstyle.Bold,
-		Color:  inkMuted,
+		Color:  inkBody,
 		Top:    2,
 		Bottom: 1.3,
 	}
@@ -143,16 +145,18 @@ func newMarotoTheme() marotoTheme {
 	t.text.noteLabel = props.Text{
 		Size:   7.4,
 		Style:  fontstyle.Bold,
-		Color:  inkMuted,
-		Top:    1,
-		Bottom: 0.3,
+		Color:  inkBody,
+		Top:    0,
+		Bottom: 1,
+		Align:  align.Left,
 	}
 	t.text.noteBody = props.Text{
 		Size:   8.8,
 		Color:  inkBody,
-		Top:    0.9,
+		Top:    0.8,
 		Bottom: 0.9,
-		Right:  8,
+		Left:   3,
+		Right:  3,
 	}
 	t.text.totalLabel = props.Text{
 		Size:   8.8,
@@ -191,7 +195,7 @@ func newMarotoTheme() marotoTheme {
 	t.text.paymentLabel = props.Text{
 		Size:   7.4,
 		Style:  fontstyle.Bold,
-		Color:  inkMuted,
+		Color:  inkBody,
 		Top:    2.1,
 		Bottom: 0.4,
 		Left:   3,
@@ -208,18 +212,19 @@ func newMarotoTheme() marotoTheme {
 	t.text.footer = props.Text{
 		Size:  7.3,
 		Align: align.Center,
-		Color: inkMuted,
+		Color: inkBody,
 		Top:   0.9,
 	}
 
-	t.line.soft = props.Line{Color: ruleSoft, Thickness: 0.18}
-	t.line.divider = props.Line{Color: ruleSoft, Thickness: 0.3}
-	t.line.accent = props.Line{Color: ruleStrong, Thickness: 0.5}
+	t.line.soft = props.Line{Color: ruleSoft, Thickness: 0.14, OffsetPercent: 50, SizePercent: 100}
+	t.line.divider = props.Line{Color: ruleSoft, Thickness: 0.24, OffsetPercent: 50, SizePercent: 100}
+	t.line.accent = props.Line{Color: ruleStrong, Thickness: 0.4, OffsetPercent: 50, SizePercent: 100}
 
 	t.cell.party = &props.Cell{BackgroundColor: panelSoft}
 	t.cell.tableHeader = &props.Cell{BackgroundColor: panelSoft}
 	t.cell.total = &props.Cell{BackgroundColor: panelSoft}
 	t.cell.balance = &props.Cell{BackgroundColor: panelStrong}
+	t.cell.note = &props.Cell{BackgroundColor: panelSoft}
 	t.cell.payment = &props.Cell{BackgroundColor: panelSoft}
 
 	t.space.xxs = 1.2
@@ -229,9 +234,9 @@ func newMarotoTheme() marotoTheme {
 	t.space.lg = 6
 	t.space.xl = 8
 
-	t.row.headerLogo = 17
-	t.row.headerText = 6
-	t.row.headerMeta = 5
+	t.row.headerLogo = 24
+	t.row.headerText = 5.4
+	t.row.headerMeta = 4.8
 	t.row.sectionLabel = 4.5
 	t.row.tableHeader = 7.5
 	t.row.groupLabel = 5

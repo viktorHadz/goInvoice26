@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useClientStore } from './clients'
-import { getInvAndRevNums, getInvoice, patchInvoiceStatus } from '@/utils/editorHttpHandler'
+import {
+    deleteInvoice,
+    getInvAndRevNums,
+    getInvoice,
+    patchInvoiceStatus,
+} from '@/utils/editorHttpHandler'
 import type {
     ActiveEditorNode,
     InvBookInvoice,
@@ -419,6 +424,11 @@ export const useEditorStore = defineStore('editorStore', () => {
             lastVerifyAt.value = null
             await fetchInvoiceBook()
             await refreshActiveInvoiceFromServer()
+            console.log(
+                'LATESTT REVISION FOR BASE: ',
+                dto.overview.baseNumber,
+                latestRevisionNoForBase(dto.overview.baseNumber),
+            )
             return true
         } catch (err: unknown) {
             if (isApiError(err) && hasFieldErrors(err)) {
@@ -559,6 +569,33 @@ export const useEditorStore = defineStore('editorStore', () => {
         }
     }
 
+    async function deleteActiveInvoice(): Promise<boolean> {
+        const clientId = clientStore.selectedClient?.id
+        const baseNumber = activeInvoice.value?.baseNumber ?? activeNode.value?.baseNo
+        if (!clientId || !baseNumber) return false
+
+        const shouldResetPage = offset.value > 0 && invoiceBook.value.length <= 1
+        const invoiceLabel = formatInvoiceBaseLabel(invoicePrefix.value, baseNumber)
+
+        try {
+            await deleteInvoice(clientId, baseNumber)
+
+            activeNode.value = null
+            clearActiveInvoice()
+            await fetchInvoiceBook(shouldResetPage)
+
+            emitToastSuccess(`${invoiceLabel} deleted.`)
+            return true
+        } catch (error) {
+            handleActionError(error, {
+                toastTitle: 'Delete invoice failed',
+                supportMessage: 'Please try again or contact support',
+                mapFields: false,
+            })
+            return false
+        }
+    }
+
     function initEdit() {
         if (!activeInvoice.value) return
         const st = activeInvoice.value.status ?? 'draft'
@@ -616,11 +653,14 @@ export const useEditorStore = defineStore('editorStore', () => {
         scheduleServerVerify()
     }
 
-    watch(() => invoiceValidationSignal(draftInvoice.value), () => {
-        if (Object.keys(serverFieldErrors.value).length > 0) {
-            serverFieldErrors.value = {}
-        }
-    })
+    watch(
+        () => invoiceValidationSignal(draftInvoice.value),
+        () => {
+            if (Object.keys(serverFieldErrors.value).length > 0) {
+                serverFieldErrors.value = {}
+            }
+        },
+    )
     // Reset invoice book on client change
     watch(
         () => clientStore.selectedClient?.id,
@@ -684,6 +724,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         clearActiveInvoice,
         fmtActive,
         initEdit,
+        deleteActiveInvoice,
         setInvoiceLifecycleStatus,
         refreshActiveInvoiceFromServer,
         cancelEdit,
