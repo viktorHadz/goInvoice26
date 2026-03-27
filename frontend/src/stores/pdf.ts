@@ -49,10 +49,12 @@ export function flattenValidationErrors(
 export const usePdfStore = defineStore('pdf', () => {
     const inv = useInvoiceStore()
 
-    async function handlePdfGeneration(handler: () => Promise<void>, successMessage: string) {
+    async function handlePdfGeneration(handler: () => Promise<void>, successMessage?: string) {
         try {
             await handler()
-            emitToastSuccess(successMessage)
+            if (successMessage) {
+                emitToastSuccess(successMessage)
+            }
         } catch (err) {
             if (isApiError(err)) {
                 console.error('[invoice pdf api error]', err)
@@ -85,9 +87,8 @@ export const usePdfStore = defineStore('pdf', () => {
         baseNumber: number,
         revisionNumber: number = 1,
     ) {
-        await handlePdfGeneration(
-            () => generatePdfHandler(clientId, baseNumber, 'save', revisionNumber),
-            'PDF downloaded successfully.',
+        await handlePdfGeneration(() =>
+            generatePdfHandler(clientId, baseNumber, 'save', revisionNumber),
         )
     }
 

@@ -151,6 +151,10 @@ func CreateRevision(a *app.App) http.HandlerFunc {
 				res.Error(w, http.StatusNotFound, "NOT_FOUND", "Invoice not found")
 				return
 			}
+			if errors.Is(err, invoiceTx.ErrInvoiceDraftForRevision) {
+				res.Error(w, http.StatusConflict, "INVOICE_DRAFT", "Issue the draft before saving a revision")
+				return
+			}
 			if errors.Is(err, invoiceTx.ErrInvoiceVoidForRevision) {
 				res.Error(w, http.StatusConflict, "INVOICE_VOID", "Invoice is void; revisions are not allowed")
 				return

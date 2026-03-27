@@ -12,8 +12,14 @@ import TheDropdown from '@/components/UI/TheDropdown.vue'
 import DetailsMenu, { type MenuOption } from '@/components/editor/partials/DetailsMenu.vue'
 import { usePdfStore } from '@/stores/pdf'
 import type { InvoiceStatus } from '@/components/invoice/invoiceTypes'
-import { reachableStatuses } from '@/utils/invoiceStatusOptions'
+import {
+  buildInvoiceStatusContext,
+  canDeleteInvoice,
+  canEditInvoice,
+  reachableStatuses,
+} from '@/utils/invoiceStatusOptions'
 import { requestConfirmation } from '@/utils/confirm'
+import InvoiceStatusTooltip from '@/components/editor/partials/InvoiceStatusTooltip.vue'
 
 const editStore = useEditorStore()
 const setsStore = useSettingsStore()
@@ -99,13 +105,25 @@ const invoiceDisplayLabel = computed(() => {
   return formatInvoiceBaseLabel(invoicePrefix.value, i.baseNumber)
 })
 
-const lifecycleStatus = computed(() => (inv.value?.status ?? 'draft') as InvoiceStatus)
-
-const canStartEdit = computed(
-  () => lifecycleStatus.value !== 'paid' && lifecycleStatus.value !== 'void',
+const lifecycleStatus = computed(
+  () => (editStore.activeInvoice?.status ?? inv.value?.status ?? 'draft') as InvoiceStatus,
 )
 
-const statusOptions = computed(() => reachableStatuses(lifecycleStatus.value))
+const revisionCount = computed(() => {
+  const baseNumber = editStore.activeInvoice?.baseNumber ?? inv.value?.baseNumber
+  if (!baseNumber) return 1
+  return editStore.invoiceBook.find((entry) => entry.baseNo === baseNumber)?.revisions.length ?? 1
+})
+
+const canStartEdit = computed(() => canEditInvoice(lifecycleStatus.value))
+const canRemoveInvoice = computed(() => canDeleteInvoice(lifecycleStatus.value))
+
+const statusOptions = computed(() =>
+  reachableStatuses(
+    lifecycleStatus.value,
+    buildInvoiceStatusContext(editStore.activeInvoice, revisionCount.value),
+  ),
+)
 
 const selectedStatus = computed({
   get(): InvoiceStatus {
@@ -113,7 +131,7 @@ const selectedStatus = computed({
   },
   set(next: InvoiceStatus | null) {
     if (next == null || next === lifecycleStatus.value) return
-    editStore.setInvoiceLifecycleStatus(next)
+    void editStore.requestInvoiceLifecycleStatusChange(next)
   },
 })
 
@@ -143,15 +161,15 @@ const menuOpts = computed<MenuOption[]>(() => [
     id: 1,
     name: 'Edit invoice',
     disabled: !canStartEdit.value,
-    disabledReason: 'Cannot edit when status is "paid" or "void"',
+    disabledReason: 'Only draft and issued invoices can be edited.',
     effect: () => editStore.initEdit(),
     icon: PencilSquareIcon,
   },
   {
     id: 2,
     name: 'Delete invoice',
-    disabled: !canStartEdit.value,
-    disabledReason: 'Cannot delete when status is "paid" or "void"',
+    disabled: !canRemoveInvoice.value,
+    disabledReason: 'Void invoices are final records and cannot be deleted.',
     effect: confirmDeleteInvoice,
     icon: TrashIcon,
   },
@@ -233,14 +251,19 @@ const menuOpts = computed<MenuOption[]>(() => [
                 <div
                   class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 sm:col-span-2 xl:col-span-1 dark:border-zinc-800 dark:bg-zinc-900/40"
                 >
+                  <div
+                    class="mb-2 flex items-center justify-between gap-1 text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
+                  >
+                    <span>Status</span>
+                    <InvoiceStatusTooltip />
+                  </div>
                   <TheDropdown
                     v-model="selectedStatus"
-                    select-title="Status"
-                    select-title-class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
                     :right-icon="ChevronUpDownIcon"
                     :options="statusOptions"
-                    input-class="mt-1.5 py-1.5 capitalize"
+                    input-class="py-1.5 capitalize"
                     placeholder="Status"
+                    :disabled="statusOptions.length <= 1"
                   />
                 </div>
               </div>

@@ -88,16 +88,14 @@ useEscape(cancelCurrent, {
         class="fixed inset-0 z-111 m-auto flex h-fit w-[min(92vw,32rem)] max-w-lg flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white text-zinc-900 shadow-2xl focus:outline-hidden dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
       >
         <header
-          class="relative overflow-hidden border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/80"
+          class="relative overflow-hidden border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/50"
         >
-          <DecorGradient variant="gradientAndGrid" />
-
           <div class="relative z-10 flex items-start justify-between gap-4 px-5 py-4">
-            <div class="flex min-w-0 items-start gap-4">
+            <div class="flex min-w-0 items-center gap-4">
               <div
-                class="grid size-12 shrink-0 place-items-center rounded-2xl border border-rose-200 bg-white shadow-sm dark:border-rose-400/20 dark:bg-zinc-900"
+                class="grid size-12 shrink-0 place-items-center rounded-2xl border border-orange-400 bg-white shadow-sm dark:border-orange-400/20 dark:bg-zinc-900"
               >
-                <ExclamationTriangleIcon class="size-7 text-rose-500 dark:text-rose-300" />
+                <ExclamationTriangleIcon class="size-7 text-orange-400" />
               </div>
 
               <div class="min-w-0">
@@ -132,14 +130,14 @@ useEscape(cancelCurrent, {
           class="px-5 py-4"
         >
           <p
-            class="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-6 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-300"
+            class="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-6 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950/50 dark:text-zinc-300"
           >
             {{ activeRequest.details }}
           </p>
         </div>
 
         <footer
-          class="flex flex-col-reverse gap-2 border-t border-zinc-200 px-5 py-4 sm:flex-row sm:justify-end dark:border-zinc-800"
+          class="flex flex-col-reverse gap-2 border-t border-zinc-200 bg-zinc-50 px-5 py-4 sm:flex-row sm:justify-end dark:border-zinc-800 dark:bg-zinc-950/50"
         >
           <TheButton
             type="button"

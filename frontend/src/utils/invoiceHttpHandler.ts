@@ -1,7 +1,15 @@
-import type { Invoice } from '@/components/invoice/invoiceTypes'
 import { NetworkError, request } from './fetchHelper'
 import { parseApiError } from './apiErrors'
 import { toDisplayRevisionNo } from './invoiceLabels'
+
+export type CreateInvoiceResponse = {
+    invoiceId: number
+    revisionId: number
+}
+
+export type CreateRevisionResponse = CreateInvoiceResponse & {
+    revisionNo: number
+}
 
 export async function getNewInvoiceNumber(clientId: number): Promise<number> {
     const n = await request<number>(`api/clients/${clientId}/invoice`)
@@ -17,8 +25,23 @@ export async function newInvoiceHandler(
     const url = `api/clients/${clientId}/invoice/${baseNumber}`
     const payload = JSON.stringify(invoPayload)
 
-    return await request<Invoice>(url, {
+    return await request<CreateInvoiceResponse>(url, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+    })
+}
+
+export async function updateDraftInvoiceHandler(
+    clientId: number,
+    baseNumber: number,
+    invoPayload: unknown,
+) {
+    const url = `api/clients/${clientId}/invoice/${baseNumber}`
+    const payload = JSON.stringify(invoPayload)
+
+    return await request<CreateInvoiceResponse>(url, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: payload,
     })
@@ -31,7 +54,7 @@ export async function newRevisionHandler(
 ) {
     const url = `api/clients/${clientId}/invoice/${baseNumber}/revisions`
     const payload = JSON.stringify(invoPayload)
-    return await request<Invoice>(url, {
+    return await request<CreateRevisionResponse>(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload,
@@ -90,7 +113,8 @@ function filenameFromContentDisposition(header: string | null): string | null {
         }
     }
 
-    const plainMatch = header.match(/filename\s*=\s*"([^"]+)"/i) ?? header.match(/filename\s*=\s*([^;]+)/i)
+    const plainMatch =
+        header.match(/filename\s*=\s*"([^"]+)"/i) ?? header.match(/filename\s*=\s*([^;]+)/i)
     if (!plainMatch?.[1]) return null
     return plainMatch[1].trim()
 }

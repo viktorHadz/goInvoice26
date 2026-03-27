@@ -4,16 +4,30 @@ import TheDropdown from '@/components/UI/TheDropdown.vue'
 import { useEditorStore } from '@/stores/editor'
 import { computed } from 'vue'
 import type { InvoiceStatus } from '@/components/invoice/invoiceTypes'
-import { reachableStatuses } from '@/utils/invoiceStatusOptions'
+import { buildInvoiceStatusContext, reachableStatuses } from '@/utils/invoiceStatusOptions'
 import { ChevronUpDownIcon } from '@heroicons/vue/24/outline'
+import InvoiceStatusTooltip from './InvoiceStatusTooltip.vue'
 
 const editStore = useEditorStore()
 
 const inv = computed(() => editStore.draftInvoice)
 
-const lifecycleStatus = computed(() => (inv.value?.status ?? 'draft') as InvoiceStatus)
+const lifecycleStatus = computed(
+  () => (editStore.activeInvoice?.status ?? inv.value?.status ?? 'draft') as InvoiceStatus,
+)
 
-const statusSelectOptions = computed(() => reachableStatuses(lifecycleStatus.value))
+const revisionCount = computed(() => {
+  const baseNumber = editStore.activeInvoice?.baseNumber ?? inv.value?.baseNumber
+  if (!baseNumber) return 1
+  return editStore.invoiceBook.find((entry) => entry.baseNo === baseNumber)?.revisions.length ?? 1
+})
+
+const statusSelectOptions = computed(() =>
+  reachableStatuses(
+    lifecycleStatus.value,
+    buildInvoiceStatusContext(editStore.activeInvoice, revisionCount.value),
+  ),
+)
 
 const selectedInvoiceStatus = computed({
   get(): InvoiceStatus {
@@ -21,7 +35,7 @@ const selectedInvoiceStatus = computed({
   },
   set(next: InvoiceStatus | null) {
     if (next == null || next === lifecycleStatus.value) return
-    editStore.setInvoiceLifecycleStatus(next)
+    void editStore.requestInvoiceLifecycleStatusChange(next)
   },
 })
 
@@ -76,14 +90,19 @@ const dueByDate = computed<string | null>({
           </div>
 
           <div class="col-span-2 min-w-0">
+            <div
+              class="mb-1.5 flex items-center gap-1 text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
+            >
+              <span>Status</span>
+              <InvoiceStatusTooltip />
+            </div>
             <TheDropdown
               v-model="selectedInvoiceStatus"
-              select-title="Status"
-              select-title-class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
               :right-icon="ChevronUpDownIcon"
               :options="statusSelectOptions"
-              input-class="mt-1.5 py-1.5 capitalize"
+              input-class="py-1.5 capitalize"
               placeholder="Status"
+              :disabled="statusSelectOptions.length <= 1"
             />
           </div>
         </div>

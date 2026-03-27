@@ -28,11 +28,8 @@ func DeleteInvoice(a *app.App) http.HandlerFunc {
 			case errors.Is(err, invoiceTx.ErrInvoiceNotFound):
 				res.NotFound(w, "Invoice not found")
 				return
-			case errors.Is(err, invoiceTx.ErrInvoiceDeletePaid):
-				res.Error(w, http.StatusConflict, "INVOICE_PAID", "Paid invoices cannot be deleted")
-				return
 			case errors.Is(err, invoiceTx.ErrInvoiceDeleteVoid):
-				res.Error(w, http.StatusConflict, "INVOICE_VOID", "Void invoices cannot be deleted")
+				res.Error(w, http.StatusConflict, "INVOICE_VOID", "Void invoices are final records and cannot be deleted")
 				return
 			}
 

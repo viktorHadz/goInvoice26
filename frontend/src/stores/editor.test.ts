@@ -6,7 +6,9 @@ import { useEditorStore } from '@/stores/editor'
 const {
     deleteInvoiceMock,
     getInvAndRevNumsMock,
+    getInvoiceMock,
     newRevisionHandlerMock,
+    updateDraftInvoiceHandlerMock,
     emitToastErrorMock,
     emitToastInfoMock,
     emitToastSuccessMock,
@@ -19,7 +21,54 @@ const {
         limit: 10,
         offset: 0,
     })),
-    newRevisionHandlerMock: vi.fn(async () => undefined),
+    getInvoiceMock: vi.fn(async () => ({
+        status: 'issued',
+        totals: {
+            baseNumber: 101,
+            revisionNo: 2,
+            issueDate: '2026-03-20',
+            dueByDate: '2026-03-30',
+            clientName: 'Alex',
+            clientCompanyName: 'Acme Co',
+            clientAddress: '1 Test Road',
+            clientEmail: 'alex@example.com',
+            note: 'Saved revision',
+            vatRate: 0,
+            vatAmountMinor: 0,
+            discountType: 'none',
+            discountRate: 0,
+            discountMinor: 0,
+            depositType: 'none',
+            depositRate: 0,
+            depositMinor: 0,
+            subtotalMinor: 10000,
+            totalMinor: 10000,
+            paidMinor: 0,
+        },
+        lines: [
+            {
+                productId: 1,
+                pricingMode: 'flat',
+                minutesWorked: null,
+                name: 'Service line',
+                lineType: 'custom',
+                quantity: 1,
+                unitPriceMinor: 10000,
+                lineTotalMinor: 10000,
+                sortOrder: 1,
+            },
+        ],
+        payments: [],
+    })),
+    newRevisionHandlerMock: vi.fn(async () => ({
+        invoiceId: 7,
+        revisionId: 70,
+        revisionNo: 2,
+    })),
+    updateDraftInvoiceHandlerMock: vi.fn(async () => ({
+        invoiceId: 7,
+        revisionId: 7,
+    })),
     emitToastErrorMock: vi.fn(),
     emitToastInfoMock: vi.fn(),
     emitToastSuccessMock: vi.fn(),
@@ -33,19 +82,25 @@ vi.mock('@/stores/clients', () => ({
 
 vi.mock('@/stores/settings', () => ({
     useSettingsStore: () => ({
-        settings: { invoicePrefix: 'INV', showItemTypeHeaders: true },
+        settings: {
+            invoicePrefix: 'INV',
+            showItemTypeHeaders: true,
+            startingInvoiceNumber: 1,
+            canEditStartingInvoiceNumber: true,
+        },
     }),
 }))
 
 vi.mock('@/utils/editorHttpHandler', () => ({
     deleteInvoice: deleteInvoiceMock,
     getInvAndRevNums: getInvAndRevNumsMock,
-    getInvoice: vi.fn(),
+    getInvoice: getInvoiceMock,
     patchInvoiceStatus: vi.fn(),
 }))
 
 vi.mock('@/utils/invoiceHttpHandler', () => ({
     newRevisionHandler: newRevisionHandlerMock,
+    updateDraftInvoiceHandler: updateDraftInvoiceHandlerMock,
 }))
 
 vi.mock('@/utils/frontendValidation', () => ({
@@ -144,6 +199,8 @@ describe('editor store no-change save guard', () => {
 
     it('saves revision when payload changes', async () => {
         const store = useEditorStore()
+        store.activeNode = { type: 'invoice', id: 7, baseNo: 101 }
+        store.invoiceBook = [{ id: 7, baseNo: 101, status: 'issued', revisions: [] }]
         store.activeInvoice = makeInvoice()
         store.initEdit()
 
@@ -152,7 +209,70 @@ describe('editor store no-change save guard', () => {
 
         expect(result).toBe(true)
         expect(newRevisionHandlerMock).toHaveBeenCalledTimes(1)
+        expect(store.activeNode).toEqual({
+            type: 'revision',
+            id: 70,
+            invoiceId: 7,
+            baseNo: 101,
+            revisionNo: 2,
+        })
         expect(emitToastSuccessMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('updates draft invoices in place and keeps invoice selection', async () => {
+        const store = useEditorStore()
+        store.activeNode = { type: 'invoice', id: 7, baseNo: 101 }
+        store.invoiceBook = [{ id: 7, baseNo: 101, status: 'draft', revisions: [] }]
+        store.activeInvoice = { ...makeInvoice(), status: 'draft' }
+        getInvoiceMock.mockResolvedValueOnce({
+            status: 'draft',
+            totals: {
+                baseNumber: 101,
+                revisionNo: 1,
+                issueDate: '2026-03-20',
+                dueByDate: '2026-03-30',
+                clientName: 'Alex',
+                clientCompanyName: 'Acme Co',
+                clientAddress: '1 Test Road',
+                clientEmail: 'alex@example.com',
+                note: 'Changed draft note',
+                vatRate: 0,
+                vatAmountMinor: 0,
+                discountType: 'none',
+                discountRate: 0,
+                discountMinor: 0,
+                depositType: 'none',
+                depositRate: 0,
+                depositMinor: 0,
+                subtotalMinor: 10000,
+                totalMinor: 10000,
+                paidMinor: 0,
+            },
+            lines: [
+                {
+                    productId: 1,
+                    pricingMode: 'flat',
+                    minutesWorked: null,
+                    name: 'Service line',
+                    lineType: 'custom',
+                    quantity: 1,
+                    unitPriceMinor: 10000,
+                    lineTotalMinor: 10000,
+                    sortOrder: 1,
+                },
+            ],
+            payments: [],
+        })
+        store.initEdit()
+
+        store.setNote('Changed draft note')
+        const result = await store.saveRevision(store.draftInvoice)
+
+        expect(result).toBe(true)
+        expect(updateDraftInvoiceHandlerMock).toHaveBeenCalledTimes(1)
+        expect(newRevisionHandlerMock).not.toHaveBeenCalled()
+        expect(store.activeNode).toEqual({ type: 'invoice', id: 7, baseNo: 101 })
+        expect(emitToastSuccessMock).toHaveBeenCalledWith('Draft INV - 101 saved.')
     })
 
     it('resets baseline after cancel and reopen edit session', async () => {

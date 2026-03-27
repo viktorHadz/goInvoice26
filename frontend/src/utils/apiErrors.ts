@@ -23,6 +23,11 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
     DATABASE_ERROR: 'Something went wrong while saving data. Please try again.',
     INTERNAL: 'Something went wrong on our side. Please try again.',
     INVALID_ID: 'The selected item is invalid.',
+    INVOICE_DRAFT: 'Issue the draft before saving a revision.',
+    INVOICE_ISSUED: 'Issued invoices are locked from deletion and must use revisions for edits.',
+    INVOICE_NUMBER_LOCKED:
+        'Starting invoice number can only be changed when there are no invoices.',
+    DRAFT_HAS_REVISIONS: 'This draft can no longer be updated in place.',
 }
 
 export class ApiError extends Error {

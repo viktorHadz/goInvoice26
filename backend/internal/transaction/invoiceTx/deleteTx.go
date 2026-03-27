@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	ErrInvoiceDeletePaid = errors.New("paid invoices cannot be deleted")
 	ErrInvoiceDeleteVoid = errors.New("void invoices cannot be deleted")
 )
 
@@ -27,8 +26,6 @@ func Delete(ctx context.Context, a *app.App, clientID, baseNumber int64) error {
 	}
 
 	switch status {
-	case "paid":
-		return ErrInvoiceDeletePaid
 	case "void":
 		return ErrInvoiceDeleteVoid
 	}

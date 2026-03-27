@@ -10,6 +10,12 @@ defineProps<{
 function lineOrFallback(value: string, fallback: string) {
   return value?.trim() || fallback
 }
+
+function invoiceNumberPreview(value: number | null | undefined) {
+  const num = Number(value)
+  if (!Number.isFinite(num) || num < 1) return 1
+  return Math.round(num)
+}
 </script>
 
 <template>
@@ -75,7 +81,12 @@ function lineOrFallback(value: string, fallback: string) {
               Invoice no.
             </div>
             <div class="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              {{ formatInvoiceBaseLabel(lineOrFallback(form.invoicePrefix, 'INV-'), 1) }}
+              {{
+                formatInvoiceBaseLabel(
+                  lineOrFallback(form.invoicePrefix, 'INV-'),
+                  invoiceNumberPreview(form.startingInvoiceNumber),
+                )
+              }}
             </div>
           </div>
 

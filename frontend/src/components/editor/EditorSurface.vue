@@ -15,6 +15,7 @@ import { usePdfStore } from '@/stores/pdf'
 import { computed, ref } from 'vue'
 import EditorNote from './partials/EditorNote.vue'
 import { formatActiveEditorNodeLabel } from '@/utils/invoiceLabels'
+import { canEditInvoice } from '@/utils/invoiceStatusOptions'
 
 const pdfStore = usePdfStore()
 const editStore = useEditorStore()
@@ -33,25 +34,29 @@ const invoiceDisplayLabel = computed(() => {
 
 const revisionLocked = computed(() => {
   const st = editStore.draftInvoice?.status ?? 'draft'
-  return st === 'paid' || st === 'void'
+  return !canEditInvoice(st)
 })
 
 const saveTooltipText = computed(() => {
   const status = editStore.draftInvoice?.status ?? 'draft'
 
   if (status === 'paid') {
-    return 'This invoice is marked as paid, so saving a new revision is disabled.'
+    return 'This invoice is marked as paid. It can only be reopened to issued if the recorded payments do not match the balance due.'
   }
 
   if (status === 'void') {
-    return 'This invoice is void, so saving a new revision is disabled.'
+    return 'This invoice is void. Void invoices are final records and cannot be edited or deleted.'
   }
 
   if (!editStore.hasUnsavedChanges) {
-    return 'Make a change to this invoice before saving a new revision.'
+    return status === 'draft'
+      ? 'Make a change to this draft before saving it in place.'
+      : 'Make a change to this invoice before saving a new revision.'
   }
 
-  return 'Save your edits as a new invoice revision.'
+  return status === 'draft'
+    ? 'Save your edits directly to this draft invoice.'
+    : 'Save your edits as a new invoice revision.'
 })
 
 async function generatePdfOnly() {

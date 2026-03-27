@@ -16,6 +16,11 @@ type invoiceStatusBody struct {
 	Status string `json:"status"`
 }
 
+type statusTransitionRules struct {
+	CanReturnIssuedToDraft bool
+	CanReopenPaidToIssued  bool
+}
+
 // PatchInvoiceStatus updates invoices.status with allowed transitions only.
 func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -35,16 +40,33 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 
 		next := strings.TrimSpace(strings.ToLower(body.Status))
 		if next == "" {
-		res.Validation(w, res.Required("status"))
+			res.Validation(w, res.Required("status"))
 			return
 		}
 
-		var current string
+		var (
+			current       string
+			rules         statusTransitionRules
+			revisionCount int64
+			totalMinor    int64
+			depositMinor  int64
+			paidMinor     int64
+		)
 		err := a.DB.QueryRowContext(r.Context(), `
-			SELECT i.status
+			SELECT
+				i.status,
+				COUNT(DISTINCT rev.id) AS revision_count,
+				cur.total_minor,
+				cur.deposit_minor,
+				COALESCE((SELECT SUM(p.amount_minor) FROM payments p WHERE p.invoice_id = i.id), 0) AS paid_minor
 			FROM invoices i
+			JOIN invoice_revisions cur
+				ON cur.id = i.current_revision_id
+			LEFT JOIN invoice_revisions rev
+				ON rev.invoice_id = i.id
 			WHERE i.client_id = ? AND i.base_number = ?
-		`, clientID, baseNumber).Scan(&current)
+			GROUP BY i.id, i.status, cur.total_minor, cur.deposit_minor
+		`, clientID, baseNumber).Scan(&current, &revisionCount, &totalMinor, &depositMinor, &paidMinor)
 		if errors.Is(err, sql.ErrNoRows) {
 			res.Error(w, http.StatusNotFound, "NOT_FOUND", "Invoice not found")
 			return
@@ -56,8 +78,12 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 		}
 
 		current = strings.TrimSpace(strings.ToLower(current))
-		if !allowedStatusTransition(current, next) {
-			res.Validation(w, res.Invalid("status", "transition not allowed from current status"))
+		rules = statusTransitionRules{
+			CanReturnIssuedToDraft: revisionCount <= 1,
+			CanReopenPaidToIssued:  paidMinor != expectedPaidMinor(totalMinor, depositMinor),
+		}
+		if !allowedStatusTransition(current, next, rules) {
+			res.Validation(w, res.Invalid("status", invalidStatusTransitionMessage(current, next, rules)))
 			return
 		}
 
@@ -81,16 +107,44 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 	}
 }
 
-func allowedStatusTransition(from, to string) bool {
+func expectedPaidMinor(totalMinor, depositMinor int64) int64 {
+	expected := totalMinor - depositMinor
+	if expected < 0 {
+		return 0
+	}
+	return expected
+}
+
+func invalidStatusTransitionMessage(from, to string, rules statusTransitionRules) string {
+	switch {
+	case from == to:
+		return "status is already set to " + to
+	case from == "issued" && to == "draft" && !rules.CanReturnIssuedToDraft:
+		return "issued invoices with saved revisions cannot return to draft"
+	case from == "paid" && to == "issued" && !rules.CanReopenPaidToIssued:
+		return "fully paid invoices cannot return to issued"
+	default:
+		return "transition not allowed from current status"
+	}
+}
+
+func allowedStatusTransition(from, to string, rules statusTransitionRules) bool {
+	if from == to {
+		return false
+	}
+
 	switch from {
 	case "draft":
-		return to == "issued" || to == "void" || to == "paid"
+		return to == "issued" || to == "paid"
 	case "issued":
+		if to == "draft" {
+			return rules.CanReturnIssuedToDraft
+		}
 		return to == "void" || to == "paid"
 	case "paid":
-		return to == "issued"
+		return to == "issued" && rules.CanReopenPaidToIssued
 	case "void":
-		return to == "issued"
+		return false
 	default:
 		return false
 	}

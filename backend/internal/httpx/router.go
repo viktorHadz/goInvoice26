@@ -57,6 +57,7 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 				r.Get("/", invoice.GetNextInvoiceNumber(a))
 				r.Route("/{baseNumber}", func(r chi.Router) {
 					r.Post("/", invoice.CreateInvoice(a))
+					r.Put("/", invoice.UpdateInvoice(a))
 					r.Delete("/", invoice.DeleteInvoice(a))
 					r.Patch("/status", invoice.PatchInvoiceStatus(a))
 					r.Post("/verify", invoice.VerifyInvoice())

@@ -191,16 +191,15 @@ func TestDelete_RemovesInvoiceGraph(t *testing.T) {
 	}
 }
 
-func TestDelete_RejectsPaidAndVoidInvoices(t *testing.T) {
+func TestDelete_AllowsIssuedAndPaidInvoices(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name    string
-		status  string
-		wantErr error
+		name   string
+		status string
 	}{
-		{name: "paid", status: "paid", wantErr: invoiceTx.ErrInvoiceDeletePaid},
-		{name: "void", status: "void", wantErr: invoiceTx.ErrInvoiceDeleteVoid},
+		{name: "issued", status: "issued"},
+		{name: "paid", status: "paid"},
 	}
 
 	for _, tt := range tests {
@@ -211,14 +210,33 @@ func TestDelete_RejectsPaidAndVoidInvoices(t *testing.T) {
 			clientID := insertClient(t, a)
 			invoiceID := insertInvoiceGraph(t, a, clientID, 202, tt.status)
 
-			err := invoiceTx.Delete(ctx, a, clientID, 202)
-			if !errors.Is(err, tt.wantErr) {
-				t.Fatalf("Delete() error = %v, want %v", err, tt.wantErr)
+			if err := invoiceTx.Delete(ctx, a, clientID, 202); err != nil {
+				t.Fatalf("Delete() error = %v", err)
 			}
 
-			if count := countRows(t, a, "invoices", invoiceID); count != 1 {
-				t.Fatalf("invoice count = %d, want 1", count)
+			for _, table := range []string{"invoices", "invoice_revisions", "invoice_items", "payments"} {
+				if count := countRows(t, a, table, invoiceID); count != 0 {
+					t.Fatalf("%s count = %d, want 0", table, count)
+				}
 			}
 		})
+	}
+}
+
+func TestDelete_RejectsVoidInvoices(t *testing.T) {
+	ctx := context.Background()
+	a, cleanup := newTestApp(t)
+	defer cleanup()
+
+	clientID := insertClient(t, a)
+	invoiceID := insertInvoiceGraph(t, a, clientID, 303, "void")
+
+	err := invoiceTx.Delete(ctx, a, clientID, 303)
+	if !errors.Is(err, invoiceTx.ErrInvoiceDeleteVoid) {
+		t.Fatalf("Delete() error = %v, want %v", err, invoiceTx.ErrInvoiceDeleteVoid)
+	}
+
+	if count := countRows(t, a, "invoices", invoiceID); count != 1 {
+		t.Fatalf("invoice count = %d, want 1", count)
 	}
 }

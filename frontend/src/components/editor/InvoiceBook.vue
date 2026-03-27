@@ -113,6 +113,9 @@ function placePanel() {
 async function openDropdown() {
   isOpen.value = true
   await bookStore.fetchInvoiceBook(true)
+  if (props.activeNode?.type === 'revision') {
+    openId.value = props.activeNode.invoiceId
+  }
   await nextTick()
   placePanel()
 }
@@ -192,6 +195,19 @@ async function handleNextPage() {
   await bookStore.nextPage()
   openId.value = null
 }
+
+watch(
+  () => props.activeNode,
+  (node) => {
+    if (node?.type === 'revision') {
+      openId.value = node.invoiceId
+      return
+    }
+    if (node?.type === 'invoice') {
+      openId.value = null
+    }
+  },
+)
 
 watch(
   () => clientStore.selectedClient?.id,

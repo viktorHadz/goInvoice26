@@ -19,12 +19,16 @@ export type Settings = {
     notesFooter: string
     logoUrl: string
     showItemTypeHeaders: boolean
+    startingInvoiceNumber: number
+    canEditStartingInvoiceNumber: boolean
 }
 
 function normalizeSettings(data: Settings): Settings {
     return {
         ...data,
         showItemTypeHeaders: data.showItemTypeHeaders !== false,
+        startingInvoiceNumber: Math.max(1, Math.round(Number(data.startingInvoiceNumber || 1))),
+        canEditStartingInvoiceNumber: data.canEditStartingInvoiceNumber === true,
     }
 }
 

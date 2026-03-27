@@ -8,6 +8,7 @@ import {
   BuildingOffice2Icon,
   DocumentTextIcon,
   BanknotesIcon,
+  InformationCircleIcon,
 } from '@heroicons/vue/24/outline'
 
 import TheTooltip from './TheTooltip.vue'
@@ -45,6 +46,24 @@ const PAYMENT_DETAILS_MAX = 250
 const FOOTER_NOTE_MAX = 180
 
 const hasLogo = computed(() => Boolean(logoPreview.value))
+const canEditStartingInvoiceNumber = computed(
+  () => form.value?.canEditStartingInvoiceNumber === true,
+)
+const startingInvoiceLockedMessage = computed(() =>
+  canEditStartingInvoiceNumber.value
+    ? 'You can choose the first invoice number before any invoices exist. Once invoices are created, this field locks until all invoices are deleted.'
+    : 'Starting invoice number is locked because invoices already exist. Delete all saved invoices to unlock again.',
+)
+const startingInvoiceNumberModel = computed<number | null>({
+  get() {
+    return form.value?.startingInvoiceNumber ?? 1
+  },
+  set(next) {
+    if (!form.value) return
+    const n = Number(next ?? 0)
+    form.value.startingInvoiceNumber = Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0
+  },
+})
 
 function getErrorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback
@@ -56,7 +75,7 @@ function cloneSettings(settings: Settings): Settings {
 
 async function openSettings() {
   try {
-    const settings = settingsStore.settings ?? (await settingsStore.fetchSettings())
+    const settings = await settingsStore.fetchSettings()
     if (!settings) throw new Error('Settings not found')
 
     form.value = cloneSettings(settings)
@@ -339,6 +358,43 @@ useEscape(closeSettings, {
                     v-model="form.dateFormat"
                     :options="dateFormatOptions"
                     select-title="Date format"
+                  />
+                </div>
+
+                <div
+                  class="mt-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/60"
+                  :class="!canEditStartingInvoiceNumber ? 'opacity-70' : ''"
+                >
+                  <div class="mb-2 flex items-center justify-between gap-2">
+                    <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      Starting invoice number
+                    </div>
+                    <TheTooltip
+                      side="top"
+                      align="start"
+                      max-width-class="max-w-[320px]"
+                    >
+                      <template #content>
+                        <span>{{ startingInvoiceLockedMessage }}</span>
+                      </template>
+                      <button
+                        type="button"
+                        class="inline-flex cursor-help text-zinc-500 transition hover:text-sky-600 dark:text-zinc-400 dark:hover:text-emerald-400"
+                        aria-label="Starting invoice number help"
+                      >
+                        <InformationCircleIcon class="size-5" />
+                      </button>
+                    </TheTooltip>
+                  </div>
+
+                  <TheInput
+                    v-model="startingInvoiceNumberModel"
+                    type="number"
+                    labelHidden
+                    :reserveErrorSpace="false"
+                    placeholder="1"
+                    inputClass="w-full"
+                    :disabled="!canEditStartingInvoiceNumber"
                   />
                 </div>
 

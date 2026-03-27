@@ -10,6 +10,8 @@ import (
 )
 
 var (
+	// ErrInvoiceDraftForRevision is returned when attempting to append a revision to a draft invoice.
+	ErrInvoiceDraftForRevision = errors.New("invoice is draft; issue it before saving revisions")
 	// ErrInvoiceVoidForRevision is returned when appending a revision to a void invoice.
 	ErrInvoiceVoidForRevision = errors.New("invoice is void; revisions are not allowed")
 	// ErrInvoicePaidForRevision is returned when appending a revision while status is paid (reopen to issued first).
@@ -97,7 +99,7 @@ func insertRevisionPayments(
 	return nil
 }
 
-// applyAutoPaidIfSettled sets status to paid when balance due is zero and invoice is draft or issued.
+// applyAutoPaidIfSettled sets status to paid when balance due is zero and invoice is issued.
 func applyAutoPaidIfSettled(ctx context.Context, tx *sql.Tx, invoiceID int64, totalMinor, depositMinor int64) error {
 	var paidSum int64
 	if err := tx.QueryRowContext(ctx, `
@@ -117,7 +119,7 @@ func applyAutoPaidIfSettled(ctx context.Context, tx *sql.Tx, invoiceID int64, to
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE invoices
 		SET status = 'paid'
-		WHERE id = ? AND status IN ('draft', 'issued')
+		WHERE id = ? AND status = 'issued'
 	`, invoiceID); err != nil {
 		return fmt.Errorf("auto-paid status: %w", err)
 	}
@@ -140,6 +142,8 @@ func LoadInvoiceIDAndStatus(ctx context.Context, tx *sql.Tx, clientID, baseNumbe
 
 func assertRevisionAllowed(status string) error {
 	switch status {
+	case "draft":
+		return ErrInvoiceDraftForRevision
 	case "void":
 		return ErrInvoiceVoidForRevision
 	case "paid":

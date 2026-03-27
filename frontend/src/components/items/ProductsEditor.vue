@@ -473,8 +473,8 @@ useEscape(
                 class="mb-2 w-full rounded-xl border p-2 text-left transition"
                 :class="
                   selectedId === p.id
-                    ? 'border-sky-500/35 bg-sky-50 ring-1 ring-sky-500/15 dark:border-emerald-400/30 dark:bg-emerald-950/15 dark:ring-emerald-400/15'
-                    : 'border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80'
+                    ? 'border-sky-500/35 bg-sky-50 ring-1 ring-sky-500/15 dark:border-emerald-400/30 dark:bg-emerald-950/20 dark:ring-emerald-400/20'
+                    : 'border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/20 dark:hover:bg-zinc-950/30'
                 "
                 @click="pick(p)"
               >
@@ -576,7 +576,7 @@ useEscape(
               </div>
               <div
                 v-if="form.id"
-                class="rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/60"
+                class="rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-950/20"
               >
                 <div
                   class="text-tiny mb-2 font-medium tracking-[0.12em] text-zinc-500 uppercase dark:text-zinc-400"
@@ -586,7 +586,7 @@ useEscape(
 
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div
-                    class="rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/60"
+                    class="rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/50"
                   >
                     <div
                       class="text-tiny font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400"

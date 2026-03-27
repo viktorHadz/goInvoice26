@@ -51,6 +51,27 @@ func insertRevisionWithItems(
 		return 0, fmt.Errorf("insert invoice_revision: %w", err)
 	}
 
+	if err := insertRevisionItems(ctx, tx, revisionID, canonical); err != nil {
+		return 0, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE invoices
+		SET current_revision_id = ?
+		WHERE id = ?
+	`, revisionID, invoiceID); err != nil {
+		return 0, fmt.Errorf("update invoices.current_revision_id: %w", err)
+	}
+
+	return revisionID, nil
+}
+
+func insertRevisionItems(
+	ctx context.Context,
+	tx *sql.Tx,
+	revisionID int64,
+	canonical *models.FEInvoiceIn,
+) error {
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO invoice_items (
 			invoice_revision_id, product_id, name, line_type, pricing_mode,
@@ -58,7 +79,7 @@ func insertRevisionWithItems(
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
-		return 0, fmt.Errorf("prepare invoice_items: %w", err)
+		return fmt.Errorf("prepare invoice_items: %w", err)
 	}
 	defer stmt.Close()
 
@@ -86,17 +107,9 @@ func insertRevisionWithItems(
 			ln.SortOrder,
 		)
 		if err != nil {
-			return 0, fmt.Errorf("insert invoice_item: %w", err)
+			return fmt.Errorf("insert invoice_item: %w", err)
 		}
 	}
 
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE invoices
-		SET current_revision_id = ?
-		WHERE id = ?
-	`, revisionID, invoiceID); err != nil {
-		return 0, fmt.Errorf("update invoices.current_revision_id: %w", err)
-	}
-
-	return revisionID, nil
+	return nil
 }

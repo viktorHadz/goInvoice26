@@ -48,8 +48,9 @@ import { emitToastError, emitToastInfo, emitToastSuccess } from '@/utils/toast'
 import { apiDTO } from '@/utils/invoiceDto'
 import { flattenValidationErrors } from './pdf'
 import { NetworkError } from '@/utils/fetchHelper'
-import { newRevisionHandler } from '@/utils/invoiceHttpHandler'
+import { newRevisionHandler, updateDraftInvoiceHandler } from '@/utils/invoiceHttpHandler'
 import { formatInvoiceBaseLabel } from '@/utils/invoiceLabels'
+import { requestConfirmation } from '@/utils/confirm'
 
 type AppliedPayment = {
     id: number
@@ -372,13 +373,14 @@ export const useEditorStore = defineStore('editorStore', () => {
         if (!inv) return false
         if (inv === null) return false
         const st = inv.status ?? 'draft'
+        const saveLabel = st === 'draft' ? 'draft' : 'revision'
         if (st === 'paid' || st === 'void') {
             emitToastError({
-                title: 'Cannot save revision',
+                title: `Cannot save ${saveLabel}`,
                 message:
                     st === 'void'
                         ? 'This invoice is void.'
-                        : 'Reopen the invoice to issued before saving a revision.',
+                        : 'Paid invoices are locked. Reopen it to issued first if the recorded payments do not match the balance due.',
             })
             return false
         }
@@ -413,7 +415,22 @@ export const useEditorStore = defineStore('editorStore', () => {
         }
 
         try {
-            await newRevisionHandler(dto.overview.clientId, inv.baseNumber, dto)
+            if (st === 'draft') {
+                await updateDraftInvoiceHandler(dto.overview.clientId, inv.baseNumber, dto)
+                showAllValidation.value = false
+
+                clearVerifyState()
+                emitToastSuccess(
+                    `Draft ${formatInvoiceBaseLabel(invoicePrefix.value, dto.overview.baseNumber)} saved.`,
+                )
+
+                lastVerifyAt.value = null
+                await fetchInvoiceBook()
+                await refreshActiveInvoiceFromServer()
+                return true
+            }
+
+            const created = await newRevisionHandler(dto.overview.clientId, inv.baseNumber, dto)
             showAllValidation.value = false
 
             clearVerifyState()
@@ -423,12 +440,13 @@ export const useEditorStore = defineStore('editorStore', () => {
 
             lastVerifyAt.value = null
             await fetchInvoiceBook()
-            await refreshActiveInvoiceFromServer()
-            console.log(
-                'LATESTT REVISION FOR BASE: ',
-                dto.overview.baseNumber,
-                latestRevisionNoForBase(dto.overview.baseNumber),
-            )
+            activeNode.value = {
+                type: 'revision',
+                id: created.revisionId,
+                invoiceId: created.invoiceId,
+                baseNo: dto.overview.baseNumber,
+                revisionNo: created.revisionNo,
+            }
             return true
         } catch (err: unknown) {
             if (isApiError(err) && hasFieldErrors(err)) {
@@ -436,7 +454,7 @@ export const useEditorStore = defineStore('editorStore', () => {
                 const firstError = firstFieldErrorMessage(serverFieldErrors.value)
                 if (firstError) {
                     emitToastError({
-                        title: 'Cannot save revision',
+                        title: `Cannot save ${saveLabel}`,
                         message: firstError,
                     })
                 }
@@ -447,7 +465,7 @@ export const useEditorStore = defineStore('editorStore', () => {
 
             if (isApiError(err) && err.status === 409) {
                 emitToastError({
-                    title: 'Cannot save revision',
+                    title: `Cannot save ${saveLabel}`,
                     message: err.message || 'Invoice status prevents saving.',
                 })
                 return false
@@ -456,7 +474,7 @@ export const useEditorStore = defineStore('editorStore', () => {
             if (isApiError(err) && isSupportOnlyApiError(err)) {
                 emitToastError({
                     id: err.id,
-                    title: 'Could not create revision',
+                    title: st === 'draft' ? 'Could not save draft' : 'Could not create revision',
                     message: err.id
                         ? `Something went wrong. Please quote error ID: ${err.id}`
                         : 'Something went wrong. Please try again later.',
@@ -468,7 +486,7 @@ export const useEditorStore = defineStore('editorStore', () => {
             if (isApiError(err)) {
                 emitToastError({
                     id: err.id,
-                    title: 'Could not save revision',
+                    title: st === 'draft' ? 'Could not save draft' : 'Could not save revision',
                     message: err.message || 'Please check your data and try again.',
                 })
                 return false
@@ -483,7 +501,7 @@ export const useEditorStore = defineStore('editorStore', () => {
             }
 
             emitToastError({
-                title: 'Could not save revision',
+                title: st === 'draft' ? 'Could not save draft' : 'Could not save revision',
                 message: 'An unexpected error occurred. Please try again.',
             })
             console.error('[invoice create]', err)
@@ -567,6 +585,26 @@ export const useEditorStore = defineStore('editorStore', () => {
             })
             return false
         }
+    }
+
+    async function requestInvoiceLifecycleStatusChange(next: InvoiceStatus): Promise<boolean> {
+        const current = (activeInvoice.value?.status ?? 'draft') as InvoiceStatus
+        if (next === current) return true
+
+        if (next === 'void') {
+            const confirmed = await requestConfirmation({
+                title: 'Void invoice?',
+                message: `Void ${formatInvoiceBaseLabel(invoicePrefix.value, activeInvoice.value?.baseNumber)}?`,
+                details:
+                    "Voiding makes the invoice and all of it's revisions inactive and final. It cannot be edited, reopened, or deleted afterward.",
+                confirmLabel: 'Void invoice',
+                cancelLabel: 'Keep current status',
+                confirmVariant: 'danger',
+            })
+            if (!confirmed) return false
+        }
+
+        return await setInvoiceLifecycleStatus(next)
     }
 
     async function deleteActiveInvoice(): Promise<boolean> {
@@ -726,6 +764,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         initEdit,
         deleteActiveInvoice,
         setInvoiceLifecycleStatus,
+        requestInvoiceLifecycleStatusChange,
         refreshActiveInvoiceFromServer,
         cancelEdit,
         getFieldError,
