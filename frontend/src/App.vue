@@ -12,10 +12,16 @@ import TheConfirmDialog from './components/UI/TheConfirmDialog.vue'
   >
     <main class="relative min-h-screen w-full">
       <div class="mt-26 px-4 pb-16 sm:py-8 sm:pb-8 md:px-6">
-        <RouterView />
+        <Transition
+          name="page"
+          mode="out-in"
+          appear
+        >
+          <RouterView />
+        </Transition>
       </div>
-      <NavMain />
 
+      <NavMain />
       <!-- Shortcuts reside here -->
       <TopRightMenu />
       <TheToast />
