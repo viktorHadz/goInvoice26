@@ -66,6 +66,10 @@ export const useClientStore = defineStore('clients', () => {
         }
     })
 
+    function selectClientById(id: number | null) {
+        lsClientId.value = id
+    }
+
     watch(
         () => [hasLoaded.value, clients.value] as const,
         ([loaded]) => {
@@ -113,6 +117,7 @@ export const useClientStore = defineStore('clients', () => {
         createNew,
         edit,
         remove,
+        selectClientById,
         hasClients,
         isLoading,
         hasLoaded,

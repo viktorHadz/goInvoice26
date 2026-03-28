@@ -91,7 +91,7 @@ const dueByDate = computed<string | null>({
 
           <div class="col-span-2 min-w-0">
             <div
-              class="mb-1.5 flex items-center gap-1 text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
+              class="mb-1.5 flex items-center justify-between gap-1 text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
             >
               <span>Status</span>
               <InvoiceStatusTooltip />

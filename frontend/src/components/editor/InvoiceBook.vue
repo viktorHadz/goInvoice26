@@ -2,11 +2,20 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
+  ArrowDownIcon,
+  ArrowPathIcon,
+  ArrowUpIcon,
+  BanknotesIcon,
   BookOpenIcon,
+  CalendarDaysIcon,
+  CheckIcon,
   ChevronRightIcon,
+  DocumentCurrencyDollarIcon,
   DocumentDuplicateIcon,
   DocumentIcon,
+  FunnelIcon,
   MagnifyingGlassIcon,
+  UserCircleIcon,
 } from '@heroicons/vue/24/outline'
 import type { ActiveEditorNode, InvBookInvoice, InvBookRevision } from './invBookTypes'
 import DecorGradient from '@/components/UI/DecorGradient.vue'
@@ -18,6 +27,14 @@ import { useEditorStore } from '@/stores/editor'
 import { useClientStore } from '@/stores/clients'
 import { fmtStrDate } from '@/utils/dates'
 import { formatInvoiceBaseLabel, formatInvoiceDisplayLabel } from '@/utils/invoiceLabels'
+import { fmtGBPMinor } from '@/utils/money'
+import {
+  filterInvoiceBookByQuery,
+  invoiceBookPaymentSummary,
+  invoiceBookSortSummary,
+  isDefaultInvoiceBookFilters,
+} from './invoiceBookFilters'
+import DetailsMenu, { type MenuOption } from './partials/DetailsMenu.vue'
 
 /** Revision 1 is represented by the parent row; only show later revisions under it. */
 function revisionsForBookSublist(revisions: InvBookRevision[]): InvBookRevision[] {
@@ -52,37 +69,27 @@ const setStore = useSettingsStore()
 const clientStore = useClientStore()
 const bookStore = useEditorStore()
 
-const { invoiceBook, isLoadingBook, canGoPrev, canGoNext, offset, total, errorMessage } =
-  storeToRefs(bookStore)
+const {
+  invoiceBook,
+  invoiceBookFilters,
+  isLoadingBook,
+  canGoPrev,
+  canGoNext,
+  offset,
+  total,
+  errorMessage,
+} = storeToRefs(bookStore)
 
 const invoices = computed<InvBookInvoice[]>(() => invoiceBook.value)
 
 const bookInvoicePrefix = computed(() => setStore.settings?.invoicePrefix ?? '')
 const dateFormat = computed(() => setStore.settings?.dateFormat ?? 'dd/mm/yyyy')
-
-const filteredInvoices = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return invoices.value
-
-  const prefix = bookInvoicePrefix.value
-
-  return invoices.value
-    .map((invoice) => {
-      const invoiceLabel = formatInvoiceBaseLabel(prefix, invoice.baseNo).toLowerCase()
-
-      const invoiceMatch = invoiceLabel.includes(q)
-
-      // Match revision labels exactly as users see them in the sublist.
-      const matchingRevisions = invoice.revisions.filter((rev) =>
-        formatInvoiceDisplayLabel(prefix, invoice.baseNo, rev.revisionNo).toLowerCase().includes(q),
-      )
-
-      if (invoiceMatch) return invoice
-      if (matchingRevisions.length) return { ...invoice, revisions: matchingRevisions }
-      return null
-    })
-    .filter((x): x is InvBookInvoice => x !== null)
-})
+const activeClientLabel = computed(
+  () => clientStore.selectedClient?.companyName || clientStore.selectedClient?.name || null,
+)
+const filteredInvoices = computed(() =>
+  filterInvoiceBookByQuery(invoices.value, query.value, bookInvoicePrefix.value),
+)
 
 const pageLabel = computed(() => {
   if (!invoiceBook.value.length) return 'Showing 0 of 0'
@@ -91,6 +98,76 @@ const pageLabel = computed(() => {
   const end = Math.min(offset.value + invoiceBook.value.length, total.value)
   return `Showing ${start}-${end} of ${total.value}`
 })
+
+const filterSummary = computed(() => {
+  const labels = [invoiceBookSortSummary(invoiceBookFilters.value)]
+
+  if (invoiceBookFilters.value.paymentState !== 'all') {
+    labels.push(invoiceBookPaymentSummary(invoiceBookFilters.value.paymentState))
+  }
+
+  if (invoiceBookFilters.value.activeClientOnly) {
+    labels.push(
+      activeClientLabel.value ? `Client: ${activeClientLabel.value}` : 'Client: active only',
+    )
+  }
+
+  return labels
+})
+
+const filterMenuTooltip = computed(() =>
+  isDefaultInvoiceBookFilters(invoiceBookFilters.value) ? 'Filter invoices' : 'Filters active',
+)
+
+function filterDirectionIcon(direction: 'asc' | 'desc') {
+  return direction === 'desc' ? ArrowDownIcon : ArrowUpIcon
+}
+
+function invoiceStatusLabel(invoice: InvBookInvoice): string {
+  const status = invoice.status?.trim()
+  if (!status) return 'Unknown'
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function invoiceStatusBadgeClass(invoice: InvBookInvoice): string {
+  switch (invoice.status) {
+    case 'paid':
+      return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200'
+    case 'void':
+      return 'border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400'
+    case 'draft':
+      return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-950/25 dark:text-amber-200'
+    default:
+      return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-400/20 dark:bg-sky-950/25 dark:text-sky-200'
+  }
+}
+
+function invoiceClientLabel(invoice: InvBookInvoice): string {
+  return invoice.clientCompanyName || invoice.clientName || `Client #${invoice.clientId}`
+}
+
+function invoiceBalanceLabel(invoice: InvBookInvoice): string {
+  if (invoice.status === 'void') return 'Voided'
+  if (invoice.balanceDueMinor <= 0) return 'Settled'
+  return `${fmtGBPMinor(invoice.balanceDueMinor)} due`
+}
+
+function invoiceSummaryBits(invoice: InvBookInvoice): string[] {
+  const bits = [invoiceClientLabel(invoice)]
+
+  if (invoice.issueDate) {
+    bits.push(fmtStrDate(invoice.issueDate, dateFormat.value))
+  }
+
+  bits.push(invoiceBalanceLabel(invoice))
+
+  const revisionBadge = bookSublistRevisionBadge(invoice.revisions)
+  if (revisionBadge !== 'No revisions') {
+    bits.push(revisionBadge)
+  }
+
+  return bits
+}
 
 // calculates the books position based on window dimensions
 function placePanel() {
@@ -140,6 +217,7 @@ function toggleInvoice(id: number, hasRevisions: boolean) {
 function selectInvoice(invoice: InvBookInvoice) {
   emit('select', {
     type: 'invoice',
+    clientId: invoice.clientId,
     id: invoice.id,
     baseNo: invoice.baseNo,
   })
@@ -150,6 +228,7 @@ function selectRevision(invoice: InvBookInvoice, revision: InvBookRevision) {
   openId.value = invoice.id
   emit('select', {
     type: 'revision',
+    clientId: invoice.clientId,
     id: revision.id,
     invoiceId: invoice.id,
     baseNo: invoice.baseNo,
@@ -234,6 +313,64 @@ const shortcuts: ShortcutDefinition[] = [
   { key: 'b', modifiers: ['ctrl'], action: () => toggleDropdown() },
 ]
 
+const menuOpts = computed<MenuOption[]>(() => [
+  {
+    id: 1,
+    name:
+      invoiceBookFilters.value.sortBy === 'date' && invoiceBookFilters.value.sortDirection === 'asc'
+        ? 'Date: oldest first'
+        : 'Date: newest first',
+    effect: () => bookStore.cycleBookSort('date'),
+    icon: CalendarDaysIcon,
+    rightIcon: filterDirectionIcon(
+      invoiceBookFilters.value.sortBy === 'date' ? invoiceBookFilters.value.sortDirection : 'desc',
+    ),
+    active: invoiceBookFilters.value.sortBy === 'date',
+  },
+  {
+    id: 2,
+    name:
+      invoiceBookFilters.value.sortBy === 'balance' &&
+      invoiceBookFilters.value.sortDirection === 'asc'
+        ? 'Outstanding: low to high'
+        : 'Outstanding: high to low',
+    effect: () => bookStore.cycleBookSort('balance'),
+    icon: DocumentCurrencyDollarIcon,
+    rightIcon: filterDirectionIcon(
+      invoiceBookFilters.value.sortBy === 'balance'
+        ? invoiceBookFilters.value.sortDirection
+        : 'desc',
+    ),
+    active: invoiceBookFilters.value.sortBy === 'balance',
+  },
+  {
+    id: 3,
+    name: invoiceBookPaymentSummary(invoiceBookFilters.value.paymentState),
+    effect: () => bookStore.cycleBookPaymentState(),
+    icon: BanknotesIcon,
+    rightIcon: invoiceBookFilters.value.paymentState === 'all' ? undefined : CheckIcon,
+    active: invoiceBookFilters.value.paymentState !== 'all',
+  },
+  {
+    id: 4,
+    name: invoiceBookFilters.value.activeClientOnly ? 'Client: active only' : 'Client: all clients',
+    effect: () => bookStore.toggleBookActiveClientOnly(),
+    icon: UserCircleIcon,
+    rightIcon: invoiceBookFilters.value.activeClientOnly ? CheckIcon : undefined,
+    active: invoiceBookFilters.value.activeClientOnly,
+    disabled: !clientStore.selectedClient && !invoiceBookFilters.value.activeClientOnly,
+    disabledReason: 'Select a client first to filter the invoice book to the active client.',
+  },
+  {
+    id: 5,
+    name: 'Reset filters',
+    effect: () => bookStore.resetInvoiceBookFilters(),
+    icon: ArrowPathIcon,
+    disabled: isDefaultInvoiceBookFilters(invoiceBookFilters.value),
+    disabledReason: 'Invoice book filters are already using the default view.',
+  },
+])
+
 useShortcuts(shortcuts)
 useEscape(() => closeDropdown())
 </script>
@@ -275,23 +412,28 @@ useEscape(() => closeDropdown())
             class="relative border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
           >
             <DecorGradient variant="gradientAndGrid" />
-            <div class="relative p-4">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                    Invoice Book
-                  </h3>
-
-                  <span
-                    class="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
-                  >
-                    {{ total }} invoices
-                  </span>
+            <div class="relative p-2 sm:p-4">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      Invoice Book
+                    </h3>
+                    <span
+                      class="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
+                    >
+                      {{ total }} invoices
+                    </span>
+                  </div>
+                  <p class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-300">
+                    Browse saved invoices and revisions
+                  </p>
                 </div>
-
-                <p class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-300">
-                  Browse saved invoices and revisions
-                </p>
+                <DetailsMenu
+                  :menu-icon="FunnelIcon"
+                  :options="menuOpts"
+                  :tooltip-text="filterMenuTooltip"
+                ></DetailsMenu>
               </div>
 
               <div class="relative mt-4">
@@ -303,21 +445,32 @@ useEscape(() => closeDropdown())
                   v-model="query"
                   type="text"
                   placeholder="Search invoice…"
-                  class="input input-accent py-1 pl-9"
+                  class="input input-accent py-1 pl-9 dark:bg-zinc-900"
                 />
+              </div>
+
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <span
+                  v-for="label in filterSummary"
+                  :key="label"
+                  class="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-300"
+                >
+                  {{ label }}
+                </span>
               </div>
             </div>
           </div>
 
           <div
-            ref="listEl"
             class="lg relative max-h-[min(26rem,calc(100vh-12rem))] overflow-y-auto p-3 pb-4 sm:max-h-100"
           >
             <Transition
               name="fade-down-up"
               mode="out-in"
             >
-              <div :key="`${offset}-${query}`">
+              <div
+                :key="`${offset}-${query}-${invoiceBookFilters.sortBy}-${invoiceBookFilters.sortDirection}-${invoiceBookFilters.paymentState}-${invoiceBookFilters.activeClientOnly}`"
+              >
                 <div
                   v-if="isLoadingBook && !invoiceBook.length"
                   class="rounded-xl border border-dashed border-zinc-200 px-3 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400"
@@ -385,8 +538,20 @@ useEscape(() => closeDropdown())
                           />
 
                           <div class="flex min-w-0 flex-1 items-center justify-between gap-2">
-                            <div class="truncate text-sm font-medium">
-                              {{ formatInvoiceBaseLabel(bookInvoicePrefix, invoice.baseNo) }}
+                            <div class="min-w-0 flex-1">
+                              <div class="truncate text-sm font-medium">
+                                {{ formatInvoiceBaseLabel(bookInvoicePrefix, invoice.baseNo) }}
+                              </div>
+                              <div
+                                class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400"
+                              >
+                                <span
+                                  v-for="bit in invoiceSummaryBits(invoice)"
+                                  :key="`${invoice.id}-${bit}`"
+                                >
+                                  {{ bit }}
+                                </span>
+                              </div>
                             </div>
 
                             <TheTooltip>
@@ -397,21 +562,37 @@ useEscape(() => closeDropdown())
                                     {{ invoice.status || '' }}
                                   </div>
                                   <div>
+                                    <span class="font-bold">Client:</span>
+                                    {{ invoiceClientLabel(invoice) }}
+                                  </div>
+                                  <div>
                                     <span class="font-bold">Number:</span>
                                     {{ formatInvoiceBaseLabel(bookInvoicePrefix, invoice.baseNo) }}
+                                  </div>
+                                  <div>
+                                    <span class="font-bold">Current revision:</span>
+                                    {{ invoice.latestRevisionNo }}
+                                  </div>
+                                  <div>
+                                    <span class="font-bold">Total:</span>
+                                    {{ fmtGBPMinor(invoice.totalMinor) }}
+                                  </div>
+                                  <div>
+                                    <span class="font-bold">Paid:</span>
+                                    {{ fmtGBPMinor(invoice.paidMinor) }}
+                                  </div>
+                                  <div>
+                                    <span class="font-bold">Outstanding:</span>
+                                    {{ fmtGBPMinor(invoice.balanceDueMinor) }}
                                   </div>
                                 </div>
                               </template>
 
                               <span
                                 class="text-tiny shrink-0 rounded-full border px-2 py-0.5 font-medium"
-                                :class="
-                                  revisionsForBookSublist(invoice.revisions).length
-                                    ? 'border-zinc-200 bg-white/90 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400'
-                                    : 'border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500'
-                                "
+                                :class="invoiceStatusBadgeClass(invoice)"
                               >
-                                {{ bookSublistRevisionBadge(invoice.revisions) }}
+                                {{ invoiceStatusLabel(invoice) }}
                               </span>
                             </TheTooltip>
                           </div>
@@ -503,7 +684,7 @@ useEscape(() => closeDropdown())
           </div>
 
           <div
-            class="flex items-center justify-between gap-2 border-t border-zinc-200 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800"
+            class="flex items-center justify-between gap-2 border-t border-zinc-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 dark:border-zinc-800"
           >
             <p class="text-xs text-zinc-600 dark:text-zinc-400">
               {{ pageLabel }}

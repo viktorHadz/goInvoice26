@@ -12,6 +12,15 @@ import type {
     InvBookInvoice,
     InvoiceResponse,
 } from '@/components/editor/invBookTypes'
+import {
+    areInvoiceBookFiltersEqual,
+    createDefaultInvoiceBookFilters,
+    cycleInvoiceBookPaymentState as nextInvoiceBookPaymentState,
+    cycleInvoiceBookSort as nextInvoiceBookSort,
+    toggleInvoiceBookActiveClient as nextInvoiceBookActiveClient,
+    type InvoiceBookFilters,
+    type InvoiceBookSortBy,
+} from '@/components/editor/invoiceBookFilters'
 import { handleActionError } from '@/utils/errors/handleActionError'
 import {
     getApiErrorMessage,
@@ -116,6 +125,7 @@ export const useEditorStore = defineStore('editorStore', () => {
     const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
 
     const invoiceBook = ref<InvBookInvoice[]>([])
+    const invoiceBookFilters = ref<InvoiceBookFilters>(createDefaultInvoiceBookFilters())
     const activeInvoice = ref<Invoice | null>(null)
     const activeRevisionNo = ref<number>(1)
     const activeNode = ref<ActiveEditorNode>(null)
@@ -138,6 +148,7 @@ export const useEditorStore = defineStore('editorStore', () => {
     const existingAppliedPayments = ref<AppliedPayment[]>([])
     const pendingPayments = ref<PendingPayment[]>([])
     const editBaselineSnapshot = ref('')
+    const pendingInvoiceBookNode = ref<ActiveEditorNode>(null)
 
     const prettyBaseNumber = computed(() =>
         formatInvoiceBaseLabel(invoicePrefix.value, draftInvoice.value?.baseNumber),
@@ -234,13 +245,6 @@ export const useEditorStore = defineStore('editorStore', () => {
 
     let lastBookRequestId = 0
     async function fetchInvoiceBook(reset = false) {
-        const clientId = clientStore.selectedClient?.id
-
-        if (!clientId) {
-            clearInvoiceBook()
-            return
-        }
-
         if (reset) {
             offset.value = 0
         }
@@ -251,10 +255,17 @@ export const useEditorStore = defineStore('editorStore', () => {
         bookError.value = ''
 
         try {
-            const data = await getInvAndRevNums(clientId, limit.value, offset.value)
+            const activeClientId = invoiceBookFilters.value.activeClientOnly
+                ? (clientStore.selectedClient?.id ?? null)
+                : null
+            const data = await getInvAndRevNums(
+                limit.value,
+                offset.value,
+                invoiceBookFilters.value,
+                activeClientId,
+            )
 
             if (requestId !== lastBookRequestId) return
-            if (clientStore.selectedClient?.id !== clientId) return
 
             invoiceBook.value = data.items
             total.value = data.total
@@ -442,6 +453,7 @@ export const useEditorStore = defineStore('editorStore', () => {
             await fetchInvoiceBook()
             activeNode.value = {
                 type: 'revision',
+                clientId: dto.overview.clientId,
                 id: created.revisionId,
                 invoiceId: created.invoiceId,
                 baseNo: dto.overview.baseNumber,
@@ -531,6 +543,47 @@ export const useEditorStore = defineStore('editorStore', () => {
     async function goToFirstPage() {
         offset.value = 0
         await fetchInvoiceBook()
+    }
+
+    async function setInvoiceBookFilters(nextFilters: InvoiceBookFilters) {
+        if (areInvoiceBookFiltersEqual(invoiceBookFilters.value, nextFilters)) return
+
+        invoiceBookFilters.value = nextFilters
+        await fetchInvoiceBook(true)
+    }
+
+    async function cycleBookSort(sortBy: InvoiceBookSortBy) {
+        await setInvoiceBookFilters(nextInvoiceBookSort(invoiceBookFilters.value, sortBy))
+    }
+
+    async function cycleBookPaymentState() {
+        await setInvoiceBookFilters(nextInvoiceBookPaymentState(invoiceBookFilters.value))
+    }
+
+    async function toggleBookActiveClientOnly() {
+        await setInvoiceBookFilters(nextInvoiceBookActiveClient(invoiceBookFilters.value))
+    }
+
+    async function resetInvoiceBookFilters() {
+        await setInvoiceBookFilters(createDefaultInvoiceBookFilters())
+    }
+
+    function selectInvoiceBookNode(node: ActiveEditorNode) {
+        pendingInvoiceBookNode.value = null
+
+        if (!node) {
+            activeNode.value = null
+            return
+        }
+
+        const currentClientId = clientStore.selectedClient?.id ?? null
+        if (node.clientId !== currentClientId) {
+            pendingInvoiceBookNode.value = node
+            clientStore.selectClientById(node.clientId)
+            return
+        }
+
+        activeNode.value = node
     }
 
     function clearInvoiceBook() {
@@ -699,19 +752,29 @@ export const useEditorStore = defineStore('editorStore', () => {
             }
         },
     )
-    // Reset invoice book on client change
     watch(
         () => clientStore.selectedClient?.id,
         async (newClientId, oldClientId) => {
-            if (newClientId === oldClientId) return
+            const isInitialLoad = typeof oldClientId === 'undefined'
+            const shouldRefreshBook = isInitialLoad || invoiceBookFilters.value.activeClientOnly
+
+            if (newClientId === oldClientId && !shouldRefreshBook) return
 
             activeNode.value = null
             clearActiveInvoice()
-            clearInvoiceBook()
 
-            if (!newClientId) return
+            if (shouldRefreshBook) {
+                await fetchInvoiceBook(true)
+            }
 
-            await fetchInvoiceBook(true)
+            if (
+                pendingInvoiceBookNode.value &&
+                pendingInvoiceBookNode.value.clientId === (newClientId ?? null)
+            ) {
+                activeNode.value = pendingInvoiceBookNode.value
+            }
+
+            pendingInvoiceBookNode.value = null
         },
         { immediate: true },
     )
@@ -731,6 +794,7 @@ export const useEditorStore = defineStore('editorStore', () => {
     })
     return {
         invoiceBook,
+        invoiceBookFilters,
         activeInvoice,
         activeNode,
         draftInvoice,
@@ -758,6 +822,11 @@ export const useEditorStore = defineStore('editorStore', () => {
         nextPage,
         prevPage,
         goToFirstPage,
+        cycleBookSort,
+        cycleBookPaymentState,
+        toggleBookActiveClientOnly,
+        resetInvoiceBookFilters,
+        selectInvoiceBookNode,
         clearInvoiceBook,
         clearActiveInvoice,
         fmtActive,

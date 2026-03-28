@@ -47,8 +47,6 @@ export function flattenValidationErrors(
 }
 
 export const usePdfStore = defineStore('pdf', () => {
-    const inv = useInvoiceStore()
-
     async function handlePdfGeneration(handler: () => Promise<void>, successMessage?: string) {
         try {
             await handler()

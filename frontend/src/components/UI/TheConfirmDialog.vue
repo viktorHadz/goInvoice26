@@ -93,7 +93,7 @@ useEscape(cancelCurrent, {
           <div class="relative z-10 flex items-start justify-between gap-4 px-5 py-4">
             <div class="flex min-w-0 items-center gap-4">
               <div
-                class="grid size-12 shrink-0 place-items-center rounded-2xl border border-orange-400 bg-white shadow-sm dark:border-orange-400/20 dark:bg-zinc-900"
+                class="grid size-12 shrink-0 place-items-center rounded-2xl border border-orange-400 bg-white shadow-sm dark:border-orange-400/50 dark:bg-zinc-900"
               >
                 <ExclamationTriangleIcon class="size-7 text-orange-400" />
               </div>

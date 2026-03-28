@@ -224,18 +224,22 @@ useEscape(closeSettings, {
           <DecorGradient variant="gradientAndGrid"></DecorGradient>
           <!-- More glow -->
 
-          <div class="relative z-10 flex items-start justify-between gap-4 px-5 py-4">
+          <div
+            class="relative z-10 flex items-start justify-between gap-4 px-3 py-2 sm:px-5 sm:py-4"
+          >
             <div class="flex min-w-0 items-center gap-4">
               <div
-                class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+                class="grid size-10 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm sm:size-12 dark:border-zinc-700 dark:bg-zinc-900"
               >
-                <Cog6ToothIcon class="stroke-1.5 size-7 text-sky-700 dark:text-emerald-400" />
+                <Cog6ToothIcon
+                  class="stroke-1.5 size-6 text-sky-700 sm:size-7 dark:text-emerald-400"
+                />
               </div>
 
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
                   <h2
-                    class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+                    class="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl dark:text-zinc-100"
                   >
                     {{ title }}
                   </h2>
@@ -271,7 +275,7 @@ useEscape(closeSettings, {
         >
           <!-- Left -->
           <div
-            class="min-h-0 overflow-y-auto border-b border-zinc-200 px-5 py-5 lg:border-r lg:border-b-0 dark:border-zinc-800"
+            class="min-h-0 overflow-y-auto border-b border-zinc-200 p-3 sm:p-5 lg:border-r lg:border-b-0 dark:border-zinc-800"
           >
             <div class="space-y-5 pb-10">
               <!-- Business identity -->
@@ -371,7 +375,6 @@ useEscape(closeSettings, {
                     </div>
                     <TheTooltip
                       side="top"
-                      align="start"
                       max-width-class="max-w-[320px]"
                     >
                       <template #content>
@@ -534,7 +537,7 @@ useEscape(closeSettings, {
           </div>
 
           <!-- Right -->
-          <div class="min-h-0 overflow-y-auto px-5 py-5">
+          <div class="min-h-0 overflow-y-auto p-3 sm:p-5">
             <div class="space-y-5 pb-10">
               <!-- Logo -->
               <section
@@ -639,7 +642,7 @@ useEscape(closeSettings, {
 
         <!-- Footer -->
         <footer
-          class="border-t border-zinc-200 bg-white/90 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900/90"
+          class="border-t border-zinc-200 bg-white/90 px-5 py-3 sm:py-4 dark:border-zinc-800 dark:bg-zinc-900/90"
         >
           <div class="flex flex-wrap items-center justify-end gap-2">
             <TheButton

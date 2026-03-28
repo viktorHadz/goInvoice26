@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { DocumentArrowDownIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import TheButton from '../UI/TheButton.vue'
-import DetailsToolbar from '@/components/editor/partials/DetailsToolbar.vue'
-import DetailsMenu from '@/components/editor/partials/DetailsMenu.vue'
+import DetailsMenu, { type MenuOption } from '@/components/editor/partials/DetailsMenu.vue'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 import EditorHeader from './partials/EditorHeader.vue'
@@ -73,6 +72,25 @@ async function generatePdfOnly() {
     isGeneratingPdf.value = false
   }
 }
+
+const menuOpts = computed<MenuOption[]>(() => [
+  {
+    id: 1,
+    name: 'Generate PDF',
+    disabled: isGeneratingPdf.value,
+    disabledReason: 'Processing invoice generation please try again later. ',
+    effect: generatePdfOnly,
+    icon: DocumentArrowDownIcon,
+  },
+  {
+    id: 2,
+    name: 'Generate Docx',
+    disabled: isGeneratingPdf.value,
+    disabledReason: 'Processing invoice generation please try again later. ',
+    effect: generatePdfOnly,
+    icon: DocumentArrowDownIcon,
+  },
+])
 </script>
 <template>
   <div class="space-y-4">
@@ -118,10 +136,7 @@ async function generatePdfOnly() {
               </TheButton>
             </TheTooltip>
 
-            <DetailsMenu
-              :pdf-disabled="isGeneratingPdf"
-              @pdf="generatePdfOnly"
-            />
+            <DetailsMenu :options="menuOpts" />
           </div>
         </div>
       </div>

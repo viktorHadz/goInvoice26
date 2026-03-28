@@ -26,6 +26,8 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 		r.Put("/", settings.Put(a))
 	})
 
+	r.Get("/api/edits", editor.HandleINVBookData(a))
+
 	r.Route("/api/clients", func(r chi.Router) {
 		r.Use(midware.LimitBodyMaxSize(2 << 20)) // 2MB
 		r.Post("/", clients.Create(a))

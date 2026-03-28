@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ChevronUpDownIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import {
+  ChevronUpDownIcon,
+  DocumentArrowDownIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from '@heroicons/vue/24/outline'
 
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
@@ -172,6 +177,22 @@ const menuOpts = computed<MenuOption[]>(() => [
     disabledReason: 'Void invoices are final records and cannot be deleted.',
     effect: confirmDeleteInvoice,
     icon: TrashIcon,
+  },
+  {
+    id: 3,
+    name: 'Generate PDF',
+    disabled: isGeneratingPdf.value,
+    disabledReason: 'Processing invoice generation please try again later. ',
+    effect: generatePdfOnly,
+    icon: DocumentArrowDownIcon,
+  },
+  {
+    id: 3,
+    name: 'Generate Docx',
+    disabled: isGeneratingPdf.value,
+    disabledReason: 'Processing invoice generation please try again later. ',
+    effect: generatePdfOnly,
+    icon: DocumentArrowDownIcon,
   },
 ])
 </script>

@@ -25,6 +25,7 @@ describe('invoiceLabels display mapping', () => {
         expect(
             formatActiveEditorNodeLabel('INV-', {
                 type: 'invoice',
+                clientId: 1,
                 id: 10,
                 baseNo: 7,
             }),
@@ -33,6 +34,7 @@ describe('invoiceLabels display mapping', () => {
         expect(
             formatActiveEditorNodeLabel('INV-', {
                 type: 'revision',
+                clientId: 1,
                 id: 20,
                 invoiceId: 10,
                 baseNo: 7,

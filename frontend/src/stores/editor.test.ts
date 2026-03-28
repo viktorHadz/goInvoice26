@@ -4,6 +4,7 @@ import type { Invoice } from '@/components/invoice/invoiceTypes'
 import { useEditorStore } from '@/stores/editor'
 
 const {
+    selectClientByIdMock,
     deleteInvoiceMock,
     getInvAndRevNumsMock,
     getInvoiceMock,
@@ -13,6 +14,7 @@ const {
     emitToastInfoMock,
     emitToastSuccessMock,
 } = vi.hoisted(() => ({
+    selectClientByIdMock: vi.fn(),
     deleteInvoiceMock: vi.fn(async () => undefined),
     getInvAndRevNumsMock: vi.fn(async () => ({
         items: [],
@@ -77,6 +79,7 @@ const {
 vi.mock('@/stores/clients', () => ({
     useClientStore: () => ({
         selectedClient: { id: 42 },
+        selectClientById: selectClientByIdMock,
     }),
 }))
 
@@ -178,6 +181,25 @@ function makeInvoice(): Invoice {
     }
 }
 
+function makeBookInvoice(status: 'draft' | 'issued' | 'paid' | 'void' = 'issued') {
+    return {
+        id: 7,
+        clientId: 42,
+        clientName: 'Alex',
+        clientCompanyName: 'Acme Co',
+        baseNo: 101,
+        status,
+        latestRevisionNo: 1,
+        issueDate: '2026-03-20',
+        dueByDate: '2026-03-30',
+        totalMinor: 10000,
+        depositMinor: 0,
+        paidMinor: 0,
+        balanceDueMinor: 10000,
+        revisions: [],
+    }
+}
+
 describe('editor store no-change save guard', () => {
     beforeEach(() => {
         setActivePinia(createPinia())
@@ -199,8 +221,8 @@ describe('editor store no-change save guard', () => {
 
     it('saves revision when payload changes', async () => {
         const store = useEditorStore()
-        store.activeNode = { type: 'invoice', id: 7, baseNo: 101 }
-        store.invoiceBook = [{ id: 7, baseNo: 101, status: 'issued', revisions: [] }]
+        store.activeNode = { type: 'invoice', clientId: 42, id: 7, baseNo: 101 }
+        store.invoiceBook = [makeBookInvoice('issued')]
         store.activeInvoice = makeInvoice()
         store.initEdit()
 
@@ -211,6 +233,7 @@ describe('editor store no-change save guard', () => {
         expect(newRevisionHandlerMock).toHaveBeenCalledTimes(1)
         expect(store.activeNode).toEqual({
             type: 'revision',
+            clientId: 42,
             id: 70,
             invoiceId: 7,
             baseNo: 101,
@@ -221,8 +244,8 @@ describe('editor store no-change save guard', () => {
 
     it('updates draft invoices in place and keeps invoice selection', async () => {
         const store = useEditorStore()
-        store.activeNode = { type: 'invoice', id: 7, baseNo: 101 }
-        store.invoiceBook = [{ id: 7, baseNo: 101, status: 'draft', revisions: [] }]
+        store.activeNode = { type: 'invoice', clientId: 42, id: 7, baseNo: 101 }
+        store.invoiceBook = [makeBookInvoice('draft')]
         store.activeInvoice = { ...makeInvoice(), status: 'draft' }
         getInvoiceMock.mockResolvedValueOnce({
             status: 'draft',
@@ -271,7 +294,7 @@ describe('editor store no-change save guard', () => {
         expect(result).toBe(true)
         expect(updateDraftInvoiceHandlerMock).toHaveBeenCalledTimes(1)
         expect(newRevisionHandlerMock).not.toHaveBeenCalled()
-        expect(store.activeNode).toEqual({ type: 'invoice', id: 7, baseNo: 101 })
+        expect(store.activeNode).toEqual({ type: 'invoice', clientId: 42, id: 7, baseNo: 101 })
         expect(emitToastSuccessMock).toHaveBeenCalledWith('Draft INV - 101 saved.')
     })
 
@@ -294,9 +317,9 @@ describe('editor store no-change save guard', () => {
 
     it('deletes the active invoice and clears the editor state', async () => {
         const store = useEditorStore()
-        store.activeNode = { type: 'invoice', id: 7, baseNo: 101 }
+        store.activeNode = { type: 'invoice', clientId: 42, id: 7, baseNo: 101 }
         store.activeInvoice = makeInvoice()
-        store.invoiceBook = [{ id: 7, baseNo: 101, status: 'issued', revisions: [] }]
+        store.invoiceBook = [makeBookInvoice('issued')]
 
         const result = await store.deleteActiveInvoice()
 
@@ -307,5 +330,84 @@ describe('editor store no-change save guard', () => {
         expect(store.draftInvoice).toBe(null)
         expect(getInvAndRevNumsMock).toHaveBeenCalled()
         expect(emitToastSuccessMock).toHaveBeenCalledWith('INV - 101 deleted.')
+    })
+
+    it('stores invoice-book filters and refetches with them', async () => {
+        const store = useEditorStore()
+        getInvAndRevNumsMock.mockClear()
+
+        await store.cycleBookSort('balance')
+
+        expect(store.invoiceBookFilters).toEqual({
+            sortBy: 'balance',
+            sortDirection: 'desc',
+            paymentState: 'all',
+            activeClientOnly: false,
+        })
+        expect(getInvAndRevNumsMock).toHaveBeenLastCalledWith(
+            10,
+            0,
+            {
+                sortBy: 'balance',
+                sortDirection: 'desc',
+                paymentState: 'all',
+                activeClientOnly: false,
+            },
+            null,
+        )
+
+        await store.cycleBookPaymentState()
+
+        expect(store.invoiceBookFilters).toEqual({
+            sortBy: 'balance',
+            sortDirection: 'desc',
+            paymentState: 'unpaid',
+            activeClientOnly: false,
+        })
+        expect(getInvAndRevNumsMock).toHaveBeenLastCalledWith(
+            10,
+            0,
+            {
+                sortBy: 'balance',
+                sortDirection: 'desc',
+                paymentState: 'unpaid',
+                activeClientOnly: false,
+            },
+            null,
+        )
+    })
+
+    it('can scope the invoice book to the active client', async () => {
+        const store = useEditorStore()
+        getInvAndRevNumsMock.mockClear()
+
+        await store.toggleBookActiveClientOnly()
+
+        expect(store.invoiceBookFilters).toEqual({
+            sortBy: 'date',
+            sortDirection: 'desc',
+            paymentState: 'all',
+            activeClientOnly: true,
+        })
+        expect(getInvAndRevNumsMock).toHaveBeenLastCalledWith(
+            10,
+            0,
+            {
+                sortBy: 'date',
+                sortDirection: 'desc',
+                paymentState: 'all',
+                activeClientOnly: true,
+            },
+            42,
+        )
+    })
+
+    it('queues a client switch when selecting an invoice from another client', () => {
+        const store = useEditorStore()
+
+        store.selectInvoiceBookNode({ type: 'invoice', clientId: 99, id: 7, baseNo: 101 })
+
+        expect(selectClientByIdMock).toHaveBeenCalledWith(99)
+        expect(store.activeNode).toBe(null)
     })
 })

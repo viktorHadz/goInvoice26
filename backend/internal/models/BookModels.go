@@ -9,11 +9,20 @@ type INVBookRevision struct {
 }
 
 type INVBookInvoice struct {
-	ID             int64             `json:"id"`
-	BaseNo         int               `json:"baseNo"`
-	Status         string            `json:"status"`
-	LatestRevision int               `json:"latestRevision"`
-	Revisions      []INVBookRevision `json:"revisions"`
+	ID                int64             `json:"id"`
+	ClientID          int64             `json:"clientId"`
+	ClientName        string            `json:"clientName"`
+	ClientCompanyName string            `json:"clientCompanyName"`
+	BaseNo            int               `json:"baseNo"`
+	Status            string            `json:"status"`
+	LatestRevisionNo  int               `json:"latestRevisionNo"`
+	IssueDate         string            `json:"issueDate"`
+	DueByDate         *string           `json:"dueByDate,omitempty"`
+	TotalMinor        int64             `json:"totalMinor"`
+	DepositMinor      int64             `json:"depositMinor"`
+	PaidMinor         int64             `json:"paidMinor"`
+	BalanceDueMinor   int64             `json:"balanceDueMinor"`
+	Revisions         []INVBookRevision `json:"revisions"`
 }
 
 type INVBookOut struct {

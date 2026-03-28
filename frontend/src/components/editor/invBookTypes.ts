@@ -8,19 +8,31 @@ export type InvBookRevision = {
 
 export type InvBookInvoice = {
     id: number
+    clientId: number
+    clientName: string
+    clientCompanyName: string
     baseNo: number
     status: string
+    latestRevisionNo: number
+    issueDate: string
+    dueByDate?: string
+    totalMinor: number
+    depositMinor: number
+    paidMinor: number
+    balanceDueMinor: number
     revisions: InvBookRevision[]
 }
 
 export type ActiveEditorNode =
     | {
           type: 'invoice'
+          clientId: number
           id: number
           baseNo: number
       }
     | {
           type: 'revision'
+          clientId: number
           id: number
           invoiceId: number
           baseNo: number

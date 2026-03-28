@@ -64,7 +64,7 @@ const editStore = useEditorStore()
             <div class="w-full sm:w-auto">
               <InvoiceBook
                 :active-node="editStore.activeNode"
-                @select="editStore.activeNode = $event"
+                @select="editStore.selectInvoiceBookNode($event)"
               />
             </div>
           </div>

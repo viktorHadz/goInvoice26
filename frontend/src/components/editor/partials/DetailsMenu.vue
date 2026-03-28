@@ -2,7 +2,7 @@
 import TheTooltip from '@/components/UI/TheTooltip.vue'
 import { emitToastInfo } from '@/utils/toast'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
-import { DocumentArrowDownIcon, EllipsisVerticalIcon } from '@heroicons/vue/24/outline'
+import { EllipsisVerticalIcon } from '@heroicons/vue/24/outline'
 import type { Component } from 'vue'
 
 export type MenuOption = {
@@ -10,6 +10,8 @@ export type MenuOption = {
   name: string
   effect: () => void | Promise<void>
   icon?: Component
+  rightIcon?: Component
+  active?: boolean
   disabled?: boolean
   disabledReason?: string
 }
@@ -24,10 +26,13 @@ function onOptionClick(option: MenuOption) {
 
 defineProps<{
   pdfDisabled?: boolean
+  menuIcon?: Component
+  menuIconSize?: string
+  tooltipText?: string
   options?: MenuOption[]
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   pdf: []
   option: any[]
 }>()
@@ -43,9 +48,10 @@ const emit = defineEmits<{
       class="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-300 bg-white px-2.5 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-sky-500/30 focus-visible:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800/80 dark:focus-visible:ring-emerald-400/25"
       aria-label="More actions"
     >
-      <TheTooltip text="Invoice operations">
-        <EllipsisVerticalIcon
-          class="size-5 text-zinc-600 dark:text-zinc-300"
+      <TheTooltip :text="tooltipText ? tooltipText : 'Invoice operations'">
+        <component
+          :is="menuIcon ? menuIcon : EllipsisVerticalIcon"
+          :class="[menuIconSize ? menuIconSize : 'size-5', 'text-zinc-600 dark:text-zinc-300']"
           aria-hidden="true"
         />
       </TheTooltip>
@@ -72,57 +78,30 @@ const emit = defineEmits<{
             type="button"
             @click="onOptionClick(option)"
             :aria-disabled="option.disabled ? 'true' : 'false'"
-            class="flex w-full items-center gap-2 px-3 py-2 text-left text-zinc-700 dark:text-zinc-100"
+            class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-zinc-700 dark:text-zinc-100"
             :class="[
-              active
-                ? 'cursor-pointer bg-sky-50 text-zinc-900 dark:bg-emerald-950/25 dark:text-zinc-100'
-                : '',
+              option.active
+                ? 'bg-sky-50 text-zinc-900 dark:bg-emerald-950/25 dark:text-zinc-100'
+                : active
+                  ? 'cursor-pointer bg-sky-50 text-zinc-900 dark:bg-emerald-950/25 dark:text-zinc-100'
+                  : '',
               option.disabled ? 'cursor-not-allowed line-through opacity-50' : '',
             ]"
           >
+            <span class="flex min-w-0 items-center gap-2">
+              <component
+                v-if="option.icon"
+                :is="option.icon"
+                class="size-5 shrink-0"
+              />
+              <span class="truncate">{{ option.name }}</span>
+            </span>
+
             <component
-              v-if="option.icon"
-              :is="option.icon"
-              class="size-5"
+              v-if="option.rightIcon"
+              :is="option.rightIcon"
+              class="size-4 shrink-0"
             />
-            {{ option.name }}
-          </button>
-        </MenuItem>
-        <MenuItem v-slot="{ active }">
-          <button
-            type="button"
-            class="flex w-full items-center gap-2 px-3 py-2 text-left text-zinc-700 disabled:opacity-50 dark:text-zinc-100"
-            :class="
-              active
-                ? 'cursor-pointer bg-sky-50 text-zinc-900 dark:bg-emerald-950/25 dark:text-zinc-100'
-                : ''
-            "
-            :disabled="pdfDisabled"
-            @click="emit('pdf')"
-          >
-            <DocumentArrowDownIcon class="size-5" />
-            Generate PDF
-          </button>
-        </MenuItem>
-        <MenuItem v-slot="{ active }">
-          <button
-            type="button"
-            class="flex w-full items-center px-3 py-2 text-left text-zinc-700 disabled:opacity-50 dark:text-zinc-100"
-            :class="
-              active
-                ? 'cursor-pointer bg-sky-50 text-zinc-900 dark:bg-emerald-950/25 dark:text-zinc-100'
-                : ''
-            "
-            :disabled="pdfDisabled"
-            @click="emit('pdf')"
-          >
-            <TheTooltip
-              text="Google Docs and MS Word readable format"
-              class="gap-2"
-            >
-              <DocumentArrowDownIcon class="size-5" />
-              Generate Docx
-            </TheTooltip>
           </button>
         </MenuItem>
       </MenuItems>
