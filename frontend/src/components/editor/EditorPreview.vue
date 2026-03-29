@@ -30,20 +30,35 @@ const editStore = useEditorStore()
 const setsStore = useSettingsStore()
 const pdfStore = usePdfStore()
 
-const isGeneratingPdf = ref(false)
+const isGeneratingExport = ref(false)
 
 async function generatePdfOnly() {
-  const inv = editStore.activeInvoice
-  if (!inv || isGeneratingPdf.value) return
+  const draftOrSavedInvoice = editStore.activeInvoice
+  if (!draftOrSavedInvoice || isGeneratingExport.value) return
 
   const selectedRevisionNo =
     editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
 
-  isGeneratingPdf.value = true
+  isGeneratingExport.value = true
   try {
-    await pdfStore.quickGeneratePDF(inv, selectedRevisionNo)
+    await pdfStore.quickGeneratePDF(draftOrSavedInvoice, selectedRevisionNo)
   } finally {
-    isGeneratingPdf.value = false
+    isGeneratingExport.value = false
+  }
+}
+
+async function generateDocxOnly() {
+  const draftOrSavedInvoice = editStore.activeInvoice
+  if (!draftOrSavedInvoice || isGeneratingExport.value) return
+
+  const selectedRevisionNo =
+    editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
+
+  isGeneratingExport.value = true
+  try {
+    await pdfStore.quickGenerateDocx(draftOrSavedInvoice, selectedRevisionNo)
+  } finally {
+    isGeneratingExport.value = false
   }
 }
 
@@ -181,17 +196,17 @@ const menuOpts = computed<MenuOption[]>(() => [
   {
     id: 3,
     name: 'Generate PDF',
-    disabled: isGeneratingPdf.value,
+    disabled: isGeneratingExport.value,
     disabledReason: 'Processing invoice generation please try again later. ',
     effect: generatePdfOnly,
     icon: DocumentArrowDownIcon,
   },
   {
-    id: 3,
+    id: 4,
     name: 'Generate Docx',
-    disabled: isGeneratingPdf.value,
+    disabled: isGeneratingExport.value,
     disabledReason: 'Processing invoice generation please try again later. ',
-    effect: generatePdfOnly,
+    effect: generateDocxOnly,
     icon: DocumentArrowDownIcon,
   },
 ])
@@ -234,7 +249,7 @@ const menuOpts = computed<MenuOption[]>(() => [
             </div>
             <div class="flex items-center gap-2">
               <DetailsMenu
-                :pdf-disabled="isGeneratingPdf"
+                :pdf-disabled="isGeneratingExport"
                 @pdf="generatePdfOnly"
                 :options="menuOpts"
               />

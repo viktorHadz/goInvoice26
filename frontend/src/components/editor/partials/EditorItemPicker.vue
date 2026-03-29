@@ -108,6 +108,21 @@ function addCustomItem() {
   })
   open.value = false
 }
+
+const pickerFlash = ref(false)
+
+watch(itemType, () => {
+  q.value = ''
+  open.value = false
+
+  pickerFlash.value = false
+  requestAnimationFrame(() => {
+    pickerFlash.value = true
+    window.setTimeout(() => {
+      pickerFlash.value = false
+    }, 220)
+  })
+})
 </script>
 <template>
   <main
@@ -132,7 +147,7 @@ function addCustomItem() {
         >
           <button
             type="button"
-            class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:focus-visible:ring-emerald-400/30"
+            class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition duration-300 will-change-transform outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset active:scale-[0.98] dark:focus-visible:ring-emerald-400/30"
             :class="
               itemType === 'style'
                 ? 'bg-sky-100 text-sky-700 dark:bg-emerald-950/60 dark:text-emerald-200'
@@ -145,7 +160,7 @@ function addCustomItem() {
 
           <button
             type="button"
-            class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition will-change-transform outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset dark:focus-visible:ring-emerald-400/30"
+            class="transform-gpu rounded-full px-3 py-1.5 text-xs font-medium transition duration-300 will-change-transform outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-300 focus-visible:ring-inset active:scale-[0.98] dark:focus-visible:ring-emerald-400/30"
             :class="
               itemType === 'sample'
                 ? 'bg-sky-100 text-sky-700 dark:bg-emerald-950/60 dark:text-emerald-200'
@@ -167,6 +182,7 @@ function addCustomItem() {
           <div class="relative min-w-0 flex-1">
             <div
               class="group relative text-zinc-500 hover:text-sky-600 dark:text-zinc-400 hover:dark:text-emerald-400"
+              :class="{ 'picker-flash': pickerFlash }"
             >
               <label
                 :for="itemType + '-picker'"

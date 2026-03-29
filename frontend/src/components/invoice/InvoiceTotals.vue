@@ -9,7 +9,7 @@ import { fmtGBPMinor } from '@/utils/money'
 const invStore = useInvoiceStore()
 const pdfStore = usePdfStore()
 const isCreatingDraft = ref(false)
-const isGeneratingPdf = ref(false)
+const isGeneratingExport = ref(false)
 
 async function createDraft() {
   const inv = invStore.invoice
@@ -28,13 +28,25 @@ async function createDraft() {
 
 async function generatePdfOnly() {
   const inv = invStore.invoice
-  if (!inv || isGeneratingPdf.value) return
+  if (!inv || isGeneratingExport.value) return
 
-  isGeneratingPdf.value = true
+  isGeneratingExport.value = true
   try {
     await pdfStore.quickGeneratePDF(inv)
   } finally {
-    isGeneratingPdf.value = false
+    isGeneratingExport.value = false
+  }
+}
+
+async function generateDocxOnly() {
+  const inv = invStore.invoice
+  if (!inv || isGeneratingExport.value) return
+
+  isGeneratingExport.value = true
+  try {
+    await pdfStore.quickGenerateDocx(inv)
+  } finally {
+    isGeneratingExport.value = false
   }
 }
 </script>
@@ -120,22 +132,31 @@ async function generatePdfOnly() {
       </div>
     </div>
 
-    <div class="mt-8 flex flex-col gap-y-2 sm:flex-row sm:gap-x-4">
+    <div class="mt-8 flex w-full flex-col items-center gap-y-2 place-self-center">
       <TheButton
         class="flex w-full cursor-pointer items-center gap-2"
-        :disabled="isGeneratingPdf || isCreatingDraft"
+        :disabled="isGeneratingExport || isCreatingDraft"
         @click="generatePdfOnly"
       >
-        <DocumentArrowDownIcon class="size-4" />
+        <DocumentArrowDownIcon class="size-5" />
         Generate PDF
       </TheButton>
 
       <TheButton
         class="flex w-full cursor-pointer items-center gap-2"
-        :disabled="isCreatingDraft || isGeneratingPdf"
+        :disabled="isGeneratingExport || isCreatingDraft"
+        @click="generateDocxOnly"
+      >
+        <DocumentArrowDownIcon class="size-5" />
+        Generate DOCX
+      </TheButton>
+
+      <TheButton
+        class="flex w-full cursor-pointer items-center gap-2"
+        :disabled="isCreatingDraft || isGeneratingExport"
         @click="createDraft"
       >
-        <DocumentIcon class="size-4" />
+        <DocumentIcon class="size-5" />
         Create Draft
       </TheButton>
     </div>

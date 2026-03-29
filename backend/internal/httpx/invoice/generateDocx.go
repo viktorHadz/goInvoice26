@@ -8,11 +8,14 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/httpx/params"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/models"
+	"github.com/viktorHadz/goInvoice26/internal/service/docx"
 	"github.com/viktorHadz/goInvoice26/internal/service/pdf"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/settingsTx"
 )
 
-func GeneratePDFHandler(a *app.App) http.HandlerFunc {
+const docxContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+func GenerateDOCXHandler(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clientID, ok := params.ValidateParam(w, r, "clientID")
 		if !ok {
@@ -39,18 +42,16 @@ func GeneratePDFHandler(a *app.App) http.HandlerFunc {
 			clientID,
 			baseNumber,
 			revisionNo,
-			"pdf",
-			"application/pdf",
-			buildPDFFilename(baseNumber, revisionNo),
+			"docx",
+			docxContentType,
+			buildDOCXFilename(baseNumber, revisionNo),
 			builder,
-			func(doc models.InvoicePDFData) ([]byte, error) {
-				return pdf.RenderPDF(r.Context(), &pdf.MarotoRenderer{}, doc)
-			},
+			docx.RenderDOCX,
 		)
 	}
 }
 
-func QuickPDFHandler(a *app.App) http.HandlerFunc {
+func QuickDOCXHandler(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clientID, ok := params.ValidateParam(w, r, "clientID")
 		if !ok {
@@ -109,17 +110,15 @@ func QuickPDFHandler(a *app.App) http.HandlerFunc {
 			clientID,
 			baseNumber,
 			revisionNo,
-			"pdf",
-			"application/pdf",
-			buildPDFFilename(baseNumber, revisionNo),
+			"docx",
+			docxContentType,
+			buildDOCXFilename(baseNumber, revisionNo),
 			builder,
-			func(doc models.InvoicePDFData) ([]byte, error) {
-				return pdf.RenderPDF(r.Context(), &pdf.MarotoRenderer{}, doc)
-			},
+			docx.RenderDOCX,
 		)
 	}
 }
 
-func buildPDFFilename(baseNumber int64, revisionNo int64) string {
-	return buildDocumentFilename(baseNumber, revisionNo, "pdf")
+func buildDOCXFilename(baseNumber int64, revisionNo int64) string {
+	return buildDocumentFilename(baseNumber, revisionNo, "docx")
 }

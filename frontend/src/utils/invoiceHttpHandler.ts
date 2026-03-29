@@ -65,6 +65,9 @@ export type VerifyInvoiceResponse = {
     invoice: unknown
 }
 
+export type InvoiceDownloadFormat = 'pdf' | 'docx'
+export type InvoiceDownloadMode = 'save' | 'generate'
+
 export async function verifyInvoiceHandler(
     clientId: number,
     baseNumber: number,
@@ -119,24 +122,31 @@ function filenameFromContentDisposition(header: string | null): string | null {
     return plainMatch[1].trim()
 }
 
-function fallbackPdfFilename(baseNumber: number, revisionNumber: number): string {
+function fallbackInvoiceFilename(
+    baseNumber: number,
+    revisionNumber: number,
+    format: InvoiceDownloadFormat,
+): string {
+    if (baseNumber < 1) return `Invoice.${format}`
+
     const displayRevisionNo = toDisplayRevisionNo(revisionNumber)
-    if (displayRevisionNo == null) return `Invoice-${baseNumber}.pdf`
-    return `Invoice-${baseNumber}-Rev-${displayRevisionNo}.pdf`
+    if (displayRevisionNo == null) return `Invoice-${baseNumber}.${format}`
+    return `Invoice-${baseNumber}-Rev-${displayRevisionNo}.${format}`
 }
 
-export async function generatePdfHandler(
+async function generateInvoiceDownloadHandler(
     clientId: number,
     baseNumber: number,
-    pdfFetch: 'save' | 'generate' = 'save',
+    format: InvoiceDownloadFormat,
+    downloadMode: InvoiceDownloadMode = 'save',
     revisionNumber: number = 1,
     invoicePayload?: unknown,
 ) {
-    let url = `/api/clients/${clientId}/invoice/${baseNumber}/${revisionNumber}/pdf`
+    let url = `/api/clients/${clientId}/invoice/${baseNumber}/${revisionNumber}/${format}`
     let init: RequestInit | undefined
 
-    if (pdfFetch === 'generate') {
-        url = `/api/clients/${clientId}/invoice/${baseNumber}/${revisionNumber}/pdf/quick`
+    if (downloadMode === 'generate') {
+        url = `/api/clients/${clientId}/invoice/${baseNumber}/${revisionNumber}/${format}/quick`
 
         init = {
             method: 'POST',
@@ -163,5 +173,42 @@ export async function generatePdfHandler(
 
     const blob = await res.blob()
     const serverFilename = filenameFromContentDisposition(res.headers.get('content-disposition'))
-    downloadBlob(blob, serverFilename ?? fallbackPdfFilename(baseNumber, revisionNumber))
+    downloadBlob(
+        blob,
+        serverFilename ?? fallbackInvoiceFilename(baseNumber, revisionNumber, format),
+    )
+}
+
+export async function generatePdfHandler(
+    clientId: number,
+    baseNumber: number,
+    downloadMode: InvoiceDownloadMode = 'save',
+    revisionNumber: number = 1,
+    invoicePayload?: unknown,
+) {
+    return generateInvoiceDownloadHandler(
+        clientId,
+        baseNumber,
+        'pdf',
+        downloadMode,
+        revisionNumber,
+        invoicePayload,
+    )
+}
+
+export async function generateDocxHandler(
+    clientId: number,
+    baseNumber: number,
+    downloadMode: InvoiceDownloadMode = 'save',
+    revisionNumber: number = 1,
+    invoicePayload?: unknown,
+) {
+    return generateInvoiceDownloadHandler(
+        clientId,
+        baseNumber,
+        'docx',
+        downloadMode,
+        revisionNumber,
+        invoicePayload,
+    )
 }

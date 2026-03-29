@@ -2,10 +2,9 @@ import type { Invoice } from '@/components/invoice/invoiceTypes'
 import { isApiError } from '@/utils/apiErrors'
 import { NetworkError } from '@/utils/fetchHelper'
 import { validateInvoicePayload } from '@/utils/frontendValidation'
-import { generatePdfHandler } from '@/utils/invoiceHttpHandler'
-import { emitToastError, emitToastInfo, emitToastSuccess } from '@/utils/toast'
+import { generateDocxHandler, generatePdfHandler } from '@/utils/invoiceHttpHandler'
+import { emitToastError, emitToastSuccess } from '@/utils/toast'
 import { defineStore } from 'pinia'
-import { useInvoiceStore } from './invoice'
 import { apiDTO } from '@/utils/invoiceDto'
 
 export function flattenValidationErrors(
@@ -47,7 +46,11 @@ export function flattenValidationErrors(
 }
 
 export const usePdfStore = defineStore('pdf', () => {
-    async function handlePdfGeneration(handler: () => Promise<void>, successMessage?: string) {
+    async function handleFileGeneration(
+        formatLabel: 'PDF' | 'DOCX',
+        handler: () => Promise<void>,
+        successMessage?: string,
+    ) {
         try {
             await handler()
             if (successMessage) {
@@ -55,10 +58,10 @@ export const usePdfStore = defineStore('pdf', () => {
             }
         } catch (err) {
             if (isApiError(err)) {
-                console.error('[invoice pdf api error]', err)
+                console.error(`[invoice ${formatLabel.toLowerCase()} api error]`, err)
                 emitToastError({
                     id: err.id,
-                    title: 'Could not generate PDF',
+                    title: `Could not generate ${formatLabel}`,
                     message: err.message || 'Please try again.',
                 })
                 return
@@ -73,10 +76,10 @@ export const usePdfStore = defineStore('pdf', () => {
             }
 
             emitToastError({
-                title: 'Could not generate PDF',
+                title: `Could not generate ${formatLabel}`,
                 message: 'An unexpected error occurred. Please try again.',
             })
-            console.error('[invoice pdf]', err)
+            console.error(`[invoice ${formatLabel.toLowerCase()}]`, err)
         }
     }
 
@@ -85,7 +88,7 @@ export const usePdfStore = defineStore('pdf', () => {
         baseNumber: number,
         revisionNumber: number = 1,
     ) {
-        await handlePdfGeneration(() =>
+        await handleFileGeneration('PDF', () =>
             generatePdfHandler(clientId, baseNumber, 'save', revisionNumber),
         )
     }
@@ -102,7 +105,8 @@ export const usePdfStore = defineStore('pdf', () => {
             return
         }
 
-        await handlePdfGeneration(
+        await handleFileGeneration(
+            'PDF',
             () =>
                 generatePdfHandler(
                     invo.overview.clientId,
@@ -115,8 +119,46 @@ export const usePdfStore = defineStore('pdf', () => {
         )
     }
 
+    async function generateAndPersistDocx(
+        clientId: number,
+        baseNumber: number,
+        revisionNumber: number = 1,
+    ) {
+        await handleFileGeneration('DOCX', () =>
+            generateDocxHandler(clientId, baseNumber, 'save', revisionNumber),
+        )
+    }
+
+    async function quickGenerateDocx(invoice: Invoice, revisionNumber: number = 1) {
+        const invo = apiDTO(invoice)
+
+        const errors = validateInvoicePayload(invo)
+        if (Object.keys(errors).length > 0) {
+            emitToastError({
+                title: 'Invalid invoice data',
+                message: flattenValidationErrors(errors),
+            })
+            return
+        }
+
+        await handleFileGeneration(
+            'DOCX',
+            () =>
+                generateDocxHandler(
+                    invo.overview.clientId,
+                    invo.overview.baseNumber,
+                    'generate',
+                    revisionNumber,
+                    invo,
+                ),
+            'Quick DOCX generated successfully.',
+        )
+    }
+
     return {
         generateAndPersistPdf,
+        generateAndPersistDocx,
         quickGeneratePDF,
+        quickGenerateDocx,
     }
 })

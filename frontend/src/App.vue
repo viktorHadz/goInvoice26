@@ -12,13 +12,18 @@ import TheConfirmDialog from './components/UI/TheConfirmDialog.vue'
   >
     <main class="relative min-h-screen w-full">
       <div class="mt-26 px-4 pb-16 sm:py-8 sm:pb-8 md:px-6">
-        <Transition
-          name="page"
-          mode="out-in"
-          appear
-        >
-          <RouterView />
-        </Transition>
+        <RouterView v-slot="{ Component, route }">
+          <Transition
+            name="page"
+            mode="out-in"
+            appear
+          >
+            <component
+              :is="Component"
+              :key="route.fullPath"
+            />
+          </Transition>
+        </RouterView>
       </div>
 
       <NavMain />

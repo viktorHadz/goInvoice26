@@ -66,6 +66,8 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 					r.Post("/revisions", invoice.CreateRevision(a))
 					r.Get("/{revisionNo}/pdf", invoice.GeneratePDFHandler(a))
 					r.Post("/{revisionNo}/pdf/quick", invoice.QuickPDFHandler(a))
+					r.Get("/{revisionNo}/docx", invoice.GenerateDOCXHandler(a))
+					r.Post("/{revisionNo}/docx/quick", invoice.QuickDOCXHandler(a))
 				})
 			})
 		})
