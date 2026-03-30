@@ -84,7 +84,7 @@ func renderHeader(mr core.Maroto, doc models.InvoicePDFData) {
 
 	issueDate := clean(doc.IssueAt)
 	dueDate := cleanPtr(doc.DueDate)
-	logoPath, hasLogo := resolveLocalLogoPath(doc.Issuer.LogoURL)
+	logoPath, hasLogo := resolveLocalLogoPath(doc.Issuer.LogoPath)
 
 	if hasLogo {
 		mr.AddRow(invoiceTheme.row.headerLogo,

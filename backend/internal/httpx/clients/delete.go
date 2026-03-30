@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -19,6 +20,16 @@ func DeleteClient(a *app.App) http.HandlerFunc {
 
 		affected, err := clientsTx.DeleteClient(a, r.Context(), clientID)
 		if err != nil {
+			if errors.Is(err, clientsTx.ErrClientHasInvoices) {
+				res.Error(
+					w,
+					http.StatusConflict,
+					"CLIENT_HAS_INVOICES",
+					"This client can't be deleted because there are saved invoices linked to them.",
+				)
+				return
+			}
+
 			slog.ErrorContext(r.Context(),
 				"delete client failed",
 				"client_id", clientID,

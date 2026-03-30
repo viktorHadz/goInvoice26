@@ -1,6 +1,7 @@
 .env
 data/
 *.db
+uploads/
 bin/
 dist/
 *.log

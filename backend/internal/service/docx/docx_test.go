@@ -33,7 +33,7 @@ func TestRenderDOCX_CreatesArchiveWithFooterAndEmbeddedLogo(t *testing.T) {
 			Email:          "studio@example.com",
 			Phone:          "+44 20 7123 4567",
 			CompanyAddress: "1 Design Yard\nLondon\nN1 1AA",
-			LogoURL:        logoPath,
+			LogoPath:       logoPath,
 		},
 		Client: models.CreateClient{
 			Name:        "Mila Hart",

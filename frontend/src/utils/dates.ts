@@ -17,11 +17,7 @@ function parseISODateParts(value: string): ISODateParts | null {
     const [y, m, d] = values as [number, number, number]
     if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null
     const local = new Date(y, m - 1, d)
-    if (
-        local.getFullYear() !== y ||
-        local.getMonth() + 1 !== m ||
-        local.getDate() !== d
-    ) {
+    if (local.getFullYear() !== y || local.getMonth() + 1 !== m || local.getDate() !== d) {
         return null
     }
     return { year: y, month: m, day: d }

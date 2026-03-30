@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/models"
@@ -15,9 +16,10 @@ import (
 
 func Get(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cfg, err := settingsTx.Get(r.Context(), a.DB)
+		accountID := accountscope.AccountID(r.Context())
+		cfg, err := settingsTx.Get(r.Context(), a.DB, accountID)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "get settings failed", "err", err)
+			slog.ErrorContext(r.Context(), "get settings failed", "err", err, "account_id", accountID)
 			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to load settings")
 			return
 		}
@@ -28,11 +30,12 @@ func Get(a *app.App) http.HandlerFunc {
 
 func Put(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		accountID := accountscope.AccountID(r.Context())
 		var in models.Settings
 		var raw map[string]json.RawMessage
-		current, err := settingsTx.Get(r.Context(), a.DB)
+		current, err := settingsTx.Get(r.Context(), a.DB, accountID)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "load current settings failed", "err", err)
+			slog.ErrorContext(r.Context(), "load current settings failed", "err", err, "account_id", accountID)
 			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to load settings")
 			return
 		}
@@ -52,6 +55,10 @@ func Put(a *app.App) http.HandlerFunc {
 		if err := json.Unmarshal(body, &raw); err != nil {
 			slog.ErrorContext(r.Context(), "decode settings raw failed", "err", err)
 			res.Error(w, http.StatusBadRequest, "BAD_DATA", "Invalid request body")
+			return
+		}
+		if _, ok := raw["logoUrl"]; ok {
+			res.Validation(w, res.Invalid("logoUrl", "is read-only and must be managed via the logo endpoint"))
 			return
 		}
 
@@ -76,8 +83,11 @@ func Put(a *app.App) http.HandlerFunc {
 			return
 		}
 		in.CanEditStartingInvoiceNumber = current.CanEditStartingInvoiceNumber
+		in.LogoURL = current.LogoURL
+		in.LogoAssetID = current.LogoAssetID
+		in.LogoStorageKey = current.LogoStorageKey
 
-		if err := settingsTx.Upsert(r.Context(), a.DB, in); err != nil {
+		if err := settingsTx.Upsert(r.Context(), a.DB, accountID, in); err != nil {
 			switch {
 			case errors.Is(err, settingsTx.ErrStartingInvoiceNumberInvalid):
 				res.Validation(w, res.Invalid("startingInvoiceNumber", "must be greater than 0"))
@@ -86,14 +96,14 @@ func Put(a *app.App) http.HandlerFunc {
 				res.Error(w, http.StatusConflict, "INVOICE_NUMBER_LOCKED", "Starting invoice number can only be changed when there are no invoices.")
 				return
 			}
-			slog.ErrorContext(r.Context(), "save settings failed", "err", err)
+			slog.ErrorContext(r.Context(), "save settings failed", "err", err, "account_id", accountID)
 			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to save settings")
 			return
 		}
 
-		cfg, err := settingsTx.Get(r.Context(), a.DB)
+		cfg, err := settingsTx.Get(r.Context(), a.DB, accountID)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "reload settings failed", "err", err)
+			slog.ErrorContext(r.Context(), "reload settings failed", "err", err, "account_id", accountID)
 			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to load settings")
 			return
 		}

@@ -221,14 +221,14 @@ const menuOpts = computed<MenuOption[]>(() => [
       v-if="editStore.isLoadingInvoice"
       class="flex min-h-60 items-center justify-center"
     >
-      <div class="text-sm text-zinc-500 dark:text-zinc-400">Loading invoice...</div>
+      <div class="text-sm text-zinc-600 dark:text-zinc-400">Loading invoice...</div>
     </div>
 
     <div
       v-else-if="!inv"
       class="flex min-h-60 items-center justify-center"
     >
-      <div class="text-sm text-zinc-500 dark:text-zinc-400">No invoice data available.</div>
+      <div class="text-sm text-zinc-600 dark:text-zinc-400">No invoice data available.</div>
     </div>
 
     <div
@@ -237,15 +237,19 @@ const menuOpts = computed<MenuOption[]>(() => [
     >
       <!-- Header -->
       <header
-        class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+        class="rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
-        <div class="border-b border-zinc-200 px-3 py-3 sm:px-4 dark:border-zinc-800">
+        <div
+          class="hdr-grid rounded-t-2xl border-b border-zinc-300 px-4 py-3 sm:px-4 dark:border-zinc-800"
+        >
           <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div class="min-w-0">
               <h2 class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
                 {{ invoiceDisplayLabel }}
               </h2>
-              <p class="mt-0.5 text-xs text-sky-600 dark:text-emerald-400">Read-only preview</p>
+              <p class="mt-0.5 text-xs font-bold text-sky-600 dark:text-emerald-400">
+                Read-only preview
+              </p>
             </div>
             <div class="flex items-center gap-2">
               <DetailsMenu
@@ -257,13 +261,13 @@ const menuOpts = computed<MenuOption[]>(() => [
           </div>
         </div>
 
-        <div class="px-3 py-4 md:px-4 md:py-5">
+        <div class="px-4 py-4 md:px-4 md:py-5">
           <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
             <!-- Left: invoice details -->
             <section class="min-w-0">
               <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <div
-                  class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+                  class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
                 >
                   <div class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400">
                     Issue date
@@ -274,7 +278,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                 </div>
 
                 <div
-                  class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+                  class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
                 >
                   <div class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400">
                     Due by
@@ -285,10 +289,10 @@ const menuOpts = computed<MenuOption[]>(() => [
                 </div>
 
                 <div
-                  class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 sm:col-span-2 xl:col-span-1 dark:border-zinc-800 dark:bg-zinc-900/40"
+                  class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 sm:col-span-2 xl:col-span-1 dark:border-zinc-800 dark:bg-zinc-900/40"
                 >
                   <div
-                    class="mb-2 flex items-center justify-between gap-1 text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
+                    class="mb-2 flex items-center justify-between gap-1 text-xs font-medium tracking-wide text-zinc-700 dark:text-zinc-400"
                   >
                     <span>Status</span>
                     <InvoiceStatusTooltip />
@@ -307,7 +311,7 @@ const menuOpts = computed<MenuOption[]>(() => [
 
             <!-- Right: client card -->
             <section
-              class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+              class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
             >
               <div class="mb-2 flex items-start justify-between gap-3">
                 <div>
@@ -315,7 +319,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                 </div>
 
                 <span
-                  class="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400"
+                  class="inline-flex rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400"
                 >
                   Client details
                 </span>
@@ -366,25 +370,19 @@ const menuOpts = computed<MenuOption[]>(() => [
 
       <!-- Items card -->
       <section
-        class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+        class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
         <div
-          class="flex items-start justify-between gap-3 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800"
+          class="hdr-grid flex items-start justify-between gap-3 border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
         >
           <div class="min-w-0">
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
               Invoice items
             </div>
-            <div class="text-xs text-sky-600 dark:text-emerald-400">
+            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
               Saved line items for the current invoice
             </div>
           </div>
-
-          <span
-            class="hidden rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400"
-          >
-            Read only
-          </span>
         </div>
 
         <div class="p-2.5 md:p-3">
@@ -403,7 +401,7 @@ const menuOpts = computed<MenuOption[]>(() => [
 
               <div
                 v-if="!inv.lines?.length"
-                class="px-3 py-10 text-base text-zinc-500 dark:text-zinc-400"
+                class="px-4 py-10 text-base text-zinc-600 dark:text-zinc-400"
               >
                 No line items available.
               </div>
@@ -462,11 +460,11 @@ const menuOpts = computed<MenuOption[]>(() => [
       <!-- Totals  -->
       <section class="grid gap-4 md:grid-cols-2">
         <section
-          class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+          class="overflow-clip rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
         >
-          <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+          <div class="hdr-grid border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800">
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-            <div class="text-xs text-sky-600 dark:text-emerald-400">Balance overview</div>
+            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">Balance overview</div>
           </div>
 
           <div
@@ -529,7 +527,7 @@ const menuOpts = computed<MenuOption[]>(() => [
               </div>
             </div>
 
-            <div class="rounded-xl bg-zinc-50 px-3 py-3 dark:bg-zinc-900/40">
+            <div class="rounded-xl bg-zinc-50 px-4 py-3 dark:bg-zinc-900/40">
               <div class="grid grid-cols-[1fr_auto] items-center gap-3">
                 <div class="font-semibold text-zinc-800 dark:text-zinc-100">Balance due</div>
                 <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
@@ -541,18 +539,18 @@ const menuOpts = computed<MenuOption[]>(() => [
 
           <div
             v-else
-            class="p-3 text-sm text-zinc-500 dark:text-zinc-400"
+            class="p-3 text-sm text-zinc-600 dark:text-zinc-400"
           >
             No totals available.
           </div>
         </section>
 
         <section
-          class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+          class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
         >
-          <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+          <div class="hdr-grid border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800">
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Note</div>
-            <div class="text-xs text-sky-600 dark:text-emerald-400">
+            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
               Extra text shown on the invoice
             </div>
           </div>
@@ -560,14 +558,14 @@ const menuOpts = computed<MenuOption[]>(() => [
           <div class="p-3 md:p-4">
             <div
               v-if="inv.note"
-              class="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700 italic dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300"
+              class="rounded-xl border border-zinc-300 bg-zinc-50 p-3 text-sm text-zinc-700 italic dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300"
             >
               {{ inv.note }}
             </div>
 
             <div
               v-else
-              class="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/60 px-3 py-6 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
+              class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/60 px-4 py-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
             >
               No note added to this invoice.
             </div>

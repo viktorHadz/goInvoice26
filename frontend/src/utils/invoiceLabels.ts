@@ -11,10 +11,7 @@ export function toDisplayRevisionNo(revisionNo?: number | null): number | null {
     return revisionNo - 1
 }
 
-export function formatInvoiceBaseLabel(
-    prefix: string,
-    baseNumber?: number | null,
-): string {
+export function formatInvoiceBaseLabel(prefix: string, baseNumber?: number | null): string {
     return fmtPrettyInvoiceNumber(prefix, baseNumber ?? undefined)
 }
 
@@ -30,10 +27,7 @@ export function formatInvoiceDisplayLabel(
     return `${base}.${displayRevisionNo}`
 }
 
-export function formatActiveEditorNodeLabel(
-    prefix: string,
-    node: ActiveEditorNode | null,
-): string {
+export function formatActiveEditorNodeLabel(prefix: string, node: ActiveEditorNode | null): string {
     if (!node) return ''
     const revisionNo = node.type === 'revision' ? node.revisionNo : undefined
     return formatInvoiceDisplayLabel(prefix, node.baseNo, revisionNo)

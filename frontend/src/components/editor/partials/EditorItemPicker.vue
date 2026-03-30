@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { ChevronUpDownIcon, MagnifyingGlassIcon, SquaresPlusIcon } from '@heroicons/vue/24/outline'
+import { BriefcaseIcon, ChevronUpDownIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import { onClickOutside } from '@vueuse/core'
 
 import TheButton from '@/components/UI/TheButton.vue'
@@ -126,9 +126,9 @@ watch(itemType, () => {
 </script>
 <template>
   <main
-    class="overflow-visible rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+    class="overflow-visible rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
   >
-    <div class="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+    <div class="hdr-grid rounded-t-2xl border-b border-zinc-300 px-3 py-2.5 dark:border-zinc-800">
       <section
         class="mb-8 flex flex-col font-medium sm:mb-0 sm:flex-row sm:items-center sm:justify-between"
       >
@@ -136,14 +136,14 @@ watch(itemType, () => {
           <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
             Insert products
           </div>
-          <div class="text-xs text-sky-600 dark:text-emerald-400">
+          <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
             Select an existing or insert a custom product
           </div>
         </div>
 
         <!-- Toggle Tabs -->
         <div
-          class="flex shrink-0 rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-700 dark:bg-zinc-900/60"
+          class="flex shrink-0 rounded-2xl border border-zinc-300 bg-white p-1 dark:border-zinc-700 dark:bg-zinc-900/60"
         >
           <button
             type="button"
@@ -181,7 +181,7 @@ watch(itemType, () => {
           <!-- Search -->
           <div class="relative min-w-0 flex-1">
             <div
-              class="group relative text-zinc-500 hover:text-sky-600 dark:text-zinc-400 hover:dark:text-emerald-400"
+              class="group relative text-zinc-600 hover:text-sky-600 dark:text-zinc-400 hover:dark:text-emerald-400"
               :class="{ 'picker-flash': pickerFlash }"
             >
               <label
@@ -216,7 +216,7 @@ watch(itemType, () => {
             >
               <div
                 v-if="open && filtered.length"
-                class="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+                class="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-zinc-300 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
                 ref="pickerRef"
               >
                 <div class="max-h-72 overflow-auto">
@@ -229,7 +229,7 @@ watch(itemType, () => {
                       <div class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                         {{ p.productName }}
                       </div>
-                      <div class="text-sm text-zinc-500 dark:text-zinc-400">
+                      <div class="text-sm text-zinc-600 dark:text-zinc-400">
                         {{ p.productType }} · {{ priceLabel(p) }}
                       </div>
                     </div>
@@ -238,7 +238,7 @@ watch(itemType, () => {
                       class="shrink-0 cursor-pointer"
                       @click.stop="addFromProduct(p)"
                     >
-                      <SquaresPlusIcon class="size-4" />
+                      <BriefcaseIcon class="size-4" />
                       Add
                     </TheButton>
                   </div>
@@ -281,7 +281,7 @@ watch(itemType, () => {
                 class="w-full cursor-pointer py-2 text-sm md:w-auto"
                 @click="addCustomItem"
               >
-                <SquaresPlusIcon class="size-5" />
+                <BriefcaseIcon class="size-5" />
                 Custom Item
               </TheButton>
             </TheTooltip>

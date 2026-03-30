@@ -71,15 +71,29 @@ describe('settings store', () => {
             paymentTerms: '',
             paymentDetails: '',
             notesFooter: '',
-            logoUrl: '',
             showItemTypeHeaders: true,
             startingInvoiceNumber: 200,
-            canEditStartingInvoiceNumber: true,
         })
 
         expect(requestMock).toHaveBeenCalledWith(
             '/api/settings',
-            expect.objectContaining({ method: 'PUT' }),
+            expect.objectContaining({
+                method: 'PUT',
+                body: JSON.stringify({
+                    companyName: 'Acme',
+                    email: '',
+                    phone: '',
+                    companyAddress: '',
+                    invoicePrefix: 'INV-',
+                    currency: 'GBP',
+                    dateFormat: 'dd/mm/yyyy',
+                    paymentTerms: '',
+                    paymentDetails: '',
+                    notesFooter: '',
+                    showItemTypeHeaders: true,
+                    startingInvoiceNumber: 200,
+                }),
+            }),
         )
         expect(settings.startingInvoiceNumber).toBe(200)
         expect(settings.canEditStartingInvoiceNumber).toBe(true)

@@ -13,12 +13,12 @@ const lines = computed(() => {
 
 <template>
   <section
-    class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+    class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
   >
-    <div class="flex gap-3 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+    <div class="hdr-grid flex gap-3 border-b border-zinc-300 px-3 py-2.5 dark:border-zinc-800">
       <div class="min-w-0">
         <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
-        <div class="text-xs text-sky-600 dark:text-emerald-400">
+        <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
           Edit line items for this invoice
         </div>
       </div>
@@ -49,7 +49,7 @@ const lines = computed(() => {
 
           <div
             v-if="!lines.length"
-            class="px-3 py-10 text-base text-zinc-500 dark:text-zinc-400"
+            class="px-3 py-10 text-base text-zinc-600 dark:text-zinc-400"
           >
             No items yet. Add from the picker above.
           </div>

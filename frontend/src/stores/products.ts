@@ -89,6 +89,14 @@ export const useProductStore = defineStore('products', () => {
         products.value = products.value.filter((p) => p.id !== productId)
     }
 
+    function reset() {
+        products.value = []
+        open.value = false
+        isLoading.value = false
+        loadError.value = null
+        loadToken++
+    }
+
     return {
         products,
         open,
@@ -99,5 +107,6 @@ export const useProductStore = defineStore('products', () => {
         create,
         update,
         remove,
+        reset,
     }
 })

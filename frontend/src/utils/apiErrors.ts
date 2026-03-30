@@ -22,12 +22,19 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
     NOT_FOUND: 'The requested resource was not found.',
     DATABASE_ERROR: 'Something went wrong while saving data. Please try again.',
     INTERNAL: 'Something went wrong on our side. Please try again.',
+    UNAUTHENTICATED: 'Please sign in to continue.',
+    FORBIDDEN: 'You do not have access to that area.',
     INVALID_ID: 'The selected item is invalid.',
     INVOICE_DRAFT: 'Issue the draft before saving a revision.',
     INVOICE_ISSUED: 'Issued invoices are locked from deletion and must use revisions for edits.',
     INVOICE_NUMBER_LOCKED:
         'Starting invoice number can only be changed when there are no invoices.',
     DRAFT_HAS_REVISIONS: 'This draft can no longer be updated in place.',
+    TEAM_INVITE_EXISTS: 'That email already has a pending invite.',
+    TEAM_MEMBER_EXISTS: 'That teammate already has access.',
+    TEAM_CANNOT_REMOVE_SELF: 'Use sign out instead of removing your own account.',
+    TEAM_CANNOT_REMOVE_OWNER: 'The owner account cannot be removed here.',
+    CLIENT_HAS_INVOICES: "This client can't be deleted because there are saved invoices linked to them.",
 }
 
 export class ApiError extends Error {

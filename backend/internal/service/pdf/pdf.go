@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 	"github.com/viktorHadz/goInvoice26/internal/service/invoiceformat"
+	"github.com/viktorHadz/goInvoice26/internal/service/storage"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/invoiceTx"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/settingsTx"
 )
@@ -42,7 +44,7 @@ func BuildInvoiceFromDB(
 		return models.InvoicePDFData{}, fmt.Errorf("get invoice items: %w", err)
 	}
 
-	settings, err := settingsTx.Get(ctx, db)
+	settings, err := settingsTx.Get(ctx, db, accountscope.AccountID(ctx))
 	if err != nil {
 		return models.InvoicePDFData{}, fmt.Errorf("get settings: %w", err)
 	}
@@ -163,6 +165,11 @@ func buildInvoicePDFData(
 		balanceDue = 0
 	}
 
+	logoPath := ""
+	if s.LogoStorageKey != "" {
+		logoPath = storage.NewLocalStore(storage.DefaultRootDir).Path(s.LogoStorageKey)
+	}
+
 	return models.InvoicePDFData{
 		Title:               "Invoice",
 		InvoiceNumberLabel:  invoiceformat.FormatInvoiceNumber(s.InvoicePrefix, o.BaseNumber, o.RevisionNo),
@@ -178,7 +185,7 @@ func buildInvoicePDFData(
 			Email:          s.Email,
 			Phone:          s.Phone,
 			CompanyAddress: s.CompanyAddress,
-			LogoURL:        s.LogoURL,
+			LogoPath:       logoPath,
 		},
 		Client: models.CreateClient{
 			Name:        o.ClientName,

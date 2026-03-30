@@ -12,153 +12,153 @@ const isCreatingDraft = ref(false)
 const isGeneratingExport = ref(false)
 
 async function createDraft() {
-  const inv = invStore.invoice
-  if (!inv || isCreatingDraft.value) return
+    const inv = invStore.invoice
+    if (!inv || isCreatingDraft.value) return
 
-  isCreatingDraft.value = true
-  try {
-    const ok = await invStore.newDraftInvoice(inv)
-    if (!ok) return
+    isCreatingDraft.value = true
+    try {
+        const ok = await invStore.newDraftInvoice(inv)
+        if (!ok) return
 
-    await pdfStore.generateAndPersistPdf(inv.clientId, inv.baseNumber, 1)
-  } finally {
-    isCreatingDraft.value = false
-  }
+        await pdfStore.generateAndPersistPdf(inv.clientId, inv.baseNumber, 1)
+    } finally {
+        isCreatingDraft.value = false
+    }
 }
 
 async function generatePdfOnly() {
-  const inv = invStore.invoice
-  if (!inv || isGeneratingExport.value) return
+    const inv = invStore.invoice
+    if (!inv || isGeneratingExport.value) return
 
-  isGeneratingExport.value = true
-  try {
-    await pdfStore.quickGeneratePDF(inv)
-  } finally {
-    isGeneratingExport.value = false
-  }
+    isGeneratingExport.value = true
+    try {
+        await pdfStore.quickGeneratePDF(inv)
+    } finally {
+        isGeneratingExport.value = false
+    }
 }
 
 async function generateDocxOnly() {
-  const inv = invStore.invoice
-  if (!inv || isGeneratingExport.value) return
+    const inv = invStore.invoice
+    if (!inv || isGeneratingExport.value) return
 
-  isGeneratingExport.value = true
-  try {
-    await pdfStore.quickGenerateDocx(inv)
-  } finally {
-    isGeneratingExport.value = false
-  }
+    isGeneratingExport.value = true
+    try {
+        await pdfStore.quickGenerateDocx(inv)
+    } finally {
+        isGeneratingExport.value = false
+    }
 }
 </script>
 
 <template>
-  <div
-    v-if="!invStore.invoice || !invStore.totals"
-    class="text-base text-zinc-500 dark:text-zinc-400"
-  >
-    No invoice loaded.
-  </div>
-
-  <div
-    v-else
-    class="min-w-0 space-y-4 text-sm"
-  >
-    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
-      <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Subtotal</div>
-      <div
-        class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
-      >
-        {{ fmtGBPMinor(invStore.totals.subtotalMinor) }}
-      </div>
+    <div
+        v-if="!invStore.invoice || !invStore.totals"
+        class="text-base text-zinc-600 dark:text-zinc-400"
+    >
+        No invoice loaded.
     </div>
 
-    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
-      <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Discount</div>
-      <div
-        class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
-      >
-        -{{ fmtGBPMinor(invStore.totals.discountMinor) }}
-      </div>
-    </div>
-
-    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
-      <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">VAT</div>
-      <div
-        class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
-      >
-        {{ fmtGBPMinor(invStore.totals.vatMinor) }}
-      </div>
-    </div>
-
-    <div class="h-px bg-zinc-200 dark:bg-zinc-800" />
-
-    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
-      <div class="min-w-0 truncate font-semibold text-zinc-800 dark:text-zinc-100">Total</div>
-      <div
-        class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
-      >
-        {{ fmtGBPMinor(invStore.totals.totalMinor) }}
-      </div>
-    </div>
-
-    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
-      <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Deposit</div>
-      <div
-        class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
-      >
-        -{{ fmtGBPMinor(invStore.depositMinor) }}
-      </div>
-    </div>
-
-    <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
-      <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Paid</div>
-      <div
-        class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
-      >
-        -{{ fmtGBPMinor(invStore.invoice.paidMinor) }}
-      </div>
-    </div>
-
-    <div class="rounded-xl bg-zinc-50 px-3 py-3 dark:bg-zinc-900/40">
-      <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
-        <div class="min-w-0 truncate font-semibold text-zinc-800 dark:text-zinc-100">
-          Balance due
+    <div
+        v-else
+        class="min-w-0 space-y-4 text-sm"
+    >
+        <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
+            <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Subtotal</div>
+            <div
+                class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
+            >
+                {{ fmtGBPMinor(invStore.totals.subtotalMinor) }}
+            </div>
         </div>
-        <div
-          class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
-        >
-          {{ fmtGBPMinor(invStore.balanceDueMinor) }}
+
+        <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
+            <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Discount</div>
+            <div
+                class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
+            >
+                -{{ fmtGBPMinor(invStore.totals.discountMinor) }}
+            </div>
         </div>
-      </div>
+
+        <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
+            <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">VAT</div>
+            <div
+                class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
+            >
+                {{ fmtGBPMinor(invStore.totals.vatMinor) }}
+            </div>
+        </div>
+
+        <div class="h-px bg-zinc-200 dark:bg-zinc-800" />
+
+        <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
+            <div class="min-w-0 truncate font-semibold text-zinc-800 dark:text-zinc-100">Total</div>
+            <div
+                class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
+            >
+                {{ fmtGBPMinor(invStore.totals.totalMinor) }}
+            </div>
+        </div>
+
+        <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
+            <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Deposit</div>
+            <div
+                class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
+            >
+                -{{ fmtGBPMinor(invStore.depositMinor) }}
+            </div>
+        </div>
+
+        <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
+            <div class="min-w-0 truncate text-zinc-600 dark:text-zinc-400">Paid</div>
+            <div
+                class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
+            >
+                -{{ fmtGBPMinor(invStore.invoice.paidMinor) }}
+            </div>
+        </div>
+
+        <div class="rounded-xl bg-zinc-50 px-3 py-3 dark:bg-zinc-900/40">
+            <div class="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3">
+                <div class="min-w-0 truncate font-semibold text-zinc-800 dark:text-zinc-100">
+                    Balance due
+                </div>
+                <div
+                    class="shrink-0 font-semibold whitespace-nowrap text-zinc-900 tabular-nums dark:text-zinc-100"
+                >
+                    {{ fmtGBPMinor(invStore.balanceDueMinor) }}
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 flex w-full flex-col items-center gap-y-2 place-self-center">
+            <TheButton
+                class="flex w-full cursor-pointer items-center gap-2"
+                :disabled="isGeneratingExport || isCreatingDraft"
+                @click="generatePdfOnly"
+            >
+                <DocumentArrowDownIcon class="size-5" />
+                Generate PDF
+            </TheButton>
+
+            <TheButton
+                class="flex w-full cursor-pointer items-center gap-2"
+                :disabled="isGeneratingExport || isCreatingDraft"
+                @click="generateDocxOnly"
+            >
+                <DocumentArrowDownIcon class="size-5" />
+                Generate DOCX
+            </TheButton>
+
+            <TheButton
+                class="flex w-full cursor-pointer items-center gap-2"
+                :disabled="isCreatingDraft || isGeneratingExport"
+                @click="createDraft"
+            >
+                <DocumentIcon class="size-5" />
+                Create Draft
+            </TheButton>
+        </div>
     </div>
-
-    <div class="mt-8 flex w-full flex-col items-center gap-y-2 place-self-center">
-      <TheButton
-        class="flex w-full cursor-pointer items-center gap-2"
-        :disabled="isGeneratingExport || isCreatingDraft"
-        @click="generatePdfOnly"
-      >
-        <DocumentArrowDownIcon class="size-5" />
-        Generate PDF
-      </TheButton>
-
-      <TheButton
-        class="flex w-full cursor-pointer items-center gap-2"
-        :disabled="isGeneratingExport || isCreatingDraft"
-        @click="generateDocxOnly"
-      >
-        <DocumentArrowDownIcon class="size-5" />
-        Generate DOCX
-      </TheButton>
-
-      <TheButton
-        class="flex w-full cursor-pointer items-center gap-2"
-        :disabled="isCreatingDraft || isGeneratingExport"
-        @click="createDraft"
-      >
-        <DocumentIcon class="size-5" />
-        Create Draft
-      </TheButton>
-    </div>
-  </div>
 </template>

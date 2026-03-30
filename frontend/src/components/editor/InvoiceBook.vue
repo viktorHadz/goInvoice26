@@ -134,7 +134,7 @@ function invoiceStatusBadgeClass(invoice: InvBookInvoice): string {
     case 'paid':
       return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200'
     case 'void':
-      return 'border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400'
+      return 'border-zinc-300 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400'
     case 'draft':
       return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-950/25 dark:text-amber-200'
     default:
@@ -250,7 +250,7 @@ function rowClass(active: boolean) {
     'flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition',
     active
       ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-emerald-900/80 dark:bg-emerald-950/40 dark:text-zinc-100'
-      : 'border-transparent text-zinc-700 hover:border-zinc-200 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:border-zinc-700/50 dark:hover:bg-zinc-800/40',
+      : 'border-transparent text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:border-zinc-700/50 dark:hover:bg-zinc-800/40',
   ]
 }
 
@@ -400,7 +400,7 @@ useEscape(() => closeDropdown())
         <div
           v-if="isOpen"
           ref="panelEl"
-          class="fixed z-100 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+          class="fixed z-100 overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
           :style="{
             top: `${panelPos.top}px`,
             left: `${panelPos.left}px`,
@@ -409,9 +409,9 @@ useEscape(() => closeDropdown())
           }"
         >
           <div
-            class="relative border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
+            class="relative border-b border-zinc-300 bg-white dark:border-zinc-800 dark:bg-zinc-950"
           >
-            <DecorGradient variant="gradientAndGrid" />
+            <DecorGradient />
             <div class="relative p-2 sm:p-4">
               <div class="flex items-center justify-between">
                 <div class="min-w-0">
@@ -425,7 +425,7 @@ useEscape(() => closeDropdown())
                       {{ total }} invoices
                     </span>
                   </div>
-                  <p class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-300">
+                  <p class="mt-0.5 text-xs font-bold text-sky-600 dark:text-emerald-400">
                     Browse saved invoices and revisions
                   </p>
                 </div>
@@ -438,7 +438,7 @@ useEscape(() => closeDropdown())
 
               <div class="relative mt-4">
                 <MagnifyingGlassIcon
-                  class="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+                  class="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-zinc-600 dark:text-zinc-400"
                 />
                 <input
                   id="invo-book-search"
@@ -453,7 +453,7 @@ useEscape(() => closeDropdown())
                 <span
                   v-for="label in filterSummary"
                   :key="label"
-                  class="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-300"
+                  class="rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-300"
                 >
                   {{ label }}
                 </span>
@@ -473,7 +473,7 @@ useEscape(() => closeDropdown())
               >
                 <div
                   v-if="isLoadingBook && !invoiceBook.length"
-                  class="rounded-xl border border-dashed border-zinc-200 px-3 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400"
+                  class="rounded-xl border border-dashed border-zinc-300 px-3 py-8 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400"
                 >
                   Loading invoices...
                 </div>
@@ -487,7 +487,7 @@ useEscape(() => closeDropdown())
 
                 <div
                   v-else-if="!filteredInvoices.length"
-                  class="rounded-xl border border-dashed border-zinc-200 px-3 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400"
+                  class="rounded-xl border border-dashed border-zinc-300 px-3 py-8 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400"
                 >
                   No invoices found.
                 </div>
@@ -503,7 +503,7 @@ useEscape(() => closeDropdown())
                     <div class="flex items-start gap-2">
                       <button
                         type="button"
-                        class="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-700 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-200"
+                        class="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-700 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-200"
                         :disabled="!revisionsForBookSublist(invoice.revisions).length"
                         @click="
                           toggleInvoice(
@@ -543,7 +543,7 @@ useEscape(() => closeDropdown())
                                 {{ formatInvoiceBaseLabel(bookInvoicePrefix, invoice.baseNo) }}
                               </div>
                               <div
-                                class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400"
+                                class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-600 dark:text-zinc-400"
                               >
                                 <span
                                   v-for="bit in invoiceSummaryBits(invoice)"
@@ -668,7 +668,7 @@ useEscape(() => closeDropdown())
                               </template>
 
                               <span
-                                class="text-tiny shrink-0 rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 font-medium text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+                                class="text-tiny shrink-0 rounded-full border border-zinc-300 bg-white/90 px-2 py-0.5 font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
                               >
                                 Revision
                               </span>
@@ -684,7 +684,7 @@ useEscape(() => closeDropdown())
           </div>
 
           <div
-            class="flex items-center justify-between gap-2 border-t border-zinc-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 dark:border-zinc-800"
+            class="flex items-center justify-between gap-2 border-t border-zinc-300 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 dark:border-zinc-800"
           >
             <p class="text-xs text-zinc-600 dark:text-zinc-400">
               {{ pageLabel }}

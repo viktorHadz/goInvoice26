@@ -15,4 +15,6 @@ type Settings struct {
 	ShowItemTypeHeaders          bool   `json:"showItemTypeHeaders"`
 	StartingInvoiceNumber        int64  `json:"startingInvoiceNumber"`
 	CanEditStartingInvoiceNumber bool   `json:"canEditStartingInvoiceNumber"`
+	LogoAssetID                  int64  `json:"-"`
+	LogoStorageKey               string `json:"-"`
 }

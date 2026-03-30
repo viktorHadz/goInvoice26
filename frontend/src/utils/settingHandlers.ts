@@ -1,22 +1,8 @@
-export type UploadLogoResponse = {
-    logoUrl: string
-}
+import type { Settings } from '@/stores/settings'
+import { request } from '@/utils/fetchHelper'
 
 const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
-
-function getErrorMessage(data: unknown, fallback: string): string {
-    if (
-        typeof data === 'object' &&
-        data !== null &&
-        'message' in data &&
-        typeof (data as { message?: unknown }).message === 'string'
-    ) {
-        return (data as { message: string }).message
-    }
-
-    return fallback
-}
 
 export function validateImageFile(file: unknown): File {
     if (!(file instanceof File)) {
@@ -61,37 +47,20 @@ export function readImagePreview(file: File): Promise<string> {
     })
 }
 
-export async function handleImageUpload(file: File): Promise<UploadLogoResponse> {
+export async function uploadLogo(file: File): Promise<Settings> {
     const validFile = validateImageFile(file)
 
     const formData = new FormData()
     formData.append('user_logo', validFile)
 
-    const response = await fetch('/api/image', {
-        method: 'POST',
+    return request<Settings>('/api/settings/logo', {
+        method: 'PUT',
         body: formData,
     })
+}
 
-    let data: unknown = null
-
-    try {
-        data = await response.json()
-    } catch {
-        // ignore
-    }
-
-    if (!response.ok) {
-        throw new Error(getErrorMessage(data, `Image upload failed with status ${response.status}`))
-    }
-
-    if (
-        typeof data !== 'object' ||
-        data === null ||
-        !('logoUrl' in data) ||
-        typeof (data as { logoUrl?: unknown }).logoUrl !== 'string'
-    ) {
-        throw new Error('Server returned an invalid upload response')
-    }
-
-    return data as UploadLogoResponse
+export async function deleteLogo(): Promise<Settings> {
+    return request<Settings>('/api/settings/logo', {
+        method: 'DELETE',
+    })
 }

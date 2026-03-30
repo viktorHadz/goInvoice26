@@ -16,7 +16,7 @@ const editStore = useEditorStore()
     <section class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div class="flex items-center gap-3">
         <div
-          class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+          class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
         >
           <PencilSquareIcon class="stroke-1.5 size-7 text-sky-600 dark:text-emerald-400" />
         </div>
@@ -25,7 +25,7 @@ const editStore = useEditorStore()
           <h2 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-200">
             Editor
           </h2>
-          <p class="text-sm tracking-wide text-zinc-500 dark:text-zinc-400">
+          <p class="text-sm tracking-wide text-zinc-600 dark:text-zinc-400">
             Review, search, and edit invoices
           </p>
         </div>
@@ -35,30 +35,20 @@ const editStore = useEditorStore()
     <!-- Invoice Book -->
     <section class="relative mb-4 overflow-visible">
       <div
-        class="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+        class="relative overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
-        <DecorGradient variant="gradientAndGrid" />
+        <DecorGradient />
 
         <div class="relative p-3 md:p-4">
           <div class="flex flex-col items-start justify-between gap-3 sm:flex-row">
-            <div class="flex items-center gap-3">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                    Invoice Book
-                  </h3>
-
-                  <span
-                    class="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
-                  >
-                    Browse saved invoices
-                  </span>
-                </div>
-
-                <p class="mt-0.5 text-xs text-zinc-700 dark:text-zinc-300">
-                  Open and select an invoice or revision to edit
-                </p>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Invoice Book</h3>
               </div>
+
+              <p class="mt-0.5 text-xs font-bold text-sky-600 dark:text-emerald-400">
+                Open and select an invoice or revision to edit
+              </p>
             </div>
 
             <div class="w-full sm:w-auto">
@@ -78,11 +68,11 @@ const editStore = useEditorStore()
       <!-- Empty state -->
       <section v-if="!editStore.activeNode">
         <div
-          class="flex min-h-80 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-6 py-10 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30"
+          class="flex min-h-80 items-center justify-center rounded-2xl border border-zinc-300 bg-white px-6 py-10 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30"
         >
           <div class="mx-auto max-w-sm text-center">
             <div
-              class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-zinc-500 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+              class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-300 bg-white text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
             >
               <DocumentIcon class="size-5" />
             </div>
@@ -90,7 +80,7 @@ const editStore = useEditorStore()
             <div class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
               Select an invoice to start editing
             </div>
-            <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            <div class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Use the invoice book above to choose a base invoice or revision.
             </div>
           </div>

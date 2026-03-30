@@ -63,7 +63,7 @@ type InvoicePDFIssuer struct {
 	Email          string
 	Phone          string
 	CompanyAddress string
-	LogoURL        string
+	LogoPath       string
 }
 
 type InvoicePDFItem struct {

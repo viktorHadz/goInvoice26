@@ -13,9 +13,18 @@ PRAGMA foreign_keys = ON;
 -- Auth / access
 -- -----------------------
 
+CREATE TABLE IF NOT EXISTS accounts (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+);
+
 CREATE TABLE IF NOT EXISTS allowed_users (
   id INTEGER PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE
+  email TEXT NOT NULL UNIQUE,
+  account_id INTEGER NOT NULL DEFAULT 1 REFERENCES accounts(id),
+  invited_by_user_id INTEGER,
+  created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -23,7 +32,65 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  account_id INTEGER NOT NULL DEFAULT 1 REFERENCES accounts(id),
+  google_sub TEXT,
+  avatar_url TEXT NOT NULL DEFAULT '',
+  role TEXT NOT NULL DEFAULT 'member',
   created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+);
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+  last_seen_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+);
+
+CREATE TABLE IF NOT EXISTS stored_files (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('logo')),
+  storage_key TEXT NOT NULL UNIQUE,
+  content_type TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+  delete_pending_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS account_settings (
+  account_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  company_name TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  company_address TEXT NOT NULL DEFAULT '',
+  invoice_prefix TEXT NOT NULL DEFAULT 'INV-',
+  currency TEXT NOT NULL DEFAULT 'GBP',
+  date_format TEXT NOT NULL DEFAULT 'dd/mm/yyyy',
+  payment_terms TEXT NOT NULL DEFAULT 'Please make payment within 14 days.',
+  payment_details TEXT NOT NULL DEFAULT '',
+  notes_footer TEXT NOT NULL DEFAULT '',
+  logo_asset_id INTEGER REFERENCES stored_files(id) ON DELETE SET NULL,
+  show_item_type_headers INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+);
+
+-- Legacy settings table retained for migration from older installs.
+CREATE TABLE IF NOT EXISTS user_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  company_name TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  company_address TEXT NOT NULL DEFAULT '',
+  invoice_prefix TEXT NOT NULL DEFAULT 'INV-',
+  currency TEXT NOT NULL DEFAULT 'GBP',
+  date_format TEXT NOT NULL DEFAULT 'dd/mm/yyyy',
+  payment_terms TEXT NOT NULL DEFAULT 'Please make payment within 14 days.',
+  payment_details TEXT NOT NULL DEFAULT '',
+  notes_footer TEXT NOT NULL DEFAULT '',
+  logo_url TEXT NOT NULL DEFAULT '',
+  show_item_type_headers INTEGER NOT NULL DEFAULT 1
 );
 
 -- -----------------------

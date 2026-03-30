@@ -12,12 +12,16 @@ import (
 	"github.com/go-chi/httplog/v3"
 	"github.com/go-chi/httprate"
 	"github.com/go-chi/traceid"
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/config"
 	"github.com/viktorHadz/goInvoice26/internal/db"
 	"github.com/viktorHadz/goInvoice26/internal/httpx"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/logging"
+	authsvc "github.com/viktorHadz/goInvoice26/internal/service/auth"
+	"github.com/viktorHadz/goInvoice26/internal/service/logo"
+	"github.com/viktorHadz/goInvoice26/internal/service/storage"
 )
 
 func main() {
@@ -35,6 +39,26 @@ func main() {
 	defer dbConn.Close()
 
 	if err := db.Migrate(ctx, dbConn); err != nil {
+		log.Fatal(err)
+	}
+
+	logoStore := storage.NewLocalStore(storage.DefaultRootDir)
+	logoService := logo.NewService(dbConn, logoStore)
+	authService := authsvc.NewService(dbConn, authsvc.Config{
+		AppBaseURL:         cfg.AppBaseURL,
+		GoogleClientID:     cfg.GoogleClientID,
+		GoogleClientSecret: cfg.GoogleClientSecret,
+		GoogleRedirectURL:  cfg.GoogleRedirectURL,
+		SessionCookieName:  cfg.SessionCookieName,
+		SecureCookies:      cfg.SecureCookies(),
+	})
+	if err := logoService.CleanupTemp(); err != nil {
+		log.Fatal(err)
+	}
+	if err := logoService.MigrateLegacyLogo(ctx, accountscope.DefaultAccountID); err != nil {
+		log.Fatal(err)
+	}
+	if err := logoService.SweepPendingDeletes(ctx); err != nil {
 		log.Fatal(err)
 	}
 
@@ -62,7 +86,11 @@ func main() {
 		}),
 	))
 
-	httpx.RegisterAllRouters(r, &app.App{DB: dbConn})
+	httpx.RegisterAllRouters(r, &app.App{
+		DB:    dbConn,
+		Auth:  authService,
+		Logos: logoService,
+	})
 
 	logger.Info("init",
 		"env", cfg.Env,

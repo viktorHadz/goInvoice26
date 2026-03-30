@@ -65,24 +65,25 @@ onActivated(refreshInvoiceClientSnapshot)
 <template>
   <main class="mx-auto w-full max-w-4xl pb-16 sm:pb-0">
     <InvoiceHeader />
-
-    <InvoiceItemPicker />
+    <div class="">
+      <InvoiceItemPicker />
+    </div>
 
     <section
-      class="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+      class="mt-4 overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
       <div
-        class="flex items-start justify-between gap-3 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800"
+        class="hdr-grid flex items-start justify-between gap-3 border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
       >
         <div class="min-w-0">
           <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
-          <div class="text-xs text-sky-600 dark:text-emerald-400">
+          <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
             {{ invStore.prettyBaseNumber ? 'For ' + invStore.prettyBaseNumber : '' }}
           </div>
         </div>
 
         <span
-          class="hidden rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+          class="hidden rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
         >
           Tip: you can edit items anytime
         </span>
@@ -95,12 +96,14 @@ onActivated(refreshInvoiceClientSnapshot)
 
     <section class="mt-4 grid gap-4 md:grid-cols-2">
       <section
-        class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+        class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
-        <div class="flex justify-between border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+        <div
+          class="hdr-grid flex justify-between border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
+        >
           <div>
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Adjustments</div>
-            <div class="text-xs text-sky-600 dark:text-emerald-400">
+            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
               Paid, deposit, discount, VAT and note
             </div>
           </div>
@@ -112,12 +115,14 @@ onActivated(refreshInvoiceClientSnapshot)
       </section>
 
       <section
-        class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+        class="overflow-clip rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
       >
-        <div class="flex justify-between border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+        <div
+          class="hdr-grid flex items-center justify-between border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
+        >
           <div>
             <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-            <div class="text-xs text-sky-600 dark:text-emerald-400">Balance overview</div>
+            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">Balance overview</div>
           </div>
 
           <div class="flex flex-col items-end gap-y-2">
@@ -127,7 +132,7 @@ onActivated(refreshInvoiceClientSnapshot)
               align="center"
               class="hover:text-sky-600 dark:hover:text-emerald-400"
             >
-              <InformationCircleIcon class="size-5" />
+              <InformationCircleIcon class="size-5 cursor-help" />
             </TheTooltip>
           </div>
         </div>

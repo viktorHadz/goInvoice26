@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/db"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/settingsTx"
@@ -61,11 +63,11 @@ func TestUpsert_AllowsStartingInvoiceNumberWhenNoInvoicesExist(t *testing.T) {
 	conn, cleanup := newSettingsDB(t)
 	defer cleanup()
 
-	if err := settingsTx.Upsert(ctx, conn, baseSettings()); err != nil {
+	if err := settingsTx.Upsert(ctx, conn, accountscope.DefaultAccountID, baseSettings()); err != nil {
 		t.Fatalf("Upsert: %v", err)
 	}
 
-	got, err := settingsTx.Get(ctx, conn)
+	got, err := settingsTx.Get(ctx, conn, accountscope.DefaultAccountID)
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -82,7 +84,7 @@ func TestUpsert_RejectsStartingInvoiceNumberChangeWhenInvoicesExist(t *testing.T
 	conn, cleanup := newSettingsDB(t)
 	defer cleanup()
 
-	if err := settingsTx.Upsert(ctx, conn, baseSettings()); err != nil {
+	if err := settingsTx.Upsert(ctx, conn, accountscope.DefaultAccountID, baseSettings()); err != nil {
 		t.Fatalf("initial Upsert: %v", err)
 	}
 	if _, err := conn.Exec(`
@@ -99,7 +101,7 @@ func TestUpsert_RejectsStartingInvoiceNumberChangeWhenInvoicesExist(t *testing.T
 	locked := baseSettings()
 	locked.StartingInvoiceNumber = 250
 
-	err := settingsTx.Upsert(ctx, conn, locked)
+	err := settingsTx.Upsert(ctx, conn, accountscope.DefaultAccountID, locked)
 	if !errors.Is(err, settingsTx.ErrStartingInvoiceNumberLocked) {
 		t.Fatalf("Upsert() error = %v, want %v", err, settingsTx.ErrStartingInvoiceNumberLocked)
 	}
@@ -117,7 +119,7 @@ func TestGet_AllowsEditingAgainAfterAllInvoicesDeleted(t *testing.T) {
 		t.Fatalf("insert invoice: %v", err)
 	}
 
-	got, err := settingsTx.Get(ctx, conn)
+	got, err := settingsTx.Get(ctx, conn, accountscope.DefaultAccountID)
 	if err != nil {
 		t.Fatalf("Get locked: %v", err)
 	}
@@ -129,11 +131,100 @@ func TestGet_AllowsEditingAgainAfterAllInvoicesDeleted(t *testing.T) {
 		t.Fatalf("delete invoices: %v", err)
 	}
 
-	got, err = settingsTx.Get(ctx, conn)
+	got, err = settingsTx.Get(ctx, conn, accountscope.DefaultAccountID)
 	if err != nil {
 		t.Fatalf("Get unlocked: %v", err)
 	}
 	if !got.CanEditStartingInvoiceNumber {
 		t.Fatalf("canEditStartingInvoiceNumber = false, want true")
+	}
+}
+
+func TestReplaceLogo_SwapsCurrentStoredAsset(t *testing.T) {
+	ctx := context.Background()
+	conn, cleanup := newSettingsDB(t)
+	defer cleanup()
+
+	first, prev, err := settingsTx.ReplaceLogo(ctx, conn, accountscope.DefaultAccountID, "accounts/1/logos/first.png", "image/png")
+	if err != nil {
+		t.Fatalf("first ReplaceLogo: %v", err)
+	}
+	if prev != nil {
+		t.Fatalf("first previous logo = %#v, want nil", prev)
+	}
+
+	second, prev, err := settingsTx.ReplaceLogo(ctx, conn, accountscope.DefaultAccountID, "accounts/1/logos/second.png", "image/png")
+	if err != nil {
+		t.Fatalf("second ReplaceLogo: %v", err)
+	}
+	if prev == nil {
+		t.Fatal("second previous logo = nil, want first asset")
+	}
+	if prev.ID != first.ID || prev.StorageKey != first.StorageKey {
+		t.Fatalf("previous logo = %#v, want %#v", prev, first)
+	}
+
+	current, ok, err := settingsTx.GetLogoFile(ctx, conn, accountscope.DefaultAccountID)
+	if err != nil {
+		t.Fatalf("GetLogoFile: %v", err)
+	}
+	if !ok {
+		t.Fatal("current logo not found")
+	}
+	if current.ID != second.ID || current.StorageKey != second.StorageKey {
+		t.Fatalf("current logo = %#v, want %#v", current, second)
+	}
+}
+
+func TestRemoveLogo_ClearsCurrentStoredAsset(t *testing.T) {
+	ctx := context.Background()
+	conn, cleanup := newSettingsDB(t)
+	defer cleanup()
+
+	inserted, prev, err := settingsTx.ReplaceLogo(ctx, conn, accountscope.DefaultAccountID, "accounts/1/logos/logo.png", "image/png")
+	if err != nil {
+		t.Fatalf("ReplaceLogo: %v", err)
+	}
+	if prev != nil {
+		t.Fatalf("previous logo = %#v, want nil", prev)
+	}
+
+	removed, err := settingsTx.RemoveLogo(ctx, conn, accountscope.DefaultAccountID)
+	if err != nil {
+		t.Fatalf("RemoveLogo: %v", err)
+	}
+	if removed == nil {
+		t.Fatal("removed logo = nil, want stored asset")
+	}
+	if removed.ID != inserted.ID {
+		t.Fatalf("removed logo id = %d, want %d", removed.ID, inserted.ID)
+	}
+
+	_, ok, err := settingsTx.GetLogoFile(ctx, conn, accountscope.DefaultAccountID)
+	if err != nil {
+		t.Fatalf("GetLogoFile after remove: %v", err)
+	}
+	if ok {
+		t.Fatal("expected no current logo after remove")
+	}
+}
+
+func TestGet_DerivesStableLogoURLFromCurrentAsset(t *testing.T) {
+	ctx := context.Background()
+	conn, cleanup := newSettingsDB(t)
+	defer cleanup()
+
+	inserted, _, err := settingsTx.ReplaceLogo(ctx, conn, accountscope.DefaultAccountID, "accounts/1/logos/logo.png", "image/png")
+	if err != nil {
+		t.Fatalf("ReplaceLogo: %v", err)
+	}
+
+	got, err := settingsTx.Get(ctx, conn, accountscope.DefaultAccountID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	want := "/api/settings/logo?v=" + fmt.Sprint(inserted.ID)
+	if got.LogoURL != want {
+		t.Fatalf("logoUrl = %q, want %q", got.LogoURL, want)
 	}
 }

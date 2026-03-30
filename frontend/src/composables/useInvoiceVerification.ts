@@ -135,7 +135,8 @@ export function useInvoiceVerification(
                     lastVerifyFailureToastedAt.value = Date.now()
                     emitToastError({
                         title: 'Verification unavailable',
-                        message: 'Could not verify totals right now. Check your connection and try again.',
+                        message:
+                            'Could not verify totals right now. Check your connection and try again.',
                     })
                 }
                 return

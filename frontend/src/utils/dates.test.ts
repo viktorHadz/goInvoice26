@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-    fmtStrDate,
-    isValidISODate,
-    normalizeISODateOrNull,
-    todayISO,
-} from '@/utils/dates'
+import { fmtStrDate, isValidISODate, normalizeISODateOrNull, todayISO } from '@/utils/dates'
 
 describe('dates helpers', () => {
     it('normalizes and validates only strict ISO dates', () => {

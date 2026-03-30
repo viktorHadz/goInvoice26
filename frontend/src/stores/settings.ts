@@ -23,6 +23,8 @@ export type Settings = {
     canEditStartingInvoiceNumber: boolean
 }
 
+export type SettingsUpdate = Omit<Settings, 'logoUrl' | 'canEditStartingInvoiceNumber'>
+
 function normalizeSettings(data: Settings): Settings {
     return {
         ...data,
@@ -62,7 +64,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    async function saveSettings(payload: Settings) {
+    async function saveSettings(payload: SettingsUpdate) {
         const data = await request<Settings>('/api/settings', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -75,6 +77,12 @@ export const useSettingsStore = defineStore('settings', () => {
         return normalized
     }
 
+    function reset() {
+        settings.value = null
+        isLoading.value = false
+        needsSetup.value = false
+    }
+
     return {
         settings,
         isLoading,
@@ -82,5 +90,6 @@ export const useSettingsStore = defineStore('settings', () => {
         hasSettings,
         fetchSettings,
         saveSettings,
+        reset,
     }
 })

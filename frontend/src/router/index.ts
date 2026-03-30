@@ -1,44 +1,144 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { useClientStore } from '@/stores/clients'
+import { useSettingsStore } from '@/stores/settings'
 import { emitToastError } from '@/utils/toast'
 import { getApiErrorMessage, isApiError } from '@/utils/apiErrors'
+
+type GuardToastMeta = {
+    title: string
+    message: string
+}
+
+function emitGuardToast(meta: unknown) {
+    if (!meta || typeof meta !== 'object') return
+    const toast = meta as Partial<GuardToastMeta>
+    if (!toast.title || !toast.message) return
+
+    emitToastError({
+        title: toast.title,
+        message: toast.message,
+    })
+}
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
         {
             path: '/',
-            name: 'home',
-            component: () => import('@/views/HomeView.vue'),
+            name: 'landing',
+            component: () => import('@/views/LandingView.vue'),
         },
         {
-            path: '/clients',
+            path: '/signup',
+            name: 'signup',
+            component: () => import('@/views/AuthEntryView.vue'),
+            props: { mode: 'signup' },
+        },
+        {
+            path: '/login',
+            name: 'login',
+            component: () => import('@/views/AuthEntryView.vue'),
+            props: { mode: 'login' },
+        },
+        {
+            path: '/app',
+            name: 'app-home',
+            component: () => import('@/views/HomeView.vue'),
+            meta: { appChrome: true },
+        },
+        {
+            path: '/app/clients',
             name: 'clients',
             component: () => import('@/views/ClientsView.vue'),
-            meta: { requiresClients: true },
+            meta: { appChrome: true, requiresClients: true },
         },
         {
-            path: '/invoice',
+            path: '/app/invoice',
             name: 'invoice',
             component: () => import('@/views/InvoiceView.vue'),
-            meta: { requiresSelectedClient: true },
+            meta: {
+                appChrome: true,
+                requiresSelectedClient: true,
+                guardToast: {
+                    title: 'Select a client first',
+                    message: 'Pick a client from Quick Menu before opening Invoice.',
+                },
+            },
         },
         {
-            path: '/editor',
+            path: '/app/editor',
             name: 'editor',
             component: () => import('@/views/EditorView.vue'),
-            meta: { requiresSelectedClient: true },
+            meta: {
+                appChrome: true,
+                requiresSelectedClient: true,
+                guardToast: {
+                    title: 'Select a client first',
+                    message: 'Pick a client from Quick Menu before opening Editor.',
+                },
+            },
+        },
+        {
+            path: '/app/team',
+            redirect: { name: 'app-home' },
+        },
+        {
+            path: '/:pathMatch(.*)*',
+            name: 'not-found',
+            component: () => import('@/views/NotFoundView.vue'),
         },
     ],
     linkActiveClass: 'router-active',
 })
 
 router.beforeEach(async (to) => {
+    const authStore = useAuthStore()
     const clientStore = useClientStore()
+    const settingsStore = useSettingsStore()
+    const needsAuthStatus = to.meta.appChrome || to.name === 'login' || to.name === 'signup'
 
-    clientStore.syncClientIdWithLS()
+    if (needsAuthStatus) {
+        try {
+            await authStore.fetchSession()
+        } catch (err) {
+            emitToastError({
+                title: 'Could not load session',
+                message: isApiError(err)
+                    ? getApiErrorMessage(err)
+                    : 'Please check your connection and try again.',
+            })
 
-    if ((to.meta.requiresClients || to.meta.requiresSelectedClient) && !clientStore.hasLoaded) {
+            if (to.meta.appChrome) {
+                return false
+            }
+        }
+    }
+
+    if (to.meta.appChrome && !authStore.isAuthenticated) {
+        authStore.clearWorkspaceState()
+
+        return authStore.needsSetup
+            ? {
+                  name: 'signup',
+                  query: { redirect: to.fullPath },
+              }
+            : {
+                  name: 'login',
+                  query: { redirect: to.fullPath },
+              }
+    }
+
+    if ((to.name === 'login' || to.name === 'signup') && authStore.isAuthenticated) {
+        const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : '/app'
+        return redirect.startsWith('/') ? redirect : { name: 'app-home' }
+    }
+
+    if (to.meta.appChrome) {
+        clientStore.syncClientIdWithLS()
+    }
+
+    if (to.meta.appChrome && !clientStore.hasLoaded) {
         try {
             await clientStore.load()
         } catch (err) {
@@ -48,16 +148,29 @@ router.beforeEach(async (to) => {
                     ? getApiErrorMessage(err)
                     : 'Please check your connection and try again.',
             })
-            return { name: 'home' }
+        }
+    }
+
+    if (to.meta.appChrome && !settingsStore.hasSettings) {
+        try {
+            await settingsStore.fetchSettings()
+        } catch (err) {
+            emitToastError({
+                title: 'Could not load settings',
+                message: isApiError(err)
+                    ? getApiErrorMessage(err)
+                    : 'Please check your connection and try again.',
+            })
         }
     }
 
     if (to.meta.requiresClients && !clientStore.hasClients) {
-        return { name: 'home' }
+        return { name: 'app-home' }
     }
 
     if (to.meta.requiresSelectedClient && !clientStore.selectedClient) {
-        return { name: 'home' }
+        emitGuardToast(to.meta.guardToast)
+        return { name: 'app-home' }
     }
 
     return true

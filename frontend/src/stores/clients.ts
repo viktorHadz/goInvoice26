@@ -109,6 +109,14 @@ export const useClientStore = defineStore('clients', () => {
         return updated
     }
 
+    function reset() {
+        clients.value = []
+        isLoading.value = false
+        hasLoaded.value = false
+        lsClientId.value = null
+        localStorage.removeItem(LS_KEY)
+    }
+
     return {
         clients,
         selectedClient,
@@ -122,5 +130,6 @@ export const useClientStore = defineStore('clients', () => {
         isLoading,
         hasLoaded,
         syncClientIdWithLS,
+        reset,
     }
 })

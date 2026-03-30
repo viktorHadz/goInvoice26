@@ -6,9 +6,9 @@ import NoClients from '@/components/clients/NoClients.vue'
 import heroImg from '@/assets/images/vik_wave.svg'
 import TheDropdown from '@/components/UI/TheDropdown.vue'
 import {
+  BriefcaseIcon,
   DocumentTextIcon,
   PencilSquareIcon,
-  SquaresPlusIcon,
   UserIcon,
   UsersIcon,
 } from '@heroicons/vue/24/outline'
@@ -49,7 +49,7 @@ const features = [
           >
             <li>
               <div
-                class="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+                class="hdr-grid rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
               >
                 <div class="font-semibold text-zinc-900 dark:text-zinc-100">
                   {{ feature.title }}
@@ -95,7 +95,7 @@ const features = [
     <!-- Actions / State -->
     <section class="mt-12">
       <div
-        class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-lg sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
+        class="hdr-grid rounded-2xl border border-zinc-300 bg-white p-4 shadow-md sm:p-5 dark:border-zinc-800 dark:bg-zinc-900/50"
       >
         <Transition
           name="fade-down-up"
@@ -126,7 +126,7 @@ const features = [
               Tip: create / edit clients in the Clients page.
             </div>
 
-            <RouterLink to="/clients">
+            <RouterLink to="/app/clients">
               <TheButton class="cursor-pointer">clients</TheButton>
             </RouterLink>
           </div>
@@ -141,7 +141,7 @@ const features = [
               </span>
             </div>
             <div class="mt-12 flex flex-wrap gap-3">
-              <RouterLink to="/clients">
+              <RouterLink to="/app/clients">
                 <TheButton class="cursor-pointer">
                   <UsersIcon class="size-4"></UsersIcon>
                   clients
@@ -160,19 +160,19 @@ const features = [
                   @click="productStore.open = true"
                   class="cursor-pointer"
                 >
-                  <SquaresPlusIcon class="size-4"></SquaresPlusIcon>
+                  <BriefcaseIcon class="size-4"></BriefcaseIcon>
                   items
                 </TheButton>
               </TheTooltip>
 
-              <RouterLink to="/invoice">
+              <RouterLink to="/app/invoice">
                 <TheButton class="cursor-pointer">
                   <DocumentTextIcon class="size-4" />
                   invoice
                 </TheButton>
               </RouterLink>
 
-              <RouterLink to="/editor">
+              <RouterLink to="/app/editor">
                 <TheButton class="cursor-pointer">
                   <PencilSquareIcon class="size-4" />
                   editor

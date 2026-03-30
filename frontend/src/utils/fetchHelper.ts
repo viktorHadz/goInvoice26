@@ -25,9 +25,12 @@ export class ParseError extends Error {
 }
 
 export async function request<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+    const normalizedInput =
+        typeof input === 'string' && input.startsWith('api/') ? `/${input}` : input
+
     let res: Response
     try {
-        res = await fetch(input, init)
+        res = await fetch(normalizedInput, init)
     } catch (err) {
         const name = (err as any)?.name
         if (name === 'AbortError') {
@@ -53,6 +56,11 @@ export async function request<T>(input: RequestInfo, init?: RequestInit): Promis
     try {
         return JSON.parse(text) as T
     } catch (err) {
-        throw new ParseError('Received an unreadable response from the server.', res.status, text, err)
+        throw new ParseError(
+            'Received an unreadable response from the server. Please contact support.',
+            res.status,
+            text,
+            err,
+        )
     }
 }

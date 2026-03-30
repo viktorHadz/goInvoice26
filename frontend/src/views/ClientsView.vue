@@ -4,5 +4,5 @@ import DecorGradient from '@/components/UI/DecorGradient.vue'
 </script>
 
 <template>
-  <ClientsTable></ClientsTable>
+    <ClientsTable></ClientsTable>
 </template>

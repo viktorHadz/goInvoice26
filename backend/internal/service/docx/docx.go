@@ -74,7 +74,7 @@ type embeddedImage struct {
 func RenderDOCX(doc models.InvoicePDFData) ([]byte, error) {
 	var out bytes.Buffer
 
-	logo := loadEmbeddedLogo(doc.Issuer.LogoURL)
+	logo := loadEmbeddedLogo(doc.Issuer.LogoPath)
 	footerLines := linesOf(doc.NotesFooter)
 	hasFooter := true
 
@@ -745,8 +745,8 @@ func groupInvoiceLines(lines []models.InvoicePDFItem) []itemGroup {
 	return groups
 }
 
-func loadEmbeddedLogo(logoURL string) *embeddedImage {
-	logoPath, ok := resolveLocalLogoPath(logoURL)
+func loadEmbeddedLogo(logoPath string) *embeddedImage {
+	logoPath, ok := resolveLocalLogoPath(logoPath)
 	if !ok {
 		return nil
 	}

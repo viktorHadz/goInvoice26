@@ -27,7 +27,7 @@ const dueByDate = computed<string | null>({
   <header>
     <div class="mb-4 flex items-center gap-3">
       <div
-        class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+        class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
       >
         <DocumentTextIcon class="size-7 text-sky-600 dark:text-emerald-400" />
       </div>
@@ -36,12 +36,12 @@ const dueByDate = computed<string | null>({
         <div class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-200">
           Invoice
         </div>
-        <div class="text-sm text-zinc-500 dark:text-zinc-400">Create and export invoices</div>
+        <div class="text-sm text-zinc-600 dark:text-zinc-400">Create and export invoices</div>
       </div>
     </div>
 
     <section
-      class="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+      class="relative overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
     >
       <div class="relative z-10 space-y-4 p-3 md:p-4">
         <div
@@ -84,12 +84,12 @@ const dueByDate = computed<string | null>({
           </div>
 
           <div
-            class="min-w-0 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+            class="min-w-0 rounded-2xl border border-zinc-300 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
           >
             <div class="mb-2 flex items-center justify-between">
               <div class="font-semibold">To</div>
               <div
-                class="hidden rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+                class="hidden rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
               >
                 client details
               </div>
@@ -126,7 +126,7 @@ const dueByDate = computed<string | null>({
           </div>
         </div>
       </div>
-      <DecorGradient variant="gradientAndGrid" />
+      <DecorGradient />
     </section>
   </header>
 </template>

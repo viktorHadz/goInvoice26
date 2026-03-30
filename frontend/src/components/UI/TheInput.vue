@@ -4,41 +4,41 @@ import { computed, ref, watch, useId } from 'vue'
 type InputValue = string | number | null | undefined
 
 const props = withDefaults(
-  defineProps<{
-    label?: string
-    id?: string
-    name?: string
-    modelValue?: InputValue
-    labelHidden?: boolean
+    defineProps<{
+        label?: string
+        id?: string
+        name?: string
+        modelValue?: InputValue
+        labelHidden?: boolean
 
-    /** wrapper classes */
-    classNames?: string
-    inputClass?: string
+        /** wrapper classes */
+        classNames?: string
+        inputClass?: string
 
-    type?: string
-    error?: string | null
+        type?: string
+        error?: string | null
 
-    inputMaxLength?: number
-    // to reserves space even when no no error - prevents layout jump
-    reserveErrorSpace?: boolean
-    forceShowError?: boolean
-  }>(),
-  {
-    type: 'text',
-    labelHidden: false,
-    classNames: '',
-    inputClass: '',
-    error: null,
-    inputMaxLength: 400,
-    reserveErrorSpace: true,
-    forceShowError: false,
-  },
+        inputMaxLength?: number
+        // to reserves space even when no no error - prevents layout jump
+        reserveErrorSpace?: boolean
+        forceShowError?: boolean
+    }>(),
+    {
+        type: 'text',
+        labelHidden: false,
+        classNames: '',
+        inputClass: '',
+        error: null,
+        inputMaxLength: 400,
+        reserveErrorSpace: true,
+        forceShowError: false,
+    },
 )
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: InputValue): void
-  (e: 'touched', value: boolean): void
-  (e: 'dirty', value: boolean): void
+    (e: 'update:modelValue', value: InputValue): void
+    (e: 'touched', value: boolean): void
+    (e: 'dirty', value: boolean): void
 }>()
 
 // id auto if not provided
@@ -50,9 +50,9 @@ const inputEl = ref<HTMLInputElement | null>(null)
 // touched
 const isTouched = ref(false)
 function touch() {
-  if (isTouched.value) return
-  isTouched.value = true
-  emit('touched', true)
+    if (isTouched.value) return
+    isTouched.value = true
+    emit('touched', true)
 }
 
 // dirty vs initial
@@ -60,110 +60,110 @@ const initialValue = ref<InputValue>(props.modelValue)
 const isDirty = ref(false)
 
 function norm(v: InputValue) {
-  return v === undefined || v === null ? '' : String(v)
+    return v === undefined || v === null ? '' : String(v)
 }
 
 watch(
-  () => props.modelValue,
-  (v) => {
-    const nextDirty = norm(v) !== norm(initialValue.value)
-    if (nextDirty !== isDirty.value) {
-      isDirty.value = nextDirty
-      emit('dirty', nextDirty)
-    }
-  },
-  { immediate: true },
+    () => props.modelValue,
+    (v) => {
+        const nextDirty = norm(v) !== norm(initialValue.value)
+        if (nextDirty !== isDirty.value) {
+            isDirty.value = nextDirty
+            emit('dirty', nextDirty)
+        }
+    },
+    { immediate: true },
 )
 
 // if parent resets modelValue mark clean and untouched
 watch(
-  () => props.modelValue,
-  (v) => {
-    if (v === null || v === undefined || v === '') {
-      initialValue.value = v
-      if (isDirty.value) emit('dirty', false)
-      isDirty.value = false
-      isTouched.value = false
-    }
-  },
+    () => props.modelValue,
+    (v) => {
+        if (v === null || v === undefined || v === '') {
+            initialValue.value = v
+            if (isDirty.value) emit('dirty', false)
+            isDirty.value = false
+            isTouched.value = false
+        }
+    },
 )
 
 // DOM model bridge
 const valueProxy = computed<string>({
-  get() {
-    const v = props.modelValue
-    return v === null || v === undefined ? '' : String(v)
-  },
-  set(v) {
-    if (v === '') {
-      emit('update:modelValue', null)
-      return
-    }
-    if (props.type === 'number') {
-      const n = Number(v)
-      emit('update:modelValue', Number.isFinite(n) ? n : null)
-      return
-    }
-    emit('update:modelValue', v)
-  },
+    get() {
+        const v = props.modelValue
+        return v === null || v === undefined ? '' : String(v)
+    },
+    set(v) {
+        if (v === '') {
+            emit('update:modelValue', null)
+            return
+        }
+        if (props.type === 'number') {
+            const n = Number(v)
+            emit('update:modelValue', Number.isFinite(n) ? n : null)
+            return
+        }
+        emit('update:modelValue', v)
+    },
 })
 
 const showError = computed(() => (isTouched.value || props.forceShowError) && !!props.error)
 
 function onFocus(e: FocusEvent) {
-  ;(e.target as HTMLInputElement | null)?.select()
+    ;(e.target as HTMLInputElement | null)?.select()
 }
 
 function onBlur() {
-  touch()
+    touch()
 }
 
 function focus() {
-  inputEl.value?.focus()
+    inputEl.value?.focus()
 }
 
 defineExpose({
-  focus,
+    focus,
 })
 </script>
 
 <template>
-  <div
-    class="flex min-w-0 flex-col gap-1"
-    :class="props.classNames"
-  >
-    <label
-      v-if="!props.labelHidden && props.label"
-      :for="inputId"
-      class="input-label"
+    <div
+        class="flex min-w-0 flex-col gap-1"
+        :class="props.classNames"
     >
-      {{ props.label }}
-    </label>
+        <label
+            v-if="!props.labelHidden && props.label"
+            :for="inputId"
+            class="input-label"
+        >
+            {{ props.label }}
+        </label>
 
-    <input
-      ref="inputEl"
-      v-bind="$attrs"
-      :id="inputId"
-      :name="props.name"
-      :type="props.type"
-      v-model="valueProxy"
-      class="input w-full min-w-0"
-      :class="[props.inputClass, showError ? 'input-error' : 'input-accent']"
-      :aria-invalid="showError ? 'true' : 'false'"
-      :aria-describedby="showError ? errId : undefined"
-      :maxlength="props.inputMaxLength"
-      @focus="onFocus"
-      @blur="onBlur"
-    />
+        <input
+            ref="inputEl"
+            v-bind="$attrs"
+            :id="inputId"
+            :name="props.name"
+            :type="props.type"
+            v-model="valueProxy"
+            class="input w-full min-w-0"
+            :class="[props.inputClass, showError ? 'input-error' : 'input-accent']"
+            :aria-invalid="showError ? 'true' : 'false'"
+            :aria-describedby="showError ? errId : undefined"
+            :maxlength="props.inputMaxLength"
+            @focus="onFocus"
+            @blur="onBlur"
+        />
 
-    <p
-      :id="errId"
-      class="text-xs"
-      :class="showError ? 'text-rose-600 dark:text-rose-300' : 'text-transparent'"
-      :style="props.reserveErrorSpace ? 'min-height: 1.25rem' : ''"
-      v-if="props.reserveErrorSpace || showError"
-    >
-      {{ showError ? props.error : '•' }}
-    </p>
-  </div>
+        <p
+            :id="errId"
+            class="text-xs"
+            :class="showError ? 'text-rose-600 dark:text-rose-300' : 'text-transparent'"
+            :style="props.reserveErrorSpace ? 'min-height: 1.25rem' : ''"
+            v-if="props.reserveErrorSpace || showError"
+        >
+            {{ showError ? props.error : '•' }}
+        </p>
+    </div>
 </template>

@@ -44,14 +44,11 @@ export function useEscape(callback: () => void, options: KeyHandlerOptions = {})
 
 export function useEnter(callback: () => void, options: KeyHandlerOptions = {}) {
     let countFiredOnInput = 0
-    console.log('FIREE', countFiredOnInput)
 
     function handler(e: KeyboardEvent) {
         if (countFiredOnInput >= 1) return
         if (e.key !== 'Enter') return
         if (e.repeat) return
-        console.log(e.repeat)
-        console.log('TARGET', e.target)
         const enabled = options.enabled !== undefined ? toValue(options.enabled) : true
         if (!enabled) return
 

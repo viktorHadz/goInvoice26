@@ -12,7 +12,7 @@ export type CreateRevisionResponse = CreateInvoiceResponse & {
 }
 
 export async function getNewInvoiceNumber(clientId: number): Promise<number> {
-    const n = await request<number>(`api/clients/${clientId}/invoice`)
+    const n = await request<number>(`/api/clients/${clientId}/invoice`)
     const out = typeof n === 'number' && Number.isFinite(n) ? Math.round(n) : 0
     return out > 0 ? out : 0
 }
@@ -22,7 +22,7 @@ export async function newInvoiceHandler(
     baseNumber: number,
     invoPayload: unknown,
 ) {
-    const url = `api/clients/${clientId}/invoice/${baseNumber}`
+    const url = `/api/clients/${clientId}/invoice/${baseNumber}`
     const payload = JSON.stringify(invoPayload)
 
     return await request<CreateInvoiceResponse>(url, {
@@ -37,7 +37,7 @@ export async function updateDraftInvoiceHandler(
     baseNumber: number,
     invoPayload: unknown,
 ) {
-    const url = `api/clients/${clientId}/invoice/${baseNumber}`
+    const url = `/api/clients/${clientId}/invoice/${baseNumber}`
     const payload = JSON.stringify(invoPayload)
 
     return await request<CreateInvoiceResponse>(url, {
@@ -52,7 +52,7 @@ export async function newRevisionHandler(
     baseNumber: number,
     invoPayload: unknown,
 ) {
-    const url = `api/clients/${clientId}/invoice/${baseNumber}/revisions`
+    const url = `/api/clients/${clientId}/invoice/${baseNumber}/revisions`
     const payload = JSON.stringify(invoPayload)
     return await request<CreateRevisionResponse>(url, {
         method: 'POST',
@@ -74,7 +74,7 @@ export async function verifyInvoiceHandler(
     invoPayload: unknown,
     options?: { signal?: AbortSignal },
 ) {
-    const url = `api/clients/${clientId}/invoice/${baseNumber}/verify`
+    const url = `/api/clients/${clientId}/invoice/${baseNumber}/verify`
     const payload = JSON.stringify(invoPayload)
 
     return await request<VerifyInvoiceResponse>(url, {

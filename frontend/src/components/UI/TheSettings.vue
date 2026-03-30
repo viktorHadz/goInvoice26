@@ -21,11 +21,21 @@ import SettingsPreview from './SettingsPreview.vue'
 import {
   useSettingsStore,
   type Settings,
+  type SettingsUpdate,
   type CurrencyCode,
   type DateFormat,
 } from '@/stores/settings'
 import { emitToastError, emitToastSuccess } from '@/utils/toast'
-import { handleImageUpload, readImagePreview } from '@/utils/settingHandlers'
+import { deleteLogo, readImagePreview, uploadLogo } from '@/utils/settingHandlers'
+
+withDefaults(
+  defineProps<{
+    showTrigger?: boolean
+  }>(),
+  {
+    showTrigger: true,
+  },
+)
 
 const settingsStore = useSettingsStore()
 
@@ -73,6 +83,16 @@ function cloneSettings(settings: Settings): Settings {
   return { ...settings }
 }
 
+function toSettingsPayload(settings: Settings): SettingsUpdate {
+  const {
+    logoUrl: _logoUrl,
+    canEditStartingInvoiceNumber: _canEditStartingInvoiceNumber,
+    ...payload
+  } = settings
+
+  return payload
+}
+
 async function openSettings() {
   try {
     const settings = await settingsStore.fetchSettings()
@@ -98,6 +118,11 @@ function closeSettings() {
 function forceCloseSettings() {
   settingsOpen.value = false
 }
+
+defineExpose({
+  openSettings,
+  closeSettings,
+})
 
 async function onLogoChange(e: Event) {
   const input = e.target as HTMLInputElement
@@ -132,20 +157,22 @@ async function save() {
   isSaving.value = true
 
   try {
-    let logoUrl = form.value.logoUrl
+    const hadLogoBefore = Boolean(settingsStore.settings?.logoUrl)
+
+    await settingsStore.saveSettings(toSettingsPayload(form.value))
 
     if (logoFile.value) {
-      const uploaded = await handleImageUpload(logoFile.value)
-      logoUrl = uploaded.logoUrl
+      await uploadLogo(logoFile.value)
+    } else if (!logoPreview.value && hadLogoBefore) {
+      await deleteLogo()
     }
 
-    await settingsStore.saveSettings({
-      ...form.value,
-      logoUrl,
-    })
+    const refreshed = await settingsStore.fetchSettings()
+    if (!refreshed) throw new Error('Settings not found')
 
+    form.value = cloneSettings(refreshed)
     logoFile.value = null
-    logoPreview.value = logoUrl || null
+    logoPreview.value = refreshed.logoUrl || null
 
     emitToastSuccess('Settings saved.')
     forceCloseSettings()
@@ -179,6 +206,7 @@ useEscape(closeSettings, {
 </script>
 <template>
   <TheTooltip
+    v-if="showTrigger"
     side="bottom"
     align="end"
   >
@@ -197,9 +225,9 @@ useEscape(closeSettings, {
     <button
       type="button"
       class="flex cursor-pointer rounded-lg border border-zinc-300 p-1 text-zinc-600 hover:text-sky-600 dark:border-transparent dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
-      @click="() => openSettings()"
+      @click="void openSettings()"
     >
-      <Cog6ToothIcon class="size-6" />
+      <Cog6ToothIcon class="size-6 stroke-1" />
     </button>
   </TheTooltip>
 
@@ -215,13 +243,13 @@ useEscape(closeSettings, {
     <transition name="modal">
       <section
         v-if="settingsOpen"
-        class="fixed inset-0 z-101 m-auto flex h-[88vh] w-[94vw] max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white text-zinc-900 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+        class="fixed inset-0 z-101 m-auto flex h-[88vh] w-[94vw] max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-300 bg-white text-zinc-900 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
       >
         <!-- Header -->
         <header
-          class="relative overflow-hidden border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/80"
+          class="relative overflow-hidden border-b border-zinc-300 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/80"
         >
-          <DecorGradient variant="gradientAndGrid"></DecorGradient>
+          <DecorGradient />
           <!-- More glow -->
 
           <div
@@ -229,7 +257,7 @@ useEscape(closeSettings, {
           >
             <div class="flex min-w-0 items-center gap-4">
               <div
-                class="grid size-10 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm sm:size-12 dark:border-zinc-700 dark:bg-zinc-900"
+                class="grid size-10 shrink-0 place-items-center rounded-2xl border border-zinc-300 bg-white shadow-sm sm:size-12 dark:border-zinc-700 dark:bg-zinc-900"
               >
                 <Cog6ToothIcon
                   class="stroke-1.5 size-6 text-sky-700 sm:size-7 dark:text-emerald-400"
@@ -275,12 +303,12 @@ useEscape(closeSettings, {
         >
           <!-- Left -->
           <div
-            class="min-h-0 overflow-y-auto border-b border-zinc-200 p-3 sm:p-5 lg:border-r lg:border-b-0 dark:border-zinc-800"
+            class="min-h-0 overflow-y-auto border-b border-zinc-300 p-3 sm:p-5 lg:border-r lg:border-b-0 dark:border-zinc-800"
           >
             <div class="space-y-5 pb-10">
               <!-- Business identity -->
               <section
-                class="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
+                class="rounded-2xl border border-zinc-300 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
               >
                 <div class="mb-4 flex items-center gap-2">
                   <BuildingOffice2Icon class="size-5 text-sky-600 dark:text-emerald-400" />
@@ -342,7 +370,7 @@ useEscape(closeSettings, {
 
               <!-- Invoice defaults -->
               <section
-                class="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
+                class="rounded-2xl border border-zinc-300 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
               >
                 <div class="mb-4 flex items-center gap-2">
                   <DocumentTextIcon class="size-5 text-sky-600 dark:text-emerald-400" />
@@ -366,7 +394,7 @@ useEscape(closeSettings, {
                 </div>
 
                 <div
-                  class="mt-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/60"
+                  class="mt-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/60"
                   :class="!canEditStartingInvoiceNumber ? 'opacity-70' : ''"
                 >
                   <div class="mb-2 flex items-center justify-between gap-2">
@@ -382,10 +410,10 @@ useEscape(closeSettings, {
                       </template>
                       <button
                         type="button"
-                        class="inline-flex cursor-help text-zinc-500 transition hover:text-sky-600 dark:text-zinc-400 dark:hover:text-emerald-400"
+                        class="inline-flex cursor-help text-zinc-600 transition hover:text-sky-600 dark:text-zinc-400 dark:hover:text-emerald-400"
                         aria-label="Starting invoice number help"
                       >
-                        <InformationCircleIcon class="size-5" />
+                        <InformationCircleIcon class="size-5 cursor-help" />
                       </button>
                     </TheTooltip>
                   </div>
@@ -402,7 +430,7 @@ useEscape(closeSettings, {
                 </div>
 
                 <label
-                  class="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-zinc-200 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-800/60 dark:hover:border-emerald-400/50 dark:hover:bg-zinc-800"
+                  class="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-zinc-300 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-800/60 dark:hover:border-emerald-400/50 dark:hover:bg-zinc-800"
                 >
                   <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
@@ -434,7 +462,7 @@ useEscape(closeSettings, {
 
               <!-- Payment -->
               <section
-                class="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
+                class="rounded-2xl border border-zinc-300 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
               >
                 <div class="mb-4 flex items-center gap-2">
                   <BanknotesIcon class="size-5 text-sky-600 dark:text-emerald-400" />
@@ -541,7 +569,7 @@ useEscape(closeSettings, {
             <div class="space-y-5 pb-10">
               <!-- Logo -->
               <section
-                class="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
+                class="rounded-2xl border border-zinc-300 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
               >
                 <div class="mb-4 flex items-center gap-2">
                   <PhotoIcon class="size-5 text-sky-600 dark:text-emerald-400" />
@@ -591,7 +619,7 @@ useEscape(closeSettings, {
                     class="flex flex-col items-center gap-3 text-center"
                   >
                     <div
-                      class="grid size-14 place-items-center rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
+                      class="grid size-14 place-items-center rounded-2xl border border-zinc-300 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
                     >
                       <PhotoIcon class="size-7 text-zinc-600 dark:text-zinc-400" />
                     </div>
@@ -622,7 +650,7 @@ useEscape(closeSettings, {
 
               <!-- Preview Pannel -->
               <section
-                class="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
+                class="rounded-2xl border border-zinc-300 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
               >
                 <div class="mb-4 flex items-center gap-2">
                   <SwatchIcon class="size-5 text-sky-600 dark:text-emerald-400" />
@@ -642,7 +670,7 @@ useEscape(closeSettings, {
 
         <!-- Footer -->
         <footer
-          class="border-t border-zinc-200 bg-white/90 px-5 py-3 sm:py-4 dark:border-zinc-800 dark:bg-zinc-900/90"
+          class="border-t border-zinc-300 bg-white/90 px-5 py-3 sm:py-4 dark:border-zinc-800 dark:bg-zinc-900/90"
         >
           <div class="flex flex-wrap items-center justify-end gap-2">
             <TheButton

@@ -215,7 +215,8 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     const issueDate = payload.overview.issueDate?.trim() ?? ''
     if (
         payload.overview.sourceRevisionNo != null &&
-        (!Number.isInteger(payload.overview.sourceRevisionNo) || payload.overview.sourceRevisionNo < 1)
+        (!Number.isInteger(payload.overview.sourceRevisionNo) ||
+            payload.overview.sourceRevisionNo < 1)
     ) {
         errors.sourceRevisionNo = 'must be a positive integer'
     }
@@ -371,7 +372,8 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
 
     if (totals.subtotalMinor < 0) errors['totals.subtotalMinor'] = 'Subtotal must be 0 or more.'
     if (totals.totalMinor < 0) errors['totals.totalMinor'] = 'Total must be 0 or more.'
-    if (totals.balanceDueMinor < 0) errors['totals.balanceDueMinor'] = 'Balance due must be 0 or more.'
+    if (totals.balanceDueMinor < 0)
+        errors['totals.balanceDueMinor'] = 'Balance due must be 0 or more.'
 
     payload.payments.forEach((payment, i) => {
         const prefix = (f: string) => `payments[${i}].${f}`

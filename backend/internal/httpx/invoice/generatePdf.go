@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/params"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
@@ -95,7 +96,7 @@ func QuickPDFHandler(a *app.App) http.HandlerFunc {
 		}
 
 		builder := func() (models.InvoicePDFData, error) {
-			settings, err := settingsTx.Get(r.Context(), a.DB)
+			settings, err := settingsTx.Get(r.Context(), a.DB, accountscope.AccountID(r.Context()))
 			if err != nil {
 				return models.InvoicePDFData{}, fmt.Errorf("get settings: %w", err)
 			}

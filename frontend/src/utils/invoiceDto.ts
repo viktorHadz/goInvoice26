@@ -20,8 +20,7 @@ export function apiDTO(
     options: InvoiceDtoOptions = {},
 ) {
     const totals = options.pricing?.totals ?? calcTotals(inv)
-    const depositMinor =
-        options.pricing?.depositMinor ?? calcDepositMinor(inv, totals.totalMinor)
+    const depositMinor = options.pricing?.depositMinor ?? calcDepositMinor(inv, totals.totalMinor)
     const balanceDueMinor =
         options.pricing?.balanceDueMinor ??
         calcBalanceDueMinor(totals.totalMinor, depositMinor, inv.paidMinor)

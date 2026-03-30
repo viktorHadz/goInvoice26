@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/viktorHadz/goInvoice26/internal/transaction/authTx"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/settingsTx"
 )
 
@@ -25,9 +26,19 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		// -----------------------
 		// Auth / access
 		// -----------------------
+		`CREATE TABLE IF NOT EXISTS accounts (
+			id INTEGER PRIMARY KEY,
+			name TEXT NOT NULL DEFAULT '',
+			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+		);`,
+		`INSERT OR IGNORE INTO accounts (id, name) VALUES (1, 'Default account');`,
+
 		`CREATE TABLE IF NOT EXISTS allowed_users (
 			id INTEGER PRIMARY KEY,
-			email TEXT NOT NULL UNIQUE
+			email TEXT NOT NULL UNIQUE,
+			account_id INTEGER NOT NULL DEFAULT 1 REFERENCES accounts(id),
+			invited_by_user_id INTEGER,
+			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 		);`,
 
 		`CREATE TABLE IF NOT EXISTS users (
@@ -35,7 +46,48 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			name TEXT,
 			email TEXT NOT NULL UNIQUE,
 			password_hash TEXT NOT NULL,
+			account_id INTEGER NOT NULL DEFAULT 1 REFERENCES accounts(id),
+			google_sub TEXT,
+			avatar_url TEXT NOT NULL DEFAULT '',
+			role TEXT NOT NULL DEFAULT 'member',
 			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+		);`,
+
+		`CREATE TABLE IF NOT EXISTS auth_sessions (
+			id INTEGER PRIMARY KEY,
+			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+			token_hash TEXT NOT NULL UNIQUE,
+			expires_at TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+			last_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+		);`,
+
+		`CREATE TABLE IF NOT EXISTS stored_files (
+			id INTEGER PRIMARY KEY,
+			account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+			kind TEXT NOT NULL CHECK (kind IN ('logo')),
+			storage_key TEXT NOT NULL UNIQUE,
+			content_type TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+			delete_pending_at TEXT
+		);`,
+
+		`CREATE TABLE IF NOT EXISTS account_settings (
+			account_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+			company_name TEXT NOT NULL DEFAULT '',
+			email TEXT NOT NULL DEFAULT '',
+			phone TEXT NOT NULL DEFAULT '',
+			company_address TEXT NOT NULL DEFAULT '',
+			invoice_prefix TEXT NOT NULL DEFAULT 'INV-',
+			currency TEXT NOT NULL DEFAULT 'GBP',
+			date_format TEXT NOT NULL DEFAULT 'dd/mm/yyyy',
+			payment_terms TEXT NOT NULL DEFAULT 'Please make payment within 14 days.',
+			payment_details TEXT NOT NULL DEFAULT '',
+			notes_footer TEXT NOT NULL DEFAULT '',
+			logo_asset_id INTEGER REFERENCES stored_files(id) ON DELETE SET NULL,
+			show_item_type_headers INTEGER NOT NULL DEFAULT 1,
+			updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 		);`,
 
 		`CREATE TABLE IF NOT EXISTS user_settings (
@@ -369,6 +421,10 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_products_client_id ON products(client_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_payments_invoice_revision ON payments(invoice_id, applied_in_revision_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_stored_files_account_id ON stored_files(account_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_stored_files_delete_pending ON stored_files(delete_pending_at);`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL AND google_sub <> '';`,
+		`CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);`,
 	}
 
 	tx, err := db.BeginTx(ctx, nil)
@@ -389,6 +445,40 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 
 	if err := settingsTx.EnsureShowItemTypeHeadersColumn(ctx, tx); err != nil {
 		return err
+	}
+	if err := settingsTx.EnsureUsersAccountIDColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := authTx.EnsureUsersGoogleSubColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := authTx.EnsureUsersAvatarURLColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := authTx.EnsureUsersRoleColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := authTx.EnsureAllowedUsersAccountIDColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := authTx.EnsureAllowedUsersCreatedAtColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := authTx.EnsureAllowedUsersInvitedByUserIDColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := settingsTx.MigrateLegacyUserSettings(ctx, tx); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		CREATE INDEX IF NOT EXISTS idx_users_account_id ON users(account_id);
+	`); err != nil {
+		return fmt.Errorf("create idx_users_account_id: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		CREATE INDEX IF NOT EXISTS idx_allowed_users_account_id ON allowed_users(account_id);
+	`); err != nil {
+		return fmt.Errorf("create idx_allowed_users_account_id: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {

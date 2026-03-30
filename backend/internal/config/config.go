@@ -8,10 +8,15 @@ import (
 )
 
 type Config struct {
-	Env        string
-	Port       string
-	DBPath     string
-	CORSOrigin string
+	Env                string
+	Port               string
+	DBPath             string
+	CORSOrigin         string
+	AppBaseURL         string
+	SessionCookieName  string
+	GoogleClientID     string
+	GoogleClientSecret string
+	GoogleRedirectURL  string
 }
 
 func Load() (Config, error) {
@@ -19,10 +24,15 @@ func Load() (Config, error) {
 	_ = godotenv.Load()
 
 	cfg := Config{
-		Env:        get("ENV", "dev"),
-		Port:       get("PORT", "4206"),
-		DBPath:     must("DB_PATH"),
-		CORSOrigin: get("CORS_ORIGIN", "http://localhost:5173"),
+		Env:                get("ENV", "dev"),
+		Port:               get("PORT", "4206"),
+		DBPath:             must("DB_PATH"),
+		CORSOrigin:         get("CORS_ORIGIN", "http://localhost:5173"),
+		AppBaseURL:         get("APP_BASE_URL", get("CORS_ORIGIN", "http://localhost:5173")),
+		SessionCookieName:  get("SESSION_COOKIE_NAME", "invoicer_session"),
+		GoogleClientID:     must("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: must("GOOGLE_CLIENT_SECRET"),
+		GoogleRedirectURL:  must("GOOGLE_REDIRECT_URL"),
 	}
 
 	if err := validate(cfg); err != nil {
@@ -60,4 +70,12 @@ func validate(cfg Config) error {
 		return fmt.Errorf("missing required env var: PORT")
 	}
 	return nil
+}
+
+func (c Config) SecureCookies() bool {
+	return c.Env == "prod" || c.Env == "production"
+}
+
+func (c Config) GoogleOAuthEnabled() bool {
+	return c.GoogleClientID != "" && c.GoogleClientSecret != "" && c.GoogleRedirectURL != ""
 }

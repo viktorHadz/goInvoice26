@@ -1,28 +1,64 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import DarkMode from './DarkMode.vue'
+import { computed, ref } from 'vue'
+import type { Component } from 'vue'
 import ProductsEditor from '@/components/items/ProductsEditor.vue'
-import TheDropdown from './TheDropdown.vue'
+import TeamQuickMenu from '@/components/team/TeamQuickMenu.vue'
 import { useClientStore } from '@/stores/clients'
-import { ChevronUpDownIcon, UserIcon } from '@heroicons/vue/24/outline'
-import { useShortcuts, type ShortcutDefinition } from '@/composables/keyHandlers'
+import { useAuthStore } from '@/stores/auth'
 import { useProductStore } from '@/stores/products'
+import { useSettingsStore } from '@/stores/settings'
+import { useEscape, useShortcuts, type ShortcutDefinition } from '@/composables/keyHandlers'
 import { useTheme } from '@/composables/theme'
+import { useRouter } from 'vue-router'
+import { emitToastError } from '@/utils/toast'
+import { getApiErrorMessage, isApiError } from '@/utils/apiErrors'
+import { onClickOutside } from '@vueuse/core'
+import TheDropdown from './TheDropdown.vue'
+import TheButton from './TheButton.vue'
 import TheSettings from './TheSettings.vue'
+import UserAvatar from './UserAvatar.vue'
+import {
+  ArrowRightEndOnRectangleIcon,
+  BriefcaseIcon,
+  BuildingOffice2Icon,
+  ChevronDownIcon,
+  ChevronUpDownIcon,
+  Cog6ToothIcon,
+  MoonIcon,
+  SunIcon,
+  UserIcon,
+  UsersIcon,
+} from '@heroicons/vue/24/outline'
+import { requestConfirmation } from '@/utils/confirm'
 
-const show = ref(localStorage.getItem('topBarShow') === 'true')
-
-function toggleTopBar() {
-  show.value = !show.value
+type SettingsController = {
+  openSettings: () => Promise<void>
 }
 
-watch(show, (newVal) => {
-  localStorage.setItem('topBarShow', String(newVal))
-})
+type TeamMenuController = {
+  openMenu: () => void
+}
 
+type ActionItem = {
+  key: string
+  label: string
+  detail: string
+  shortcut?: string
+  icon: Component
+  onSelect: () => void
+}
+
+const router = useRouter()
 const clientStore = useClientStore()
+const authStore = useAuthStore()
 const productStore = useProductStore()
+const settingsStore = useSettingsStore()
 const { mode } = useTheme()
+
+const open = ref(false)
+const menuRef = ref<HTMLElement | null>(null)
+const settingsRef = ref<SettingsController | null>(null)
+const teamMenuRef = ref<TeamMenuController | null>(null)
 
 const shortcuts: ShortcutDefinition[] = [
   { key: 'i', modifiers: ['ctrl'], action: () => (productStore.open = true) },
@@ -30,63 +66,297 @@ const shortcuts: ShortcutDefinition[] = [
     key: 'm',
     modifiers: ['ctrl', 'shift'],
     action: () => {
-      if (mode.value === 'light') {
-        mode.value = 'dark'
-      } else {
-        mode.value = 'light'
-      }
+      mode.value = mode.value === 'light' ? 'dark' : 'light'
+    },
+  },
+  {
+    key: 'e',
+    modifiers: ['ctrl', 'shift'],
+    action: () => {
+      openTeamMenu()
+    },
+  },
+  {
+    key: 's',
+    modifiers: ['ctrl', 'shift'],
+    action: () => {
+      open.value = true
     },
   },
 ]
 useShortcuts(shortcuts)
+
+const userName = computed(() => authStore.user?.name?.trim() || authStore.user?.email || 'Account')
+const userEmail = computed(() => authStore.user?.email?.trim() || 'Signed in')
+const workspaceName = computed(() => authStore.account?.name?.trim() || 'Workspace')
+const currentClientName = computed(() => {
+  if (clientStore.selectedClient?.name) return clientStore.selectedClient.name
+  return clientStore.hasClients ? 'Select client' : 'No clients yet'
+})
+const roleLabel = computed(() => (authStore.user?.role === 'owner' ? 'Owner' : 'Member'))
+const currentThemeIcon = computed<Component>(() => (mode.value === 'dark' ? MoonIcon : SunIcon))
+const currentThemeDetail = computed(() =>
+  mode.value === 'dark' ? 'Currently dark' : 'Currently light',
+)
+
+const actionItems = computed<ActionItem[]>(() => {
+  const items: ActionItem[] = [
+    {
+      key: 'theme',
+      label: 'Theme',
+      detail: currentThemeDetail.value,
+      shortcut: 'Ctrl+Shift+M',
+      icon: currentThemeIcon.value,
+      onSelect: toggleTheme,
+    },
+    {
+      key: 'items',
+      label: 'Items',
+      detail: 'Styles and samples',
+      shortcut: 'Ctrl+I',
+      icon: BriefcaseIcon,
+      onSelect: openProducts,
+    },
+    {
+      key: 'settings',
+      label: 'Settings',
+      detail: settingsStore.needsSetup ? 'Finish workspace setup' : 'Invoice defaults and branding',
+      shortcut: 'Alt+Shift+S',
+      icon: Cog6ToothIcon,
+      onSelect: openSettings,
+    },
+  ]
+
+  if (authStore.isOwner) {
+    items.splice(2, 0, {
+      key: 'team',
+      label: 'Team',
+      detail: 'Members and invites',
+      shortcut: 'Ctr+Shift+E',
+      icon: UsersIcon,
+      onSelect: openTeamMenu,
+    })
+  }
+
+  return items
+})
+
+function closeMenu() {
+  open.value = false
+}
+
+function toggleMenu() {
+  open.value = !open.value
+}
+
+function toggleTheme() {
+  mode.value = mode.value === 'light' ? 'dark' : 'light'
+  closeMenu()
+}
+
+function openProducts() {
+  productStore.open = true
+  closeMenu()
+}
+
+function openTeamMenu() {
+  closeMenu()
+  teamMenuRef.value?.openMenu()
+}
+
+function openSettings() {
+  closeMenu()
+  void settingsRef.value?.openSettings()
+}
+
+async function signOut() {
+  try {
+    const confirmed = await requestConfirmation({
+      title: 'Sign out?',
+      message: 'Are you sure you want to sign out?',
+      details: "This action will redirect you to the app's landing page.",
+      confirmLabel: 'Sign out',
+      cancelLabel: 'Cancel',
+      confirmVariant: 'danger',
+    })
+
+    if (!confirmed) return
+    closeMenu()
+    await authStore.logout()
+    await router.push({ name: 'login' })
+  } catch (err) {
+    emitToastError({
+      title: 'Could not sign out',
+      message: isApiError(err) ? getApiErrorMessage(err) : 'Please try again in a moment.',
+    })
+  }
+}
+
+useEscape(closeMenu, {
+  enabled: () => open.value,
+})
+
+onClickOutside(menuRef, closeMenu)
 </script>
 
 <template>
-  <div class="fixed top-0 right-1/2 z-50 translate-x-1/2 sm:right-4 sm:translate-x-0">
-    <div
-      class="relative w-72 overflow-visible transition-transform duration-200 ease-out sm:w-80"
-      :class="show ? 'translate-y-0' : '-translate-y-[calc(100%-33px)]'"
+  <div
+    ref="menuRef"
+    class="fixed top-3 right-4 z-50"
+  >
+    <button
+      type="button"
+      :aria-expanded="open"
+      aria-haspopup="menu"
+      class="group flex items-center gap-4 rounded-2xl border border-zinc-300 bg-white/90 p-2 font-medium text-zinc-600 shadow-lg transition duration-200 hover:border-sky-600/50 hover:bg-white hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/90 dark:text-zinc-300 dark:hover:border-emerald-400/25 dark:hover:bg-zinc-900/70 dark:hover:text-zinc-100"
+      @click="toggleMenu"
     >
-      <div
-        class="rounded-b-2xl border-x border-b border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+      <UserAvatar
+        :name="authStore.user?.name"
+        :email="authStore.user?.email"
+        :avatar-url="authStore.user?.avatarUrl"
+        class="size-8 rounded-xl"
+      />
+      <div class="text-start text-sm">
+        <p>{{ authStore.user?.name }}</p>
+      </div>
+
+      <ChevronDownIcon
+        class="size-4 shrink-0 text-zinc-500 transition group-hover:text-sky-700 dark:text-zinc-400 dark:group-hover:text-emerald-300"
+      />
+    </button>
+
+    <transition name="fade-down-up">
+      <section
+        v-if="open"
+        class="absolute right-0 mt-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-zinc-300 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
       >
-        <!-- top row -->
-        <div class="grid grid-cols-6 items-center px-2 pt-2">
-          <div class="col-span-3 min-w-0 overflow-x-clip px-0.5">
+        <header class="border-b border-zinc-300 px-4 py-3 dark:border-zinc-800">
+          <div class="flex items-start gap-3">
+            <UserAvatar
+              :name="authStore.user?.name"
+              :email="authStore.user?.email"
+              :avatar-url="authStore.user?.avatarUrl"
+              class="size-11 rounded-2xl"
+            />
+
+            <div class="flex w-full min-w-0 items-center justify-between">
+              <div class="flex-1 items-center gap-2">
+                <h2 class="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+                  {{ userName }}
+                </h2>
+                <p class="truncate text-sm text-zinc-600 dark:text-zinc-400">
+                  {{ userEmail }}
+                </p>
+              </div>
+              <span
+                class="rounded-full border border-zinc-300 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
+              >
+                {{ roleLabel }}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <div class="space-y-4 p-4">
+          <section>
+            <div
+              class="mb-2 text-[11px] font-semibold tracking-[0.16em] text-zinc-500 uppercase dark:text-zinc-400"
+            >
+              Client Picker
+            </div>
+
             <TheDropdown
               v-model="clientStore.selectedClient"
               :options="clientStore.clients"
-              placeholder="Select Client"
+              :disabled="!clientStore.hasClients"
               :left-icon="UserIcon"
+              :right-icon="ChevronUpDownIcon"
               label-key="name"
               value-key="id"
-              input-class="py-1.5 font-medium text-sm"
+              :placeholder="
+                clientStore.isLoading
+                  ? 'Loading clients...'
+                  : clientStore.hasClients
+                    ? 'Select client'
+                    : 'No clients yet'
+              "
+              input-class="py-2.5 text-sm"
             />
-          </div>
 
-          <div class="col-span-1 flex justify-center">
-            <DarkMode />
-          </div>
+            <p
+              v-if="!clientStore.hasClients"
+              class="mt-2 text-xs text-zinc-500 dark:text-zinc-400"
+            >
+              Add a client from the clients screen to start working.
+            </p>
+          </section>
 
-          <div class="col-span-1 flex justify-center">
-            <ProductsEditor />
-          </div>
+          <section>
+            <div
+              class="mb-2 text-[11px] font-semibold tracking-[0.16em] text-zinc-500 uppercase dark:text-zinc-400"
+            >
+              Quick actions
+            </div>
 
-          <div class="col-span-1 flex justify-center">
-            <TheSettings />
-          </div>
+            <div class="grid grid-cols-1 gap-2">
+              <button
+                v-for="action in actionItems"
+                :key="action.key"
+                type="button"
+                class="group flex items-start gap-3 rounded-xl border border-zinc-300 bg-zinc-50/70 p-3 text-left transition hover:border-sky-600/50 hover:bg-sky-50 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:border-emerald-400/25 dark:hover:bg-emerald-950/20"
+                @click="action.onSelect"
+              >
+                <div
+                  class="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg border border-zinc-300 bg-white text-zinc-700 transition group-hover:text-sky-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:group-hover:text-emerald-300"
+                >
+                  <component
+                    :is="action.icon"
+                    class="size-4.5"
+                  />
+                </div>
+
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      {{ action.label }}
+                    </span>
+                    <span
+                      v-if="action.shortcut"
+                      class="shrink-0 text-[11px] text-zinc-400 dark:text-zinc-500"
+                    >
+                      {{ action.shortcut }}
+                    </span>
+                  </div>
+                  <p class="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                    {{ action.detail }}
+                  </p>
+                </div>
+              </button>
+            </div>
+          </section>
+
+          <TheButton
+            variant="secondary"
+            class="w-full justify-center"
+            @click="signOut"
+          >
+            <ArrowRightEndOnRectangleIcon class="size-4" />
+            Sign out
+          </TheButton>
+          <div class="text-xs text-zinc-500 dark:text-zinc-400">Ctr+Shift+S to open this menu</div>
         </div>
+      </section>
+    </transition>
 
-        <!-- bottom handle-->
-        <button
-          type="button"
-          @click="toggleTopBar()"
-          :aria-expanded="show"
-          class="text-mini mt-2 h-8 w-full rounded-b-2xl border-t border-zinc-200 px-2 font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-zinc-900/10 focus-visible:outline-none dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
-        >
-          <span class="truncate">Quick Menu</span>
-        </button>
-      </div>
-    </div>
+    <ProductsEditor :show-trigger="false" />
+    <TeamQuickMenu
+      ref="teamMenuRef"
+      :show-trigger="false"
+    />
+    <TheSettings
+      ref="settingsRef"
+      :show-trigger="false"
+    />
   </div>
 </template>

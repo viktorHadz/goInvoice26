@@ -245,7 +245,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div class="flex items-center gap-2">
         <div
-          class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+          class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
         >
           <UsersIcon class="stroke-1.5 size-7 text-sky-600 dark:text-emerald-400" />
         </div>
@@ -253,24 +253,24 @@ useEnter(saveEdit, { enabled: editForm.id === null })
           <h2 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-200">
             Clients
           </h2>
-          <p class="text-sm tracking-wide text-zinc-500 dark:text-zinc-400">
+          <p class="text-sm tracking-wide text-zinc-600 dark:text-zinc-400">
             Add, search, and edit clients
           </p>
         </div>
       </div>
 
       <!-- Search -->
-      <div class="w-full sm:max-w-md">
+      <div class="w-full sm:max-w-sm">
         <div class="relative shadow-md">
           <MagnifyingGlassIcon
-            class="pointer-events-none absolute top-1/2 left-2 size-5 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+            class="pointer-events-none absolute top-1/2 left-2 size-5 -translate-y-1/2 text-zinc-600 dark:text-zinc-400"
           />
           <input
             id="srchQry-clients-1"
             v-model="searchQuery"
             type="text"
             placeholder="Search by name…"
-            class="input input-accent pl-9"
+            class="input input-accent py-1.5 pl-9"
           />
         </div>
       </div>
@@ -278,10 +278,10 @@ useEnter(saveEdit, { enabled: editForm.id === null })
 
     <!-- Add panel -->
     <div
-      class="relative mb-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+      class="relative mb-4 overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-md dark:border-zinc-800 dark:bg-zinc-950/30"
     >
       <!-- border glow/texture  -->
-      <DecorGradient variant="gradientAndGrid" />
+      <DecorGradient />
 
       <div class="relative p-4">
         <!-- title row -->
@@ -290,15 +290,9 @@ useEnter(saveEdit, { enabled: editForm.id === null })
             <div class="min-w-0">
               <div class="flex items-center gap-2">
                 <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Add client</h3>
-
-                <span
-                  class="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
-                >
-                  Name required
-                </span>
               </div>
 
-              <p class="mt-0.5 text-xs text-zinc-700 dark:text-zinc-300">
+              <p class="mt-0.5 text-xs font-bold text-sky-600 dark:text-emerald-400">
                 Create a client, to use in invoices and items
               </p>
             </div>
@@ -359,7 +353,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
     <div class="space-y-2">
       <div
         v-if="filteredClients.length === 0"
-        class="rounded-xl border border-zinc-200 bg-white p-6 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+        class="rounded-xl border border-zinc-300 bg-white p-6 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
       >
         <p class="font-medium text-zinc-900 dark:text-zinc-100">No clients found</p>
         <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -370,11 +364,11 @@ useEnter(saveEdit, { enabled: editForm.id === null })
       <article
         v-for="c in filteredClients"
         :key="c.id"
-        class="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+        class="rounded-xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
       >
         <button
           type="button"
-          class="group flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+          class="group flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40"
           @click="toggleOpen(c.id)"
         >
           <div class="min-w-0">
@@ -456,7 +450,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
             </template>
 
             <ChevronDownIcon
-              class="size-5 text-zinc-500 transition-transform group-hover:text-sky-600 dark:text-zinc-400 group-hover:dark:text-emerald-400"
+              class="size-5 text-zinc-600 transition-transform group-hover:text-sky-600 dark:text-zinc-400 group-hover:dark:text-emerald-400"
               :class="openId === c.id ? 'rotate-180' : ''"
             />
           </div>
@@ -465,7 +459,7 @@ useEnter(saveEdit, { enabled: editForm.id === null })
         <!-- expandable content -->
         <div
           v-if="openId === c.id"
-          class="border-t border-zinc-200 p-3 dark:border-zinc-800"
+          class="border-t border-zinc-300 p-3 dark:border-zinc-800"
         >
           <template v-if="editingId === c.id">
             <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
@@ -485,9 +479,9 @@ useEnter(saveEdit, { enabled: editForm.id === null })
               <div
                 v-for="key in displayFields"
                 :key="key"
-                class="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-800/40"
+                class="rounded-lg border border-zinc-300 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-800/40"
               >
-                <p class="text-xs text-zinc-500 capitalize dark:text-zinc-400">
+                <p class="text-xs text-zinc-600 capitalize dark:text-zinc-400">
                   {{ key === 'companyName' ? 'Company' : key }}
                 </p>
 
