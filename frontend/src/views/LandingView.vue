@@ -2,248 +2,545 @@
 import { RouterLink } from 'vue-router'
 import {
     ArrowRightIcon,
-    CheckBadgeIcon,
-    CreditCardIcon,
+    BanknotesIcon,
+    BriefcaseIcon,
+    CheckCircleIcon,
+    DocumentTextIcon,
+    FolderOpenIcon,
+    PencilSquareIcon,
+    ShieldCheckIcon,
     SparklesIcon,
-    UserGroupIcon,
+    SwatchIcon,
+    UsersIcon,
 } from '@heroicons/vue/24/outline'
 
-const proofPoints = [
-    'One business account with shared clients, products, and invoice settings',
-    'Owner signup first, then teammates join the same workspace later',
-    'Prepared for Google auth, billing, and team invites without reworking the app shell',
+const highlights = [
+    'Register with Google to create the workspace.',
+    'One subscription unlocks the account for the whole team.',
+    'Invite teammates into the same shared invoice workspace.',
 ]
 
-const workflow = [
+const workspaceCards = [
     {
-        title: 'Start with the owner',
-        body: 'Create the business account once, keep ownership clear, and attach billing to the account instead of a single user.',
+        title: 'Brand the account once',
+        body: 'Save company details, payment terms, and logo once so every invoice starts from the right foundation.',
+        icon: SwatchIcon,
+        accent: 'from-amber-100 to-white',
+    },
+    {
+        title: 'Build invoices quickly',
+        body: 'Reuse saved clients and items, then review totals, discounts, deposits, and due dates without leaving the flow.',
+        icon: DocumentTextIcon,
+        accent: 'from-emerald-100 to-white',
+    },
+    {
+        title: 'Keep revisions tidy',
+        body: 'Open past invoices in the editor, make revisions safely, and keep a cleaner record of what changed.',
+        icon: PencilSquareIcon,
+        accent: 'from-sky-100 to-white',
+    },
+]
+
+const featureExamples = [
+    {
+        title: 'Consultant retainer',
+        summary:
+            'Save one client, reuse service items monthly, and export a fresh invoice in minutes.',
+        eyebrow: 'Example 01',
+        rows: [
+            'Client: North Pier Studio',
+            'Items: Strategy session, edits, travel',
+            'Export: PDF or DOCX',
+        ],
+    },
+    {
+        title: 'Small studio team',
+        summary:
+            'One admin subscribes once, teammates sign in with Google, and everyone works inside the same account.',
+        eyebrow: 'Example 02',
+        rows: [
+            'Admin account + subscription',
+            'Invite teammate emails',
+            'Shared clients, shared records',
+        ],
+    },
+    {
+        title: 'Revision-heavy work',
+        summary:
+            'If a client asks for a change after sending, reopen the invoice, create a revision, and keep the history intact.',
+        eyebrow: 'Example 03',
+        rows: ['Open invoice book', 'Create revision', 'Regenerate the document'],
+    },
+]
+
+const billingSteps = [
+    {
+        title: 'Register the workspace',
+        body: 'Start with Google sign-up and create the workspace.',
+    },
+    {
+        title: 'Activate the workspace',
+        body: 'Subscribe once for GBP 5 per month to unlock the app for the account.',
     },
     {
         title: 'Invite the team',
-        body: 'Give employees access to the same shared workspace without duplicating products, clients, or invoice branding.',
+        body: 'Add teammate emails so they can log in with Google and join the same workspace.',
     },
     {
-        title: 'Scale without rewiring',
-        body: 'The app area already sits behind /app, so auth and protected routes can slot in cleanly next.',
+        title: 'Run invoicing from one place',
+        body: 'Clients, items, invoices, settings, exports, and revisions stay together in one shared account.',
     },
 ]
+
+const audienceTags = ['Freelancers', 'Consultants', 'Studios', 'Trades', 'Small teams']
 </script>
 
 <template>
-    <main class="relative min-h-screen overflow-hidden bg-stone-950 text-stone-100">
-        <div class="absolute inset-0 overflow-hidden">
+    <main
+        class="min-h-screen bg-[linear-gradient(180deg,#f7f2e8_0%,#fbfaf6_38%,#eef4f1_100%)] text-zinc-900"
+    >
+        <div class="relative overflow-hidden">
             <div
-                class="absolute top-[-10rem] left-[-6rem] h-72 w-72 rounded-full bg-amber-300/20 blur-3xl"
+                class="absolute inset-x-0 top-0 h-140 bg-[radial-gradient(circle_at_top,#f8d9a8_0%,rgba(248,217,168,0.28)_32%,transparent_68%)]"
             />
             <div
-                class="absolute right-[-8rem] bottom-[-8rem] h-96 w-96 rounded-full bg-cyan-400/15 blur-3xl"
+                class="absolute top-24 -right-32 h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl"
             />
-            <div
-                class="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_50%)]"
-            />
-            <div
-                class="absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:4.5rem_4.5rem] opacity-20"
-            />
-        </div>
+            <div class="absolute top-64 -left-24 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
 
-        <section
-            class="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10"
-        >
-            <header class="flex items-center justify-between gap-4">
-                <RouterLink
-                    to="/"
-                    class="inline-flex items-center gap-3 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-semibold tracking-[0.24em] uppercase backdrop-blur"
-                >
-                    <span
-                        class="inline-flex h-2.5 w-2.5 rounded-full bg-amber-300 shadow-[0_0_18px_rgba(252,211,77,0.7)]"
-                    />
-                    Invoicer
-                </RouterLink>
-
-                <div class="flex items-center gap-2">
+            <section class="relative mx-auto w-full max-w-7xl px-5 py-6 sm:px-8 lg:px-10">
+                <header class="flex items-center justify-between gap-4">
                     <RouterLink
-                        to="/login"
-                        class="rounded-full border border-white/12 px-4 py-2 text-sm font-medium text-stone-200 transition hover:border-cyan-300/50 hover:bg-white/8 hover:text-white"
+                        to="/"
+                        class="inline-flex items-center gap-3 rounded-full border border-zinc-300 bg-white/90 px-4 py-2 text-sm font-semibold tracking-[0.22em] text-zinc-900 uppercase shadow-sm backdrop-blur"
                     >
-                        Log in
+                        <span class="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+                        Invoicer
                     </RouterLink>
-                    <RouterLink
-                        to="/signup"
-                        class="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-stone-950 transition hover:bg-amber-200"
-                    >
-                        Start account
-                    </RouterLink>
-                </div>
-            </header>
 
-            <div class="grid flex-1 items-center gap-12 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-16">
-                <section class="max-w-3xl">
-                    <div
-                        class="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/8 px-3 py-1 text-xs font-semibold tracking-[0.2em] text-cyan-100 uppercase"
-                    >
-                        <SparklesIcon class="size-4" />
-                        Sensible rollout for auth and billing
-                    </div>
-
-                    <h1
-                        class="mt-6 max-w-4xl text-5xl leading-none font-semibold tracking-tight text-stone-50 sm:text-6xl lg:text-7xl"
-                    >
-                        Build the public front door
-                        <span class="block text-amber-300">before the account system.</span>
-                    </h1>
-
-                    <p class="mt-6 max-w-2xl text-lg leading-8 text-stone-300 sm:text-xl">
-                        The invoicer workspace now lives behind
-                        <code class="rounded bg-white/8 px-2 py-0.5 text-base text-stone-100">
-                            /app
-                        </code>
-                        , which gives us a clean path for Google auth, account creation, billing,
-                        and teammate invites without twisting the existing UI around later.
-                    </p>
-
-                    <div class="mt-8 flex flex-wrap items-center gap-3">
-                        <RouterLink
-                            to="/signup"
-                            class="inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-200"
-                        >
-                            Create account
-                            <ArrowRightIcon class="size-4" />
-                        </RouterLink>
+                    <div class="flex items-center gap-2">
                         <RouterLink
                             to="/login"
-                            class="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-5 py-3 text-sm font-medium text-stone-100 backdrop-blur transition hover:border-cyan-300/50 hover:bg-white/10"
+                            class="rounded-full border border-zinc-300 bg-white/85 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-950"
                         >
-                            Explore sign-in paths
+                            Log in
                         </RouterLink>
                         <RouterLink
-                            to="/app"
-                            class="inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium text-stone-300 transition hover:text-white"
+                            to="/signup"
+                            class="rounded-full bg-zinc-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
                         >
-                            Open current workspace
+                            Register
                         </RouterLink>
                     </div>
+                </header>
 
-                    <ul class="mt-10 grid gap-3 text-sm text-stone-200 sm:grid-cols-3">
-                        <li
-                            v-for="point in proofPoints"
-                            :key="point"
-                            class="rounded-3xl border border-white/10 bg-white/6 p-4 backdrop-blur"
+                <section
+                    class="grid gap-10 py-14 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:py-20"
+                >
+                    <div class="max-w-3xl">
+                        <div class="flex flex-wrap gap-2">
+                            <span
+                                class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-amber-800 uppercase"
+                            >
+                                One paid workspace per account
+                            </span>
+                            <span
+                                class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-emerald-800 uppercase"
+                            >
+                                Google sign-in plus team invites
+                            </span>
+                        </div>
+
+                        <h1
+                            class="mt-6 max-w-4xl text-5xl font-semibold tracking-tighter text-zinc-950 sm:text-6xl"
                         >
-                            <CheckBadgeIcon class="mb-3 size-5 text-amber-300" />
-                            {{ point }}
-                        </li>
-                    </ul>
+                            Invoicing that fits a
+                            <span class="block text-zinc-600">
+                                small team, not an accounting department.
+                            </span>
+                        </h1>
+
+                        <p class="mt-6 max-w-2xl text-lg leading-8 text-zinc-600 sm:text-xl">
+                            Register with Google, activate one GBP 5 monthly workspace, invite
+                            teammates, and keep clients, invoices, revisions, and exports together
+                            in one shared account.
+                        </p>
+
+                        <div class="mt-8 flex flex-wrap items-center gap-3">
+                            <RouterLink
+                                to="/signup"
+                                class="inline-flex items-center gap-2 rounded-full bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
+                            >
+                                Register with Google
+                                <ArrowRightIcon class="size-4" />
+                            </RouterLink>
+                            <RouterLink
+                                to="/login"
+                                class="inline-flex items-center rounded-full border border-zinc-300 bg-white/85 px-5 py-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-950"
+                            >
+                                Log in to your workspace
+                            </RouterLink>
+                        </div>
+
+                        <ul class="mt-10 grid gap-3 text-sm text-zinc-700 sm:grid-cols-3">
+                            <li
+                                v-for="highlight in highlights"
+                                :key="highlight"
+                                class="rounded-3xl border border-zinc-300 bg-white/85 p-4 shadow-sm backdrop-blur"
+                            >
+                                <CheckCircleIcon class="mb-3 size-5 text-emerald-600" />
+                                {{ highlight }}
+                            </li>
+                        </ul>
+
+                        <div class="mt-10 flex flex-wrap items-center gap-3">
+                            <span class="text-sm font-medium text-zinc-500">Best fit for:</span>
+                            <span
+                                v-for="tag in audienceTags"
+                                :key="tag"
+                                class="rounded-full border border-zinc-300 bg-white/75 px-4 py-2 text-sm text-zinc-700 shadow-sm"
+                            >
+                                {{ tag }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <aside class="relative">
+                        <div
+                            class="rounded-4xl border border-zinc-300 bg-white/85 p-5 shadow-2xl backdrop-blur"
+                        >
+                            <div
+                                class="rounded-[1.75rem] border border-zinc-200 bg-zinc-950 p-5 text-white"
+                            >
+                                <div class="flex items-start justify-between gap-4">
+                                    <div>
+                                        <div
+                                            class="text-xs font-semibold tracking-[0.2em] text-zinc-400 uppercase"
+                                        >
+                                            Workspace model
+                                        </div>
+                                        <div class="mt-2 text-2xl font-semibold">
+                                            One admin, one subscription, one shared account
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="rounded-2xl border border-white/10 bg-white/10 p-3 text-amber-200"
+                                    >
+                                        <BanknotesIcon class="size-6" />
+                                    </div>
+                                </div>
+
+                                <div class="mt-6 grid gap-3">
+                                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <span class="text-sm font-semibold">Admin access</span>
+                                            <span class="text-xs text-zinc-400">
+                                                Google sign-up
+                                            </span>
+                                        </div>
+                                        <p class="mt-2 text-sm leading-6 text-zinc-300">
+                                            Creates the workspace and controls billing.
+                                        </p>
+                                    </div>
+
+                                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <span class="text-sm font-semibold">
+                                                Workspace billing
+                                            </span>
+                                            <span class="text-xs text-zinc-400">GBP 5 / month</span>
+                                        </div>
+                                        <p class="mt-2 text-sm leading-6 text-zinc-300">
+                                            Unlocks clients, invoice builder, editor, settings, and
+                                            exports for the account.
+                                        </p>
+                                    </div>
+
+                                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <span class="text-sm font-semibold">Team access</span>
+                                            <span class="text-xs text-zinc-400">
+                                                Invite teammates
+                                            </span>
+                                        </div>
+                                        <p class="mt-2 text-sm leading-6 text-zinc-300">
+                                            Teammates log in with Google and work inside the same
+                                            account after the workspace is paid.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid gap-3">
+                                <article
+                                    v-for="card in workspaceCards"
+                                    :key="card.title"
+                                    :class="[
+                                        'rounded-3xl border border-zinc-200 bg-linear-to-br p-4',
+                                        card.accent,
+                                    ]"
+                                >
+                                    <div class="flex items-start gap-3">
+                                        <div
+                                            class="rounded-2xl border border-zinc-200 bg-white p-3 text-zinc-700"
+                                        >
+                                            <component
+                                                :is="card.icon"
+                                                class="size-5"
+                                            />
+                                        </div>
+                                        <div>
+                                            <h2 class="text-base font-semibold text-zinc-950">
+                                                {{ card.title }}
+                                            </h2>
+                                            <p class="mt-2 text-sm leading-6 text-zinc-600">
+                                                {{ card.body }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+                        </div>
+                    </aside>
                 </section>
 
-                <aside class="relative">
-                    <div
-                        class="rounded-[2rem] border border-white/12 bg-white/7 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl"
-                    >
-                        <div class="rounded-[1.5rem] border border-white/10 bg-stone-900/85 p-5">
-                            <div class="flex items-start justify-between gap-4">
-                                <div>
-                                    <div
-                                        class="text-xs font-semibold tracking-[0.22em] text-stone-400 uppercase"
-                                    >
-                                        Account Blueprint
-                                    </div>
-                                    <div class="mt-2 text-2xl font-semibold text-stone-50">
-                                        Owner first, team second
-                                    </div>
-                                </div>
-                                <div
-                                    class="rounded-2xl border border-amber-300/25 bg-amber-300/12 p-3 text-amber-200"
-                                >
-                                    <UserGroupIcon class="size-6" />
-                                </div>
-                            </div>
+                <section class="border-y border-zinc-200 py-16">
+                    <div class="max-w-2xl">
+                        <p class="text-sm font-semibold tracking-[0.18em] text-amber-800 uppercase">
+                            What the app can do
+                        </p>
+                        <h2
+                            class="mt-3 text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl"
+                        >
+                            Built around the real invoice workflow, not filler features
+                        </h2>
+                        <p class="mt-4 text-base leading-7 text-zinc-600 sm:text-lg">
+                            The core app is focused on the work most small teams actually repeat:
+                            saving clients, reusing items, writing invoices, revising them safely,
+                            and exporting clean documents.
+                        </p>
+                    </div>
 
+                    <div class="mt-8 grid gap-4 lg:grid-cols-3">
+                        <article
+                            v-for="card in workspaceCards"
+                            :key="`${card.title}-feature`"
+                            class="rounded-[1.75rem] border border-zinc-200 bg-white p-6 shadow-sm"
+                        >
+                            <div
+                                class="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-zinc-600 uppercase"
+                            >
+                                <component
+                                    :is="card.icon"
+                                    class="size-4"
+                                />
+                                Feature
+                            </div>
+                            <h3 class="mt-4 text-xl font-semibold text-zinc-950">
+                                {{ card.title }}
+                            </h3>
+                            <p class="mt-3 text-sm leading-7 text-zinc-600">
+                                {{ card.body }}
+                            </p>
+                        </article>
+                    </div>
+
+                    <div class="mt-4 grid gap-4 lg:grid-cols-3">
+                        <article
+                            class="rounded-[1.75rem] border border-zinc-200 bg-white p-6 shadow-sm"
+                        >
+                            <div class="flex items-center gap-3">
+                                <div class="rounded-2xl bg-amber-50 p-3 text-amber-700">
+                                    <FolderOpenIcon class="size-5" />
+                                </div>
+                                <h3 class="text-lg font-semibold text-zinc-950">
+                                    Clients and items
+                                </h3>
+                            </div>
+                            <p class="mt-3 text-sm leading-7 text-zinc-600">
+                                Keep regular clients and reusable invoice items ready instead of
+                                rebuilding the same data every time.
+                            </p>
+                        </article>
+
+                        <article
+                            class="rounded-[1.75rem] border border-zinc-200 bg-white p-6 shadow-sm"
+                        >
+                            <div class="flex items-center gap-3">
+                                <div class="rounded-2xl bg-emerald-50 p-3 text-emerald-700">
+                                    <SparklesIcon class="size-5" />
+                                </div>
+                                <h3 class="text-lg font-semibold text-zinc-950">Invoice totals</h3>
+                            </div>
+                            <p class="mt-3 text-sm leading-7 text-zinc-600">
+                                Adjust VAT, discounts, deposits, and payment state while keeping the
+                                numbers visible as you work.
+                            </p>
+                        </article>
+
+                        <article
+                            class="rounded-[1.75rem] border border-zinc-200 bg-white p-6 shadow-sm"
+                        >
+                            <div class="flex items-center gap-3">
+                                <div class="rounded-2xl bg-sky-50 p-3 text-sky-700">
+                                    <BriefcaseIcon class="size-5" />
+                                </div>
+                                <h3 class="text-lg font-semibold text-zinc-950">
+                                    PDF and DOCX export
+                                </h3>
+                            </div>
+                            <p class="mt-3 text-sm leading-7 text-zinc-600">
+                                Generate clean export files from the same invoice data instead of
+                                copying it into separate templates.
+                            </p>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="py-16">
+                    <div class="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+                        <aside
+                            class="rounded-4xl border border-zinc-200 bg-zinc-950 p-6 text-white shadow-sm sm:p-8"
+                        >
+                            <p
+                                class="text-sm font-semibold tracking-[0.18em] text-amber-200 uppercase"
+                            >
+                                Billing model
+                            </p>
+                            <h2 class="mt-3 text-3xl font-semibold tracking-tight">
+                                Clear access rules from day one
+                            </h2>
                             <div class="mt-6 space-y-4">
-                                <div class="rounded-3xl border border-white/8 bg-white/5 p-4">
-                                    <div class="flex items-center justify-between text-sm">
-                                        <span class="font-semibold text-stone-100">Step 1</span>
-                                        <span class="text-stone-400">Public signup</span>
-                                    </div>
-                                    <p class="mt-2 text-sm leading-6 text-stone-300">
-                                        Let the owner create the business account by email or Google
-                                        without mixing billing into the very first save path.
-                                    </p>
-                                </div>
-
-                                <div class="rounded-3xl border border-white/8 bg-white/5 p-4">
-                                    <div class="flex items-center justify-between text-sm">
-                                        <span class="font-semibold text-stone-100">Step 2</span>
-                                        <span class="text-stone-400">Attach billing</span>
-                                    </div>
-                                    <p class="mt-2 text-sm leading-6 text-stone-300">
-                                        Bill the account, not the user, so plan status and invoice
-                                        ownership stay stable when teammates join later.
-                                    </p>
-                                </div>
-
-                                <div class="rounded-3xl border border-white/8 bg-white/5 p-4">
-                                    <div class="flex items-center justify-between text-sm">
-                                        <span class="font-semibold text-stone-100">Step 3</span>
-                                        <span class="text-stone-400">Invite teammates</span>
-                                    </div>
-                                    <p class="mt-2 text-sm leading-6 text-stone-300">
-                                        Employees log into the same account workspace and share
-                                        clients, products, settings, and logos.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                                <div
-                                    class="rounded-3xl border border-cyan-300/15 bg-cyan-300/8 p-4"
+                                <article
+                                    v-for="step in billingSteps"
+                                    :key="step.title"
+                                    class="rounded-3xl border border-white/10 bg-white/5 p-4"
                                 >
                                     <div
-                                        class="flex items-center gap-2 text-sm font-semibold text-cyan-100"
+                                        class="flex items-center gap-2 text-sm font-semibold text-white"
                                     >
-                                        <CreditCardIcon class="size-4" />
-                                        Billing stays account-scoped
+                                        <ShieldCheckIcon class="size-4 text-amber-200" />
+                                        {{ step.title }}
                                     </div>
-                                    <p class="mt-2 text-sm leading-6 text-cyan-50/85">
-                                        Cleaner subscription logic and fewer edge cases when
-                                        ownership changes.
+                                    <p class="mt-2 text-sm leading-6 text-zinc-300">
+                                        {{ step.body }}
                                     </p>
-                                </div>
+                                </article>
+                            </div>
+                        </aside>
 
-                                <div
-                                    class="rounded-3xl border border-amber-300/15 bg-amber-300/10 p-4"
+                        <div>
+                            <div class="max-w-2xl">
+                                <p
+                                    class="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase"
                                 >
-                                    <div class="text-sm font-semibold text-amber-100">
-                                        Right next step
+                                    Feature examples
+                                </p>
+                                <h2
+                                    class="mt-3 text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl"
+                                >
+                                    Concrete ways the workspace helps
+                                </h2>
+                                <p class="mt-4 text-base leading-7 text-zinc-600 sm:text-lg">
+                                    These are the kinds of jobs the app is designed to make calmer:
+                                    repeated monthly invoices, shared small-team admin, and
+                                    revision-heavy client work.
+                                </p>
+                            </div>
+
+                            <div class="mt-8 grid gap-4">
+                                <article
+                                    v-for="example in featureExamples"
+                                    :key="example.title"
+                                    class="rounded-[1.75rem] border border-zinc-200 bg-white p-6 shadow-sm"
+                                >
+                                    <div
+                                        class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between"
+                                    >
+                                        <div class="max-w-xl">
+                                            <div
+                                                class="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase"
+                                            >
+                                                {{ example.eyebrow }}
+                                            </div>
+                                            <h3 class="mt-3 text-xl font-semibold text-zinc-950">
+                                                {{ example.title }}
+                                            </h3>
+                                            <p class="mt-3 text-sm leading-7 text-zinc-600">
+                                                {{ example.summary }}
+                                            </p>
+                                        </div>
+
+                                        <div class="grid w-full max-w-sm gap-2">
+                                            <div
+                                                v-for="row in example.rows"
+                                                :key="row"
+                                                class="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700"
+                                            >
+                                                {{ row }}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <p class="mt-2 text-sm leading-6 text-amber-50/85">
-                                        Finish homepage and auth entry points first, then wire the
-                                        real session and payment flow.
-                                    </p>
-                                </div>
+                                </article>
                             </div>
                         </div>
                     </div>
-                </aside>
-            </div>
+                </section>
 
-            <section class="relative mt-4 pb-8">
-                <div class="grid gap-4 lg:grid-cols-3">
-                    <article
-                        v-for="item in workflow"
-                        :key="item.title"
-                        class="rounded-[1.75rem] border border-white/10 bg-white/6 p-5 backdrop-blur"
+                <section class="pb-16">
+                    <div
+                        class="rounded-[2.25rem] border border-zinc-200 bg-[linear-gradient(135deg,#fff7e4_0%,#ffffff_48%,#eff6f2_100%)] p-6 shadow-sm sm:p-8"
                     >
-                        <div
-                            class="text-xs font-semibold tracking-[0.22em] text-stone-400 uppercase"
-                        >
-                            Workflow
+                        <div class="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+                            <div class="max-w-2xl">
+                                <p
+                                    class="text-sm font-semibold tracking-[0.18em] text-amber-800 uppercase"
+                                >
+                                    Ready to try it
+                                </p>
+                                <h2
+                                    class="mt-3 text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl"
+                                >
+                                    Register the workspace and set it up properly
+                                </h2>
+                                <p class="mt-4 text-base leading-7 text-zinc-600 sm:text-lg">
+                                    Start with Google, activate the workspace, then bring teammates
+                                    in when you are ready. The whole model is built around one
+                                    shared account instead of disconnected personal logins.
+                                </p>
+                            </div>
+
+                            <div class="flex flex-wrap gap-3">
+                                <RouterLink
+                                    to="/signup"
+                                    class="inline-flex items-center gap-2 rounded-full bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
+                                >
+                                    Register
+                                    <ArrowRightIcon class="size-4" />
+                                </RouterLink>
+                                <RouterLink
+                                    to="/login"
+                                    class="inline-flex items-center rounded-full border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-950"
+                                >
+                                    Log in
+                                </RouterLink>
+                            </div>
+
+                            <div class="text-sm text-zinc-500">
+                                By using the app, you agree to the necessary sign-in cookie
+                                described on the
+                                <RouterLink
+                                    to="/privacy"
+                                    class="ml-1 font-semibold text-zinc-700 underline decoration-zinc-400 underline-offset-2"
+                                >
+                                    Privacy and Cookies page
+                                </RouterLink>
+                                .
+                            </div>
                         </div>
-                        <h2 class="mt-3 text-xl font-semibold text-stone-50">{{ item.title }}</h2>
-                        <p class="mt-3 text-sm leading-7 text-stone-300">{{ item.body }}</p>
-                    </article>
-                </div>
+                    </div>
+                </section>
             </section>
-        </section>
+        </div>
     </main>
 </template>

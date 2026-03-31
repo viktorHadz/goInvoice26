@@ -34,7 +34,7 @@ const features = [
         <h1
           class="text-3xl font-bold tracking-tight text-sky-600 uppercase sm:text-5xl dark:text-emerald-400"
         >
-          Welcome to Invoicer
+          Welcome to Invoice And Go
         </h1>
 
         <p class="mt-3 max-w-xl text-base text-zinc-600 sm:text-xl dark:text-zinc-300">
@@ -132,7 +132,7 @@ const features = [
           </div>
 
           <div v-else>
-            <div class="mb-3 flex items-center justify-between gap-3">
+            <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 Continue where you left off
               </h2>
@@ -140,7 +140,7 @@ const features = [
                 client → items → invoice → edit
               </span>
             </div>
-            <div class="mt-12 flex flex-wrap gap-3">
+            <div class="grid grid-cols-2 gap-3 sm:mt-12 sm:flex sm:flex-wrap">
               <RouterLink to="/app/clients">
                 <TheButton class="cursor-pointer">
                   <UsersIcon class="size-4"></UsersIcon>

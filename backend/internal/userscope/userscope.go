@@ -5,11 +5,14 @@ import "context"
 type key struct{}
 
 type Principal struct {
-	UserID    int64
-	AccountID int64
-	Email     string
-	Role      string
-	Name      string
+	UserID               int64
+	AccountID            int64
+	AccountName          string
+	Email                string
+	Role                 string
+	Name                 string
+	BillingStatus        string
+	BillingAccessGranted bool
 }
 
 func WithPrincipal(ctx context.Context, principal Principal) context.Context {

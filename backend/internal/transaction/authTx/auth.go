@@ -40,12 +40,16 @@ type User struct {
 }
 
 type Session struct {
-	ID          int64
-	UserID      int64
-	AccountID   int64
-	AccountName string
-	ExpiresAt   time.Time
-	User        User
+	ID                       int64
+	UserID                   int64
+	AccountID                int64
+	AccountName              string
+	BillingStatus            string
+	BillingCurrentPeriodEnd  string
+	BillingCancelAtPeriodEnd bool
+	StripeCustomerID         string
+	ExpiresAt                time.Time
+	User                     User
 }
 
 type CreateGoogleUserParams struct {
@@ -337,8 +341,9 @@ func CreateSession(ctx context.Context, db *sql.DB, userID, accountID int64, tok
 
 func GetSessionByTokenHash(ctx context.Context, db *sql.DB, tokenHash string, now time.Time) (Session, bool, error) {
 	var (
-		session       Session
-		expiresAtText string
+		session           Session
+		expiresAtText     string
+		cancelAtPeriodEnd int64
 	)
 
 	err := db.QueryRowContext(ctx, `
@@ -348,6 +353,10 @@ func GetSessionByTokenHash(ctx context.Context, db *sql.DB, tokenHash string, no
 			s.account_id,
 			s.expires_at,
 			COALESCE(a.name, ''),
+			COALESCE(a.billing_status, 'inactive'),
+			COALESCE(a.billing_current_period_end, ''),
+			COALESCE(a.billing_cancel_at_period_end, 0),
+			COALESCE(a.stripe_customer_id, ''),
 			u.id,
 			COALESCE(u.name, ''),
 			u.email,
@@ -366,6 +375,10 @@ func GetSessionByTokenHash(ctx context.Context, db *sql.DB, tokenHash string, no
 		&session.AccountID,
 		&expiresAtText,
 		&session.AccountName,
+		&session.BillingStatus,
+		&session.BillingCurrentPeriodEnd,
+		&cancelAtPeriodEnd,
+		&session.StripeCustomerID,
 		&session.User.ID,
 		&session.User.Name,
 		&session.User.Email,
@@ -385,6 +398,7 @@ func GetSessionByTokenHash(ctx context.Context, db *sql.DB, tokenHash string, no
 		return Session{}, false, fmt.Errorf("parse session expiry: %w", err)
 	}
 	session.ExpiresAt = expiresAt
+	session.BillingCancelAtPeriodEnd = cancelAtPeriodEnd > 0
 
 	return session, true, nil
 }

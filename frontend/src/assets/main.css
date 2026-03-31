@@ -117,14 +117,22 @@
 @layer utilities {
     .hdr-grid {
         background-image:
-            linear-gradient(to right, rgba(15, 23, 42, 0.05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+            linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
         background-size: 28px 28px;
 
         @variant dark {
             background-image:
-                linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+                linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
         }
+    }
+    .grad-1 {
+        @apply bg-[linear-gradient(160deg,#fffdfa_0%,#f5f7f2_48%,#eef5fb_100%)];
+        @apply dark:bg-[linear-gradient(160deg,#18181b_0%,#0c0c12_48%,#09090b_100%)];
+    }
+    .card-grad {
+        @apply bg-[linear-gradient(160deg,#f9fdff_0%,#fcfeff_48%,#fffdfa_100%)];
+        @apply dark:bg-[linear-gradient(160deg,#18181B_0%,#111115_48%,#101013_100%)];
     }
 }

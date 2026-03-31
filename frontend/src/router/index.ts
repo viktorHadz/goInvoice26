@@ -30,6 +30,11 @@ const router = createRouter({
             component: () => import('@/views/LandingView.vue'),
         },
         {
+            path: '/privacy',
+            name: 'privacy',
+            component: () => import('@/views/PrivacyView.vue'),
+        },
+        {
             path: '/signup',
             name: 'signup',
             component: () => import('@/views/AuthEntryView.vue'),
@@ -45,13 +50,19 @@ const router = createRouter({
             path: '/app',
             name: 'app-home',
             component: () => import('@/views/HomeView.vue'),
-            meta: { appChrome: true },
+            meta: { appChrome: true, requiresBilling: true },
+        },
+        {
+            path: '/app/billing',
+            name: 'billing',
+            component: () => import('@/views/BillingView.vue'),
+            meta: { appChrome: true, allowUnpaid: true },
         },
         {
             path: '/app/clients',
             name: 'clients',
             component: () => import('@/views/ClientsView.vue'),
-            meta: { appChrome: true, requiresClients: true },
+            meta: { appChrome: true, requiresBilling: true, requiresClients: true },
         },
         {
             path: '/app/invoice',
@@ -59,6 +70,7 @@ const router = createRouter({
             component: () => import('@/views/InvoiceView.vue'),
             meta: {
                 appChrome: true,
+                requiresBilling: true,
                 requiresSelectedClient: true,
                 guardToast: {
                     title: 'Select a client first',
@@ -72,6 +84,7 @@ const router = createRouter({
             component: () => import('@/views/EditorView.vue'),
             meta: {
                 appChrome: true,
+                requiresBilling: true,
                 requiresSelectedClient: true,
                 guardToast: {
                     title: 'Select a client first',
@@ -100,7 +113,7 @@ router.beforeEach(async (to) => {
 
     if (needsAuthStatus) {
         try {
-            await authStore.fetchSession()
+            await authStore.fetchSession(true)
         } catch (err) {
             emitToastError({
                 title: 'Could not load session',
@@ -129,8 +142,42 @@ router.beforeEach(async (to) => {
               }
     }
 
+    if (to.name === 'login' && !authStore.isAuthenticated && authStore.needsSetup) {
+        const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : undefined
+        return {
+            name: 'signup',
+            query: redirect && redirect.startsWith('/') ? { redirect } : undefined,
+        }
+    }
+
+    if (
+        to.name === 'signup' &&
+        !authStore.isAuthenticated &&
+        authStore.hasLoaded &&
+        !authStore.needsSetup
+    ) {
+        const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : undefined
+        return {
+            name: 'login',
+            query: redirect && redirect.startsWith('/') ? { redirect } : undefined,
+        }
+    }
+
+    if (authStore.isAuthenticated && to.meta.requiresBilling && !authStore.hasBillingAccess) {
+        return {
+            name: 'billing',
+            query: { redirect: to.fullPath },
+        }
+    }
+
     if ((to.name === 'login' || to.name === 'signup') && authStore.isAuthenticated) {
         const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : '/app'
+        if (!authStore.hasBillingAccess) {
+            return {
+                name: 'billing',
+                query: redirect.startsWith('/') ? { redirect } : undefined,
+            }
+        }
         return redirect.startsWith('/') ? redirect : { name: 'app-home' }
     }
 
@@ -138,7 +185,7 @@ router.beforeEach(async (to) => {
         clientStore.syncClientIdWithLS()
     }
 
-    if (to.meta.appChrome && !clientStore.hasLoaded) {
+    if (to.meta.appChrome && authStore.hasBillingAccess && !clientStore.hasLoaded) {
         try {
             await clientStore.load()
         } catch (err) {
@@ -151,7 +198,7 @@ router.beforeEach(async (to) => {
         }
     }
 
-    if (to.meta.appChrome && !settingsStore.hasSettings) {
+    if (to.meta.appChrome && authStore.hasBillingAccess && !settingsStore.hasSettings) {
         try {
             await settingsStore.fetchSettings()
         } catch (err) {

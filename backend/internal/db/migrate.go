@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/viktorHadz/goInvoice26/internal/transaction/authTx"
+	"github.com/viktorHadz/goInvoice26/internal/transaction/billingTx"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/settingsTx"
 )
 
@@ -29,6 +30,14 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		`CREATE TABLE IF NOT EXISTS accounts (
 			id INTEGER PRIMARY KEY,
 			name TEXT NOT NULL DEFAULT '',
+			stripe_customer_id TEXT NOT NULL DEFAULT '',
+			stripe_subscription_id TEXT NOT NULL DEFAULT '',
+			billing_price_id TEXT NOT NULL DEFAULT '',
+			billing_email TEXT NOT NULL DEFAULT '',
+			billing_status TEXT NOT NULL DEFAULT 'inactive',
+			billing_current_period_end TEXT NOT NULL DEFAULT '',
+			billing_cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+			billing_updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 			created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 		);`,
 		`INSERT OR IGNORE INTO accounts (id, name) VALUES (1, 'Default account');`,
@@ -86,53 +95,9 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 			payment_details TEXT NOT NULL DEFAULT '',
 			notes_footer TEXT NOT NULL DEFAULT '',
 			logo_asset_id INTEGER REFERENCES stored_files(id) ON DELETE SET NULL,
+			legacy_logo_url TEXT NOT NULL DEFAULT '',
 			show_item_type_headers INTEGER NOT NULL DEFAULT 1,
 			updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-		);`,
-
-		`CREATE TABLE IF NOT EXISTS user_settings (
-			id INTEGER PRIMARY KEY CHECK (id = 1),
-			company_name TEXT NOT NULL DEFAULT '',
-			email TEXT NOT NULL DEFAULT '',
-			phone TEXT NOT NULL DEFAULT '',
-			company_address TEXT NOT NULL DEFAULT '',
-			invoice_prefix TEXT NOT NULL DEFAULT 'INV-',
-			currency TEXT NOT NULL DEFAULT 'GBP',
-			date_format TEXT NOT NULL DEFAULT 'dd/mm/yyyy',
-			payment_terms TEXT NOT NULL DEFAULT 'Please make payment within 14 days.',
-			payment_details TEXT NOT NULL DEFAULT '',
-			notes_footer TEXT NOT NULL DEFAULT '',
-			logo_url TEXT NOT NULL DEFAULT '',
-			show_item_type_headers INTEGER NOT NULL DEFAULT 1
-		);`,
-		`INSERT OR IGNORE INTO user_settings (
-			id,
-			company_name,
-			email,
-			phone,
-			company_address,
-			invoice_prefix,
-			currency,
-			date_format,
-			payment_terms,
-			payment_details,
-			notes_footer,
-			logo_url,
-			show_item_type_headers
-		) VALUES (
-			1,
-			'',
-			'',
-			'',
-			'',
-			'INV-',
-			'GBP',
-			'dd/mm/yyyy',
-			'Please make payment within 14 days.',
-			'',
-			'',
-			'',
-			1
 		);`,
 		// -----------------------
 		// Clients
@@ -443,6 +408,9 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		}
 	}
 
+	if err := settingsTx.EnsureAccountSettingsColumns(ctx, tx); err != nil {
+		return err
+	}
 	if err := settingsTx.EnsureShowItemTypeHeadersColumn(ctx, tx); err != nil {
 		return err
 	}
@@ -450,6 +418,30 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	if err := authTx.EnsureUsersGoogleSubColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := billingTx.EnsureAccountsStripeCustomerIDColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := billingTx.EnsureAccountsStripeSubscriptionIDColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := billingTx.EnsureAccountsBillingPriceIDColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := billingTx.EnsureAccountsBillingEmailColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := billingTx.EnsureAccountsBillingStatusColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := billingTx.EnsureAccountsBillingCurrentPeriodEndColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := billingTx.EnsureAccountsBillingCancelAtPeriodEndColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := billingTx.EnsureAccountsBillingUpdatedAtColumn(ctx, tx); err != nil {
 		return err
 	}
 	if err := authTx.EnsureUsersAvatarURLColumn(ctx, tx); err != nil {

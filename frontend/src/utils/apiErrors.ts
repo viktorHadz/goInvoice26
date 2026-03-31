@@ -34,7 +34,15 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
     TEAM_MEMBER_EXISTS: 'That teammate already has access.',
     TEAM_CANNOT_REMOVE_SELF: 'Use sign out instead of removing your own account.',
     TEAM_CANNOT_REMOVE_OWNER: 'The owner account cannot be removed here.',
-    CLIENT_HAS_INVOICES: "This client can't be deleted because there are saved invoices linked to them.",
+    SUBSCRIPTION_REQUIRED: 'An active subscription is required to use the workspace.',
+    BILLING_OWNER_ONLY: 'Only the workspace admin can manage billing.',
+    BILLING_NOT_CONFIGURED: 'Billing is temporarily unavailable. Please get in touch.',
+    BILLING_CUSTOMER_NOT_FOUND: 'There is no Stripe customer for this account yet.',
+    BILLING_CHECKOUT_PENDING: 'Payment is still being confirmed. Please wait a moment.',
+    BILLING_CHECKOUT_INVALID: 'That Stripe checkout session is not linked to this account.',
+    BILLING_PROVIDER_ERROR: 'Stripe could not complete that request. Please try again.',
+    CLIENT_HAS_INVOICES:
+        "This client can't be deleted because there are saved invoices linked to them.",
 }
 
 export class ApiError extends Error {

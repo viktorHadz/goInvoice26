@@ -32,21 +32,41 @@ func RequireAuth(a *app.App) func(http.Handler) http.Handler {
 
 			ctx := accountscope.WithAccountID(r.Context(), principal.AccountID)
 			ctx = userscope.WithPrincipal(ctx, userscope.Principal{
-				UserID:    principal.UserID,
-				AccountID: principal.AccountID,
-				Email:     principal.User.Email,
-				Role:      principal.Role,
-				Name:      principal.User.Name,
+				UserID:               principal.UserID,
+				AccountID:            principal.AccountID,
+				AccountName:          principal.AccountName,
+				Email:                principal.User.Email,
+				Role:                 principal.Role,
+				Name:                 principal.User.Name,
+				BillingStatus:        principal.Billing.Status,
+				BillingAccessGranted: principal.Billing.AccessGranted,
 			})
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
+func RequireBillingAccess(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := userscope.PrincipalFromContext(r.Context())
+		if !ok || !principal.BillingAccessGranted {
+			res.Error(
+				w,
+				http.StatusPaymentRequired,
+				"SUBSCRIPTION_REQUIRED",
+				"An active subscription is required to access the workspace",
+			)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func RequireOwner(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if userscope.Role(r.Context()) != authTx.UserRoleOwner {
-			res.Error(w, http.StatusForbidden, "FORBIDDEN", "Only the account owner can manage teammates")
+			res.Error(w, http.StatusForbidden, "FORBIDDEN", "Only the workspace admin can manage teammates")
 			return
 		}
 

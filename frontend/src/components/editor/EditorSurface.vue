@@ -25,174 +25,184 @@ const isGeneratingExport = ref(false)
 const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
 
 const invoiceDisplayLabel = computed(() => {
-  const i = editStore.draftInvoice
-  const node = editStore.activeNode
-  if (!i || !node) return ''
-  return formatActiveEditorNodeLabel(invoicePrefix.value, node)
+    const i = editStore.draftInvoice
+    const node = editStore.activeNode
+    if (!i || !node) return ''
+    return formatActiveEditorNodeLabel(invoicePrefix.value, node)
 })
 
 const revisionLocked = computed(() => {
-  const st = editStore.draftInvoice?.status ?? 'draft'
-  return !canEditInvoice(st)
+    const st = editStore.draftInvoice?.status ?? 'draft'
+    return !canEditInvoice(st)
 })
 
 const saveTooltipText = computed(() => {
-  const status = editStore.draftInvoice?.status ?? 'draft'
+    const status = editStore.draftInvoice?.status ?? 'draft'
 
-  if (status === 'paid') {
-    return 'This invoice is marked as paid. It can only be reopened to issued if the recorded payments do not match the balance due.'
-  }
+    if (status === 'paid') {
+        return 'This invoice is marked as paid. It can only be reopened to issued if the recorded payments do not match the balance due.'
+    }
 
-  if (status === 'void') {
-    return 'This invoice is void. Void invoices are final records and cannot be edited or deleted.'
-  }
+    if (status === 'void') {
+        return 'This invoice is void. Void invoices are final records and cannot be edited or deleted.'
+    }
 
-  if (!editStore.hasUnsavedChanges) {
+    if (!editStore.hasUnsavedChanges) {
+        return status === 'draft'
+            ? 'Make a change to this draft before saving it in place.'
+            : 'Make a change to this invoice before saving a new revision.'
+    }
+
     return status === 'draft'
-      ? 'Make a change to this draft before saving it in place.'
-      : 'Make a change to this invoice before saving a new revision.'
-  }
-
-  return status === 'draft'
-    ? 'Save your edits directly to this draft invoice.'
-    : 'Save your edits as a new invoice revision.'
+        ? 'Save your edits directly to this draft invoice.'
+        : 'Save your edits as a new invoice revision.'
 })
 
 async function generatePdfOnly() {
-  const inv = editStore.draftInvoice
-  if (!inv || isGeneratingExport.value) return
+    const inv = editStore.draftInvoice
+    if (!inv || isGeneratingExport.value) return
 
-  const selectedRevisionNo =
-    editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
+    const selectedRevisionNo =
+        editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
 
-  isGeneratingExport.value = true
-  try {
-    await pdfStore.quickGeneratePDF(inv, selectedRevisionNo)
-  } finally {
-    isGeneratingExport.value = false
-  }
+    isGeneratingExport.value = true
+    try {
+        await pdfStore.quickGeneratePDF(inv, selectedRevisionNo)
+    } finally {
+        isGeneratingExport.value = false
+    }
 }
 
 async function generateDocxOnly() {
-  const inv = editStore.draftInvoice
-  if (!inv || isGeneratingExport.value) return
+    const inv = editStore.draftInvoice
+    if (!inv || isGeneratingExport.value) return
 
-  const selectedRevisionNo =
-    editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
+    const selectedRevisionNo =
+        editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
 
-  isGeneratingExport.value = true
-  try {
-    await pdfStore.quickGenerateDocx(inv, selectedRevisionNo)
-  } finally {
-    isGeneratingExport.value = false
-  }
+    isGeneratingExport.value = true
+    try {
+        await pdfStore.quickGenerateDocx(inv, selectedRevisionNo)
+    } finally {
+        isGeneratingExport.value = false
+    }
 }
 
 const menuOpts = computed<MenuOption[]>(() => [
-  {
-    id: 1,
-    name: 'Generate PDF',
-    disabled: isGeneratingExport.value,
-    disabledReason: 'Processing invoice generation please try again later. ',
-    effect: generatePdfOnly,
-    icon: DocumentArrowDownIcon,
-  },
-  {
-    id: 2,
-    name: 'Generate Docx',
-    disabled: isGeneratingExport.value,
-    disabledReason: 'Processing invoice generation please try again later. ',
-    effect: generateDocxOnly,
-    icon: DocumentArrowDownIcon,
-  },
+    {
+        id: 1,
+        name: 'Generate PDF',
+        disabled: isGeneratingExport.value,
+        disabledReason: 'Processing invoice generation please try again later. ',
+        effect: generatePdfOnly,
+        icon: DocumentArrowDownIcon,
+    },
+    {
+        id: 2,
+        name: 'Generate Docx',
+        disabled: isGeneratingExport.value,
+        disabledReason: 'Processing invoice generation please try again later. ',
+        effect: generateDocxOnly,
+        icon: DocumentArrowDownIcon,
+    },
 ])
 </script>
 <template>
-  <div class="space-y-4">
-    <section
-      v-if="editStore.activeInvoice"
-      class="rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
-    >
-      <div class="hdr-grid rounded-t-2xl border-b border-zinc-300 px-4 py-3 dark:border-zinc-800">
-        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div class="min-w-0">
-            <h2 class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-              {{ invoiceDisplayLabel }}
-            </h2>
-            <p class="mt-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-              <span class="font-bold text-sky-600 dark:text-emerald-400">Editing</span>
-            </p>
-          </div>
-          <div class="flex items-center gap-2">
-            <TheTooltip text="Cancel edit and revert changes">
-              <TheButton
-                variant="secondary"
-                class="cursor-pointer"
-                @click="editStore.cancelEdit"
-              >
-                <XCircleIcon class="size-4" />
-                Cancel
-              </TheButton>
-            </TheTooltip>
-            <TheTooltip :text="saveTooltipText">
-              <TheButton
-                type="button"
-                variant="success"
-                :disabled="revisionLocked || !editStore.hasUnsavedChanges"
-                :class="
-                  revisionLocked || !editStore.hasUnsavedChanges
-                    ? 'cursor-not-allowed'
-                    : 'cursor-pointer'
-                "
-                @click="editStore.saveRevision(editStore.draftInvoice)"
-              >
-                <DocumentArrowDownIcon class="size-4" />
-                Save
-              </TheButton>
-            </TheTooltip>
+    <div class="space-y-4">
+        <section
+            v-if="editStore.activeInvoice"
+            class="rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+        >
+            <div
+                class="hdr-grid rounded-t-2xl border-b border-zinc-300 px-4 py-3 dark:border-zinc-800"
+            >
+                <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    <div class="min-w-0">
+                        <h2 class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+                            {{ invoiceDisplayLabel }}
+                        </h2>
+                        <p class="mt-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                            <span class="font-bold text-sky-600 dark:text-emerald-400">
+                                Editing
+                            </span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <TheTooltip text="Cancel edit and revert changes">
+                            <TheButton
+                                variant="secondary"
+                                class="cursor-pointer"
+                                @click="editStore.cancelEdit"
+                            >
+                                <XCircleIcon class="size-4" />
+                                Cancel
+                            </TheButton>
+                        </TheTooltip>
+                        <TheTooltip :text="saveTooltipText">
+                            <TheButton
+                                type="button"
+                                variant="success"
+                                :disabled="revisionLocked || !editStore.hasUnsavedChanges"
+                                :class="
+                                    revisionLocked || !editStore.hasUnsavedChanges
+                                        ? 'cursor-not-allowed'
+                                        : 'cursor-pointer'
+                                "
+                                @click="editStore.saveRevision(editStore.draftInvoice)"
+                            >
+                                <DocumentArrowDownIcon class="size-4" />
+                                Save
+                            </TheButton>
+                        </TheTooltip>
 
-            <DetailsMenu :options="menuOpts" />
-          </div>
-        </div>
-      </div>
-      <EditorHeader />
-    </section>
-    <EditorItemPicker />
-    <EditorItemsTable />
-    <section class="grid gap-4 md:grid-cols-2">
-      <section
-        class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
-      >
-        <div
-          class="hdr-grid flex items-start justify-between gap-3 border-b border-zinc-300 px-3 py-2.5 dark:border-zinc-800"
-        >
-          <div class="min-w-0">
-            <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Adjustments</div>
-            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
-              Paid, deposit, discount, VAT and note
+                        <DetailsMenu :options="menuOpts" />
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
-        <div class="p-3 md:p-4">
-          <EditorAdjustments />
-        </div>
-      </section>
-      <section
-        class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
-      >
-        <div
-          class="hdr-grid flex items-start justify-between gap-3 border-b border-zinc-300 px-3 py-2.5 dark:border-zinc-800"
-        >
-          <div class="min-w-0">
-            <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">Balance overview</div>
-          </div>
-        </div>
-        <div class="p-3 md:p-4">
-          <EditorTotals />
-        </div>
-      </section>
-    </section>
-    <EditorNote />
-  </div>
+            <EditorHeader />
+        </section>
+        <EditorItemPicker />
+        <EditorItemsTable />
+        <section class="grid gap-4 md:grid-cols-2">
+            <section
+                class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+            >
+                <div
+                    class="hdr-grid flex items-start justify-between gap-3 border-b border-zinc-300 px-3 py-2.5 dark:border-zinc-800"
+                >
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+                            Adjustments
+                        </div>
+                        <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
+                            Paid, deposit, discount, VAT and note
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 md:p-4">
+                    <EditorAdjustments />
+                </div>
+            </section>
+            <section
+                class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+            >
+                <div
+                    class="hdr-grid flex items-start justify-between gap-3 border-b border-zinc-300 px-3 py-2.5 dark:border-zinc-800"
+                >
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+                            Totals
+                        </div>
+                        <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
+                            Balance overview
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 md:p-4">
+                    <EditorTotals />
+                </div>
+            </section>
+        </section>
+        <EditorNote />
+    </div>
 </template>

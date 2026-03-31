@@ -21,12 +21,23 @@ export type AuthAccount = {
     name: string
 }
 
+export type AuthBilling = {
+    configured: boolean
+    status: string
+    accessGranted: boolean
+    canManage: boolean
+    portalAvailable: boolean
+    currentPeriodEnd?: string
+    cancelAtPeriodEnd: boolean
+}
+
 export type AuthStatus = {
     authenticated: boolean
     needsSetup: boolean
     googleEnabled: boolean
     user?: AuthUser
     account?: AuthAccount
+    billing?: AuthBilling
 }
 
 const DEFAULT_REDIRECT = '/app'
@@ -42,6 +53,11 @@ export const useAuthStore = defineStore('auth', () => {
     const googleEnabled = computed(() => status.value?.googleEnabled === true)
     const user = computed(() => status.value?.user ?? null)
     const account = computed(() => status.value?.account ?? null)
+    const billing = computed(() => status.value?.billing ?? null)
+    const hasBillingAccess = computed(() => status.value?.billing?.accessGranted === true)
+    const canManageBilling = computed(() => status.value?.billing?.canManage === true)
+    const billingConfigured = computed(() => status.value?.billing?.configured === true)
+    const billingPortalAvailable = computed(() => status.value?.billing?.portalAvailable === true)
 
     async function fetchSession(force = false) {
         if (hasLoaded.value && !force && status.value) {
@@ -53,6 +69,11 @@ export const useAuthStore = defineStore('auth', () => {
             const data = await request<AuthStatus>('/api/auth/me')
             status.value = data
             hasLoaded.value = true
+
+            if (!data.authenticated || data.billing?.accessGranted !== true) {
+                clearWorkspaceState()
+            }
+
             return data
         } finally {
             isLoading.value = false
@@ -91,6 +112,11 @@ export const useAuthStore = defineStore('auth', () => {
         googleEnabled,
         user,
         account,
+        billing,
+        hasBillingAccess,
+        canManageBilling,
+        billingConfigured,
+        billingPortalAvailable,
         fetchSession,
         beginGoogleAuth,
         logout,

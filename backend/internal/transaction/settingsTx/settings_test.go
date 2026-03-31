@@ -228,3 +228,112 @@ func TestGet_DerivesStableLogoURLFromCurrentAsset(t *testing.T) {
 		t.Fatalf("logoUrl = %q, want %q", got.LogoURL, want)
 	}
 }
+
+func TestMigrate_LegacyUserSettingsConsolidatesIntoAccountSettings(t *testing.T) {
+	ctx := context.Background()
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "legacy-settings.sqlite")
+
+	conn, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	if _, err := conn.Exec(`
+		CREATE TABLE user_settings (
+			id INTEGER PRIMARY KEY CHECK (id = 1),
+			company_name TEXT NOT NULL DEFAULT '',
+			email TEXT NOT NULL DEFAULT '',
+			phone TEXT NOT NULL DEFAULT '',
+			company_address TEXT NOT NULL DEFAULT '',
+			invoice_prefix TEXT NOT NULL DEFAULT 'INV-',
+			currency TEXT NOT NULL DEFAULT 'GBP',
+			date_format TEXT NOT NULL DEFAULT 'dd/mm/yyyy',
+			payment_terms TEXT NOT NULL DEFAULT 'Please make payment within 14 days.',
+			payment_details TEXT NOT NULL DEFAULT '',
+			notes_footer TEXT NOT NULL DEFAULT '',
+			logo_url TEXT NOT NULL DEFAULT ''
+		);
+	`); err != nil {
+		t.Fatalf("create legacy user_settings: %v", err)
+	}
+
+	if _, err := conn.Exec(`
+		INSERT INTO user_settings (
+			id,
+			company_name,
+			email,
+			phone,
+			company_address,
+			invoice_prefix,
+			currency,
+			date_format,
+			payment_terms,
+			payment_details,
+			notes_footer,
+			logo_url
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+	`,
+		1,
+		"Legacy Co",
+		"legacy@example.com",
+		"+44 9999",
+		"99 Legacy Street",
+		"LEG-",
+		"USD",
+		"mm/dd/yyyy",
+		"Pay within 7 days",
+		"Legacy bank details",
+		"Legacy footer",
+		"/uploads/legacy/logo.png",
+	); err != nil {
+		t.Fatalf("insert legacy user_settings: %v", err)
+	}
+
+	if err := db.Migrate(ctx, conn); err != nil {
+		t.Fatalf("migrate db: %v", err)
+	}
+
+	got, err := settingsTx.Get(ctx, conn, accountscope.DefaultAccountID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	if got.CompanyName != "Legacy Co" {
+		t.Fatalf("companyName = %q, want %q", got.CompanyName, "Legacy Co")
+	}
+	if got.InvoicePrefix != "LEG-" {
+		t.Fatalf("invoicePrefix = %q, want %q", got.InvoicePrefix, "LEG-")
+	}
+	if !got.ShowItemTypeHeaders {
+		t.Fatal("showItemTypeHeaders = false, want true backfilled from legacy table")
+	}
+
+	var legacyLogoURL string
+	if err := conn.QueryRow(`
+		SELECT legacy_logo_url
+		FROM account_settings
+		WHERE account_id = 1;
+	`).Scan(&legacyLogoURL); err != nil {
+		t.Fatalf("load migrated legacy_logo_url: %v", err)
+	}
+	if legacyLogoURL != "/uploads/legacy/logo.png" {
+		t.Fatalf("legacy_logo_url = %q, want %q", legacyLogoURL, "/uploads/legacy/logo.png")
+	}
+
+	var legacyTableCount int
+	if err := conn.QueryRow(`
+		SELECT COUNT(*)
+		FROM sqlite_master
+		WHERE type = 'table' AND name = 'user_settings';
+	`).Scan(&legacyTableCount); err != nil {
+		t.Fatalf("count legacy user_settings tables: %v", err)
+	}
+	if legacyTableCount != 0 {
+		t.Fatalf("legacy user_settings table count = %d, want 0", legacyTableCount)
+	}
+}

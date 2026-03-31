@@ -5,7 +5,7 @@ import TheButton from '@/components/UI/TheButton.vue'
 import { useAuthStore } from '@/stores/auth'
 import {
     ArrowLeftIcon,
-    EnvelopeIcon,
+    CheckCircleIcon,
     GlobeAltIcon,
     ShieldCheckIcon,
 } from '@heroicons/vue/24/outline'
@@ -16,14 +16,13 @@ const props = defineProps<{
 
 const route = useRoute()
 const authStore = useAuthStore()
+
 const isSignup = computed(() => props.mode === 'signup')
-const title = computed(() =>
-    isSignup.value ? 'Create the owner account' : 'Sign in to the workspace',
-)
+const title = computed(() => (isSignup.value ? 'Register' : 'Log in'))
 const subtitle = computed(() =>
     isSignup.value
-        ? 'The first Google signup claims the owner seat and connects it to the shared business workspace.'
-        : 'Use the Google account already linked to this workspace. Invite-based teammate access can layer on after this.',
+        ? 'Sign in with Google to create your workspace. Billing and team access can be set up after registration.'
+        : 'Use the Google account that already has access to your workspace.',
 )
 const redirectPath = computed(() =>
     typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
@@ -35,27 +34,26 @@ const googleDisabled = computed(
 )
 const setupClosed = computed(() => isSignup.value && authStore.hasLoaded && !authStore.needsSetup)
 const googleButtonLabel = computed(() => {
-    if (!authStore.googleEnabled) return 'Google auth needs env setup'
-    if (setupClosed.value) return 'Owner account already exists'
-    return isSignup.value ? 'Register with Google' : 'Log in with Google'
+    if (!authStore.googleEnabled) return 'Google sign-in unavailable'
+    if (setupClosed.value) return 'Use log in instead'
+    return isSignup.value ? 'Continue with Google' : 'Log in with Google'
 })
 const errorCode = computed(() => (typeof route.query.error === 'string' ? route.query.error : ''))
 const errorMessage = computed(() => authErrorMessage(errorCode.value))
 
-const options = computed(() => [
-    {
-        title: isSignup.value ? 'Register with Google' : 'Log in with Google',
-        body: isSignup.value
-            ? 'Best first path for the owner. It creates the initial user session without adding password reset and verification work up front.'
-            : 'Use the Google account that already belongs to this workspace so we can restore the session with a secure server cookie.',
-        icon: GlobeAltIcon,
-    },
-    {
-        title: isSignup.value ? 'Register with email' : 'Log in with email',
-        body: 'This stays parked for now while we finish the owner flow and protect the app area first.',
-        icon: EnvelopeIcon,
-    },
-])
+const quickNotes = computed(() =>
+    isSignup.value
+        ? [
+              'Register once to create the workspace.',
+              'Activate billing after sign-up.',
+              'Invite teammates later from inside the app.',
+          ]
+        : [
+              'Use the Google account linked to the workspace.',
+              'If you were invited, use that same email on Google.',
+              'Billing is handled by the workspace admin, not each teammate.',
+          ],
+)
 
 function startGoogleAuth() {
     if (googleDisabled.value) return
@@ -64,23 +62,19 @@ function startGoogleAuth() {
 
 function authErrorMessage(code: string) {
     const messages: Record<string, string> = {
-        google_not_configured:
-            'Google auth is not configured on the backend yet. Add the Google env vars before trying again.',
-        invalid_auth_mode:
-            'This sign-in request was malformed. Please try again from the login page.',
-        invalid_oauth_state: 'We could not verify the Google sign-in handshake. Please try again.',
-        missing_oauth_code: 'Google did not return a login code. Please try again.',
+        google_not_configured: 'Sign-in is temporarily unavailable. Please try again later.',
+        invalid_auth_mode: 'That sign-in request could not be started. Please try again.',
+        invalid_oauth_state: 'We could not verify the Google sign-in. Please try again.',
+        missing_oauth_code: 'Google did not return a sign-in code. Please try again.',
         google_access_denied: 'Google sign-in was cancelled before it completed.',
         google_auth_failed: 'Google sign-in did not complete. Please try again.',
-        google_email_not_verified:
-            'The selected Google account must have a verified email address.',
-        owner_setup_complete:
-            'The owner account has already been created. Use the login flow instead of signup.',
-        owner_setup_required: 'Create the owner account first before using the login flow.',
+        google_email_not_verified: 'The selected Google account needs a verified email address.',
+        owner_setup_complete: 'This workspace is already set up. Please log in instead.',
+        owner_setup_required: 'No workspace has been created yet. Please register first.',
         account_not_linked:
-            'This Google account is not linked to the workspace yet. Ask the owner to invite it first.',
+            "This Google account doesn't have access yet. Ask your workspace admin for an invite.",
         account_conflict:
-            'This email is already linked to a different Google login. Use the original account or update the user record first.',
+            'This email is already linked to a different Google account. Please use the original login or contact support.',
     }
 
     return code
@@ -94,23 +88,24 @@ function authErrorMessage(code: string) {
         class="min-h-screen bg-[linear-gradient(180deg,#f7f3ea_0%,#fffdfa_38%,#eef5f2_100%)] text-zinc-900"
     >
         <section class="mx-auto flex min-h-screen w-full max-w-6xl items-center px-5 py-8 sm:px-8">
-            <div class="grid w-full gap-8 lg:grid-cols-[0.92fr_1.08fr]">
+            <div class="grid w-full gap-8 lg:grid-cols-[0.95fr_1.05fr]">
                 <aside
                     class="rounded-2xl border border-stone-200 bg-white/80 p-6 shadow-xl shadow-stone-200/60 backdrop-blur sm:p-8"
                 >
-                    <RouterLink
-                        to="/"
-                        class="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
-                    >
-                        <ArrowLeftIcon class="size-4" />
-                        Back to homepage
-                    </RouterLink>
-
-                    <div
-                        class="mt-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold tracking-[0.2em] text-emerald-700 uppercase"
-                    >
-                        <ShieldCheckIcon class="size-4" />
-                        Owner auth ready
+                    <div class="flex items-center justify-between">
+                        <RouterLink
+                            to="/"
+                            class="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
+                        >
+                            <ArrowLeftIcon class="size-4" />
+                            Back to homepage
+                        </RouterLink>
+                        <div
+                            class="mt-8 flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 uppercase"
+                        >
+                            <ShieldCheckIcon class="size-4" />
+                            Secure Google sign-in
+                        </div>
                     </div>
 
                     <h1
@@ -134,29 +129,24 @@ function authErrorMessage(code: string) {
                         v-else-if="setupClosed"
                         class="mt-6 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
                     >
-                        The owner account already exists for this workspace. Teammates should use
-                        the login page once their access is linked.
+                        This workspace is already set up. Please use the log in page instead.
                     </div>
 
                     <div class="mt-8 flex flex-wrap gap-3">
-                        <RouterLink :to="isSignup ? '/login' : '/'">
-                            <TheButton>
-                                {{ isSignup ? 'Go to login' : 'Back to homepage' }}
+                        <RouterLink :to="isSignup ? '/login' : '/signup'">
+                            <TheButton variant="secondary">
+                                {{
+                                    isSignup
+                                        ? 'Already have access? Log in'
+                                        : 'Need a new workspace? Register'
+                                }}
                             </TheButton>
-                        </RouterLink>
-                        <RouterLink
-                            v-if="!isSignup"
-                            to="/signup"
-                        >
-                            <TheButton variant="secondary">Create owner account</TheButton>
                         </RouterLink>
                     </div>
                 </aside>
 
                 <section class="grid gap-4">
                     <article
-                        v-for="option in options"
-                        :key="option.title"
                         class="rounded-2xl border border-zinc-300 bg-white p-6 shadow-lg shadow-zinc-200/50 sm:p-7"
                     >
                         <div class="flex items-start justify-between gap-4">
@@ -164,51 +154,75 @@ function authErrorMessage(code: string) {
                                 <div
                                     class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase"
                                 >
-                                    Coming next
+                                    Google
                                 </div>
                                 <h2 class="mt-4 text-2xl font-semibold text-zinc-950">
-                                    {{ option.title }}
+                                    {{ isSignup ? 'Register with Google' : 'Log in with Google' }}
                                 </h2>
                                 <p class="mt-3 max-w-xl text-sm leading-7 text-zinc-600">
-                                    {{ option.body }}
+                                    {{
+                                        isSignup
+                                            ? 'This is the fastest way to create the workspace and start the billing flow.'
+                                            : 'This restores your session with the Google account already linked to the workspace.'
+                                    }}
                                 </p>
                             </div>
 
                             <div
                                 class="rounded-2xl border border-zinc-300 bg-zinc-50 p-3 text-zinc-700"
                             >
-                                <component
-                                    :is="option.icon"
-                                    class="size-6"
-                                />
+                                <GlobeAltIcon class="size-6" />
                             </div>
                         </div>
 
                         <div class="mt-6 flex flex-wrap gap-3">
                             <TheButton
-                                :variant="option.title.includes('Google') ? 'primary' : 'secondary'"
-                                :disabled="option.title.includes('Google') ? googleDisabled : true"
-                                @click="
-                                    option.title.includes('Google') ? startGoogleAuth() : undefined
-                                "
+                                :disabled="googleDisabled"
+                                @click="startGoogleAuth"
                             >
-                                {{
-                                    option.title.includes('Google')
-                                        ? googleButtonLabel
-                                        : option.title
-                                }}
+                                {{ googleButtonLabel }}
                             </TheButton>
                             <span
                                 class="inline-flex items-center rounded-full bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-600"
                             >
-                                {{
-                                    option.title.includes('Google')
-                                        ? authStore.googleEnabled
-                                            ? 'Server session cookie after Google callback'
-                                            : 'Waiting for Google env vars'
-                                        : 'Email flow comes after Google'
-                                }}
+                                Uses a secure session cookie after Google sign-in
                             </span>
+                        </div>
+                    </article>
+
+                    <article
+                        class="rounded-2xl border border-zinc-300 bg-white p-6 shadow-lg shadow-zinc-200/50 sm:p-7"
+                    >
+                        <div
+                            class="text-xs font-semibold tracking-[0.18em] text-zinc-500 uppercase"
+                        >
+                            Helpful to know
+                        </div>
+
+                        <ul class="mt-4 grid gap-3 text-sm text-zinc-700">
+                            <li
+                                v-for="note in quickNotes"
+                                :key="note"
+                                class="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3"
+                            >
+                                <div class="flex items-start gap-3">
+                                    <CheckCircleIcon class="mt-0.5 size-4 text-emerald-600" />
+                                    <span>{{ note }}</span>
+                                </div>
+                            </li>
+                        </ul>
+
+                        <div
+                            class="mt-6 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-800"
+                        >
+                            We use a necessary secure cookie to keep you signed in after Google
+                            authentication. If you block that cookie, sign-in will not work.
+                            <RouterLink
+                                to="/privacy"
+                                class="ml-1 font-semibold underline decoration-sky-400 underline-offset-2"
+                            >
+                                Learn more
+                            </RouterLink>
                         </div>
                     </article>
                 </section>

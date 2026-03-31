@@ -136,3 +136,55 @@ func TestRemoveLogo_ClearsReferenceAndDeletesDiskFile(t *testing.T) {
 		t.Fatal("expected no current logo after remove")
 	}
 }
+
+func TestMigrateLegacyLogo_UsesAccountSettingsLegacyField(t *testing.T) {
+	ctx := context.Background()
+	conn, store, service, cleanup := newLogoService(t)
+	defer cleanup()
+
+	legacyPath := store.Path("legacy/logo.png")
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o755); err != nil {
+		t.Fatalf("mkdir legacy logo dir: %v", err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("legacy-logo"), 0o644); err != nil {
+		t.Fatalf("write legacy logo: %v", err)
+	}
+
+	if _, err := conn.Exec(`
+		UPDATE account_settings
+		SET legacy_logo_url = ?
+		WHERE account_id = ?;
+	`, "/uploads/legacy/logo.png", accountscope.DefaultAccountID); err != nil {
+		t.Fatalf("seed legacy_logo_url: %v", err)
+	}
+
+	if err := service.MigrateLegacyLogo(ctx, accountscope.DefaultAccountID); err != nil {
+		t.Fatalf("MigrateLegacyLogo: %v", err)
+	}
+
+	file, ok, err := settingsTx.GetLogoFile(ctx, conn, accountscope.DefaultAccountID)
+	if err != nil {
+		t.Fatalf("GetLogoFile: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected migrated logo file row")
+	}
+	if _, err := os.Stat(store.Path(file.StorageKey)); err != nil {
+		t.Fatalf("migrated logo file missing: %v", err)
+	}
+	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+		t.Fatalf("legacy logo path still exists, err = %v", err)
+	}
+
+	var legacyLogoURL string
+	if err := conn.QueryRow(`
+		SELECT legacy_logo_url
+		FROM account_settings
+		WHERE account_id = ?;
+	`, accountscope.DefaultAccountID).Scan(&legacyLogoURL); err != nil {
+		t.Fatalf("load legacy_logo_url: %v", err)
+	}
+	if legacyLogoURL != "" {
+		t.Fatalf("legacy_logo_url = %q, want empty after migration", legacyLogoURL)
+	}
+}

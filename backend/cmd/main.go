@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -20,6 +21,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/logging"
 	authsvc "github.com/viktorHadz/goInvoice26/internal/service/auth"
+	billingsvc "github.com/viktorHadz/goInvoice26/internal/service/billing"
 	"github.com/viktorHadz/goInvoice26/internal/service/logo"
 	"github.com/viktorHadz/goInvoice26/internal/service/storage"
 )
@@ -44,6 +46,12 @@ func main() {
 
 	logoStore := storage.NewLocalStore(storage.DefaultRootDir)
 	logoService := logo.NewService(dbConn, logoStore)
+	billingService := billingsvc.NewService(dbConn, billingsvc.Config{
+		AppBaseURL:          cfg.AppBaseURL,
+		StripeSecretKey:     cfg.StripeSecretKey,
+		StripePriceID:       cfg.StripePriceID,
+		StripeWebhookSecret: cfg.StripeWebhookSecret,
+	})
 	authService := authsvc.NewService(dbConn, authsvc.Config{
 		AppBaseURL:         cfg.AppBaseURL,
 		GoogleClientID:     cfg.GoogleClientID,
@@ -51,6 +59,7 @@ func main() {
 		GoogleRedirectURL:  cfg.GoogleRedirectURL,
 		SessionCookieName:  cfg.SessionCookieName,
 		SecureCookies:      cfg.SecureCookies(),
+		BillingConfigured:  billingService.Configured(),
 	})
 	if err := logoService.CleanupTemp(); err != nil {
 		log.Fatal(err)
@@ -87,15 +96,21 @@ func main() {
 	))
 
 	httpx.RegisterAllRouters(r, &app.App{
-		DB:    dbConn,
-		Auth:  authService,
-		Logos: logoService,
+		DB:      dbConn,
+		Auth:    authService,
+		Billing: billingService,
+		Logos:   logoService,
 	})
 
 	logger.Info("init",
 		"env", cfg.Env,
 		"db", cfg.DBPath,
 		"port", cfg.Port,
+		"billingConfigured", billingService.Configured(),
+		"billingWebhooksConfigured", billingService.WebhooksConfigured(),
+		"hasStripeSecretKey", strings.TrimSpace(cfg.StripeSecretKey) != "",
+		"hasStripePriceID", strings.TrimSpace(cfg.StripePriceID) != "",
+		"hasStripeWebhookSecret", strings.TrimSpace(cfg.StripeWebhookSecret) != "",
 	)
 
 	if err := http.ListenAndServe(cfg.Port, r); err != nil {

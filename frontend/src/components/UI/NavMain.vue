@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
-const navLinks = computed(() => [
-    { name: 'dashboard', to: '/app' },
-    { name: 'clients', to: '/app/clients' },
-    { name: 'invoice', to: '/app/invoice' },
-    { name: 'editor', to: '/app/editor' },
-])
+const authStore = useAuthStore()
+
+const navLinks = computed(() => {
+    if (!authStore.hasBillingAccess) {
+        return [{ name: 'billing', to: '/app/billing' }]
+    }
+
+    return [
+        { name: 'dashboard', to: '/app' },
+        { name: 'clients', to: '/app/clients' },
+        { name: 'invoice', to: '/app/invoice' },
+        { name: 'editor', to: '/app/editor' },
+    ]
+})
 </script>
 
 <template>

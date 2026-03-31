@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/viktorHadz/goInvoice26/internal/accountscope"
+	"github.com/viktorHadz/goInvoice26/internal/billingstate"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/authTx"
 )
@@ -42,6 +43,7 @@ type Config struct {
 	GoogleRedirectURL  string
 	SessionCookieName  string
 	SecureCookies      bool
+	BillingConfigured  bool
 	SessionTTL         time.Duration
 	HTTPClient         *http.Client
 }
@@ -54,6 +56,7 @@ type Service struct {
 	googleRedirectURL  string
 	sessionCookieName  string
 	secureCookies      bool
+	billingConfigured  bool
 	sessionTTL         time.Duration
 	httpClient         *http.Client
 }
@@ -66,6 +69,7 @@ type SessionPrincipal struct {
 	ExpiresAt   time.Time
 	User        models.AuthUser
 	Account     models.AuthAccount
+	Billing     models.AuthBilling
 }
 
 type OAuthState struct {
@@ -111,6 +115,7 @@ func NewService(db *sql.DB, cfg Config) *Service {
 		googleRedirectURL:  strings.TrimSpace(cfg.GoogleRedirectURL),
 		sessionCookieName:  cookieName,
 		secureCookies:      cfg.SecureCookies,
+		billingConfigured:  cfg.BillingConfigured,
 		sessionTTL:         sessionTTL,
 		httpClient:         httpClient,
 	}
@@ -155,6 +160,7 @@ func (s *Service) Status(ctx context.Context, sessionToken string) (models.AuthS
 	status.Authenticated = true
 	status.User = &session.User
 	status.Account = &session.Account
+	status.Billing = &session.Billing
 
 	return status, false, nil
 }
@@ -193,6 +199,15 @@ func (s *Service) ResolveSession(ctx context.Context, sessionToken string) (Sess
 		Account: models.AuthAccount{
 			ID:   session.AccountID,
 			Name: session.AccountName,
+		},
+		Billing: models.AuthBilling{
+			Configured:        s.billingConfigured,
+			Status:            billingstate.Normalize(session.BillingStatus),
+			AccessGranted:     billingstate.GrantsAccess(session.BillingStatus),
+			CanManage:         session.User.Role == authTx.UserRoleOwner,
+			PortalAvailable:   strings.TrimSpace(session.StripeCustomerID) != "",
+			CurrentPeriodEnd:  strings.TrimSpace(session.BillingCurrentPeriodEnd),
+			CancelAtPeriodEnd: session.BillingCancelAtPeriodEnd,
 		},
 	}
 

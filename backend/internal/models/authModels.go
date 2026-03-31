@@ -19,4 +19,5 @@ type AuthStatus struct {
 	GoogleEnabled bool         `json:"googleEnabled"`
 	User          *AuthUser    `json:"user,omitempty"`
 	Account       *AuthAccount `json:"account,omitempty"`
+	Billing       *AuthBilling `json:"billing,omitempty"`
 }

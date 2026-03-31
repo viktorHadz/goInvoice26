@@ -25,7 +25,9 @@ import {
   type CurrencyCode,
   type DateFormat,
 } from '@/stores/settings'
-import { emitToastError, emitToastSuccess } from '@/utils/toast'
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
+import { emitToastError, emitToastInfo, emitToastSuccess } from '@/utils/toast'
 import { deleteLogo, readImagePreview, uploadLogo } from '@/utils/settingHandlers'
 
 withDefaults(
@@ -38,6 +40,8 @@ withDefaults(
 )
 
 const settingsStore = useSettingsStore()
+const authStore = useAuthStore()
+const router = useRouter()
 
 const settingsOpen = ref(false)
 const form = ref<Settings | null>(null)
@@ -94,6 +98,17 @@ function toSettingsPayload(settings: Settings): SettingsUpdate {
 }
 
 async function openSettings() {
+  if (!authStore.hasBillingAccess) {
+    emitToastInfo(
+      authStore.canManageBilling
+        ? 'Activate billing to edit invoice settings and branding.'
+        : 'The workspace admin needs to reactivate billing before settings are available.',
+      { title: 'Workspace locked' },
+    )
+    void router.push({ name: 'billing' })
+    return
+  }
+
   try {
     const settings = await settingsStore.fetchSettings()
     if (!settings) throw new Error('Settings not found')
@@ -189,12 +204,22 @@ async function save() {
 watch(
   () => settingsStore.needsSetup,
   (needsSetup) => {
-    if (needsSetup && !settingsOpen.value) {
+    if (needsSetup && authStore.hasBillingAccess && !settingsOpen.value) {
       openSettings()
     }
   },
   { immediate: true },
 )
+
+watch(
+  () => authStore.hasBillingAccess,
+  (hasAccess) => {
+    if (!hasAccess) {
+      forceCloseSettings()
+    }
+  },
+)
+
 const shortcuts: ShortcutDefinition[] = [
   { key: 's', modifiers: ['alt', 'shift'], action: () => openSettings() },
 ]
@@ -203,6 +228,10 @@ useShortcuts(shortcuts)
 useEscape(closeSettings, {
   enabled: () => settingsOpen.value,
 })
+
+const cardClass = 'rounded-2xl border border-zinc-300 p-5 shadow-sm dark:border-zinc-800 card-grad'
+const iconWrapClass =
+  'rounded-xl border border-zinc-300 bg-zinc-50 p-2 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950/20 dark:text-zinc-200'
 </script>
 <template>
   <TheTooltip
@@ -250,8 +279,6 @@ useEscape(closeSettings, {
           class="relative overflow-hidden border-b border-zinc-300 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/80"
         >
           <DecorGradient />
-          <!-- More glow -->
-
           <div
             class="relative z-10 flex items-start justify-between gap-4 px-3 py-2 sm:px-5 sm:py-4"
           >
@@ -271,13 +298,6 @@ useEscape(closeSettings, {
                   >
                     {{ title }}
                   </h2>
-                  <div>
-                    <span
-                      class="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 sm:inline-flex dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200"
-                    >
-                      All input fields are optional
-                    </span>
-                  </div>
                 </div>
 
                 <p class="mt-1 text-sm tracking-tight text-zinc-600 dark:text-zinc-300">
@@ -307,11 +327,11 @@ useEscape(closeSettings, {
           >
             <div class="space-y-5 pb-10">
               <!-- Business identity -->
-              <section
-                class="rounded-2xl border border-zinc-300 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
-              >
-                <div class="mb-4 flex items-center gap-2">
-                  <BuildingOffice2Icon class="size-5 text-sky-600 dark:text-emerald-400" />
+              <section :class="cardClass">
+                <div class="mb-4 flex items-center gap-4">
+                  <div :class="iconWrapClass">
+                    <BuildingOffice2Icon class="size-5" />
+                  </div>
                   <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
                     Business details
                   </h2>
@@ -369,11 +389,11 @@ useEscape(closeSettings, {
               </section>
 
               <!-- Invoice defaults -->
-              <section
-                class="rounded-2xl border border-zinc-300 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
-              >
-                <div class="mb-4 flex items-center gap-2">
-                  <DocumentTextIcon class="size-5 text-sky-600 dark:text-emerald-400" />
+              <section :class="cardClass">
+                <div class="mb-4 flex w-full items-center gap-4">
+                  <div :class="iconWrapClass">
+                    <DocumentTextIcon class="size-5" />
+                  </div>
                   <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
                     Invoice defaults
                   </h2>
@@ -394,7 +414,7 @@ useEscape(closeSettings, {
                 </div>
 
                 <div
-                  class="mt-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/60"
+                  class="mt-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-950/50"
                   :class="!canEditStartingInvoiceNumber ? 'opacity-70' : ''"
                 >
                   <div class="mb-2 flex items-center justify-between gap-2">
@@ -430,16 +450,18 @@ useEscape(closeSettings, {
                 </div>
 
                 <label
-                  class="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-zinc-300 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-800/60 dark:hover:border-emerald-400/50 dark:hover:bg-zinc-800"
+                  class="group mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-zinc-300 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-950/50 dark:hover:border-emerald-400/50 dark:hover:bg-zinc-950/10"
                 >
                   <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
-                      <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      <span
+                        class="text-sm font-medium text-zinc-900 transition group-hover:text-sky-600 dark:text-zinc-100 group-hover:dark:text-emerald-400"
+                      >
                         Show item type headers
                       </span>
                     </div>
 
-                    <p class="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                    <p class="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
                       Add section labels over Styles, Samples, and Other Items in the invoice.
                     </p>
                   </div>
@@ -461,11 +483,11 @@ useEscape(closeSettings, {
               </section>
 
               <!-- Payment -->
-              <section
-                class="rounded-2xl border border-zinc-300 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
-              >
-                <div class="mb-4 flex items-center gap-2">
-                  <BanknotesIcon class="size-5 text-sky-600 dark:text-emerald-400" />
+              <section :class="cardClass">
+                <div class="mb-4 flex items-center gap-4">
+                  <div :class="iconWrapClass">
+                    <BanknotesIcon class="size-5" />
+                  </div>
                   <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
                     Payment and footer
                   </h2>
@@ -568,18 +590,18 @@ useEscape(closeSettings, {
           <div class="min-h-0 overflow-y-auto p-3 sm:p-5">
             <div class="space-y-5 pb-10">
               <!-- Logo -->
-              <section
-                class="rounded-2xl border border-zinc-300 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
-              >
+              <section :class="cardClass">
                 <div class="mb-4 flex items-center gap-2">
-                  <PhotoIcon class="size-5 text-sky-600 dark:text-emerald-400" />
+                  <div :class="iconWrapClass">
+                    <PhotoIcon class="size-5" />
+                  </div>
                   <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
                     Invoice logo
                   </h2>
                 </div>
 
                 <div
-                  class="grid min-h-56 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-950/50"
+                  class="grid min-h-56 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-950/40"
                 >
                   <div
                     v-if="hasLogo"
@@ -649,11 +671,11 @@ useEscape(closeSettings, {
               </section>
 
               <!-- Preview Pannel -->
-              <section
-                class="rounded-2xl border border-zinc-300 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30"
-              >
+              <section :class="cardClass">
                 <div class="mb-4 flex items-center gap-2">
-                  <SwatchIcon class="size-5 text-sky-600 dark:text-emerald-400" />
+                  <div :class="iconWrapClass">
+                    <SwatchIcon class="size-5" />
+                  </div>
                   <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
                     Display preview
                   </h2>

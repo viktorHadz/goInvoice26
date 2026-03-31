@@ -126,7 +126,7 @@ func (s *Service) MigrateLegacyLogo(ctx context.Context, accountID int64) error 
 		return nil
 	}
 
-	legacyValue, err := settingsTx.GetLegacyLogoURL(ctx, s.db)
+	legacyValue, err := settingsTx.GetLegacyLogoURL(ctx, s.db, accountID)
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (s *Service) MigrateLegacyLogo(ctx context.Context, accountID int64) error 
 		return fmt.Errorf("assign migrated legacy logo: %w", err)
 	}
 
-	if err := settingsTx.ClearLegacyLogoURL(ctx, s.db); err != nil {
+	if err := settingsTx.ClearLegacyLogoURL(ctx, s.db, accountID); err != nil {
 		return err
 	}
 

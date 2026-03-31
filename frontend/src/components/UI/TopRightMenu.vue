@@ -10,17 +10,20 @@ import { useSettingsStore } from '@/stores/settings'
 import { useEscape, useShortcuts, type ShortcutDefinition } from '@/composables/keyHandlers'
 import { useTheme } from '@/composables/theme'
 import { useRouter } from 'vue-router'
-import { emitToastError } from '@/utils/toast'
+import { emitToastError, emitToastInfo } from '@/utils/toast'
 import { getApiErrorMessage, isApiError } from '@/utils/apiErrors'
-import { onClickOutside } from '@vueuse/core'
+import { onClickOutside, useFavicon } from '@vueuse/core'
 import TheDropdown from './TheDropdown.vue'
 import TheButton from './TheButton.vue'
 import TheSettings from './TheSettings.vue'
 import UserAvatar from './UserAvatar.vue'
+import lightFavi from '@/assets/lightFavi.svg'
+import darkFavi from '@/assets/darkFavi.svg'
+
 import {
   ArrowRightEndOnRectangleIcon,
+  BanknotesIcon,
   BriefcaseIcon,
-  BuildingOffice2Icon,
   ChevronDownIcon,
   ChevronUpDownIcon,
   Cog6ToothIcon,
@@ -54,6 +57,10 @@ const authStore = useAuthStore()
 const productStore = useProductStore()
 const settingsStore = useSettingsStore()
 const { mode } = useTheme()
+const favicon = computed(() => (mode.value === 'light' ? lightFavi : darkFavi))
+useFavicon(favicon, {
+  rel: 'icon',
+})
 
 const open = ref(false)
 const menuRef = ref<HTMLElement | null>(null)
@@ -61,13 +68,11 @@ const settingsRef = ref<SettingsController | null>(null)
 const teamMenuRef = ref<TeamMenuController | null>(null)
 
 const shortcuts: ShortcutDefinition[] = [
-  { key: 'i', modifiers: ['ctrl'], action: () => (productStore.open = true) },
+  { key: 'i', modifiers: ['ctrl'], action: openProducts },
   {
     key: 'm',
     modifiers: ['ctrl', 'shift'],
-    action: () => {
-      mode.value = mode.value === 'light' ? 'dark' : 'light'
-    },
+    action: toggleTheme,
   },
   {
     key: 'e',
@@ -89,11 +94,12 @@ useShortcuts(shortcuts)
 const userName = computed(() => authStore.user?.name?.trim() || authStore.user?.email || 'Account')
 const userEmail = computed(() => authStore.user?.email?.trim() || 'Signed in')
 const workspaceName = computed(() => authStore.account?.name?.trim() || 'Workspace')
+const hasWorkspaceAccess = computed(() => authStore.hasBillingAccess)
 const currentClientName = computed(() => {
   if (clientStore.selectedClient?.name) return clientStore.selectedClient.name
   return clientStore.hasClients ? 'Select client' : 'No clients yet'
 })
-const roleLabel = computed(() => (authStore.user?.role === 'owner' ? 'Owner' : 'Member'))
+const roleLabel = computed(() => (authStore.user?.role === 'owner' ? 'Admin' : 'Member'))
 const currentThemeIcon = computed<Component>(() => (mode.value === 'dark' ? MoonIcon : SunIcon))
 const currentThemeDetail = computed(() =>
   mode.value === 'dark' ? 'Currently dark' : 'Currently light',
@@ -109,30 +115,49 @@ const actionItems = computed<ActionItem[]>(() => {
       icon: currentThemeIcon.value,
       onSelect: toggleTheme,
     },
-    {
-      key: 'items',
-      label: 'Items',
-      detail: 'Styles and samples',
-      shortcut: 'Ctrl+I',
-      icon: BriefcaseIcon,
-      onSelect: openProducts,
-    },
-    {
-      key: 'settings',
-      label: 'Settings',
-      detail: settingsStore.needsSetup ? 'Finish workspace setup' : 'Invoice defaults and branding',
-      shortcut: 'Alt+Shift+S',
-      icon: Cog6ToothIcon,
-      onSelect: openSettings,
-    },
   ]
 
-  if (authStore.isOwner) {
+  if (!hasWorkspaceAccess.value) {
+    items.push({
+      key: 'billing',
+      label: 'Billing',
+      detail: authStore.canManageBilling
+        ? 'Activate workspace access'
+        : 'Waiting for admin payment',
+      icon: BanknotesIcon,
+      onSelect: openBilling,
+    })
+  }
+
+  if (hasWorkspaceAccess.value) {
+    items.push(
+      {
+        key: 'items',
+        label: 'Items',
+        detail: 'Styles and samples',
+        shortcut: 'Ctrl+I',
+        icon: BriefcaseIcon,
+        onSelect: openProducts,
+      },
+      {
+        key: 'settings',
+        label: 'Settings',
+        detail: settingsStore.needsSetup
+          ? 'Finish workspace setup'
+          : 'Invoice defaults and branding',
+        shortcut: 'Alt+Shift+S',
+        icon: Cog6ToothIcon,
+        onSelect: openSettings,
+      },
+    )
+  }
+
+  if (authStore.isOwner && hasWorkspaceAccess.value) {
     items.splice(2, 0, {
       key: 'team',
       label: 'Team',
       detail: 'Members and invites',
-      shortcut: 'Ctr+Shift+E',
+      shortcut: 'Ctrl+Shift+E',
       icon: UsersIcon,
       onSelect: openTeamMenu,
     })
@@ -155,18 +180,42 @@ function toggleTheme() {
 }
 
 function openProducts() {
+  if (!requireWorkspaceAccess()) return
   productStore.open = true
   closeMenu()
 }
 
 function openTeamMenu() {
+  if (!requireWorkspaceAccess()) return
   closeMenu()
   teamMenuRef.value?.openMenu()
 }
 
 function openSettings() {
+  if (!requireWorkspaceAccess()) return
   closeMenu()
   void settingsRef.value?.openSettings()
+}
+
+function openBilling() {
+  closeMenu()
+  void router.push({ name: 'billing' })
+}
+
+function requireWorkspaceAccess() {
+  if (authStore.hasBillingAccess) {
+    return true
+  }
+
+  closeMenu()
+  emitToastInfo(
+    authStore.canManageBilling
+      ? 'Activate billing to use clients, items, team, and settings.'
+      : 'The workspace admin needs to reactivate billing before workspace tools are available.',
+    { title: 'Workspace locked' },
+  )
+  void router.push({ name: 'billing' })
+  return false
 }
 
 async function signOut() {
@@ -269,23 +318,32 @@ onClickOutside(menuRef, closeMenu)
             <TheDropdown
               v-model="clientStore.selectedClient"
               :options="clientStore.clients"
-              :disabled="!clientStore.hasClients"
+              :disabled="!hasWorkspaceAccess || !clientStore.hasClients"
               :left-icon="UserIcon"
               :right-icon="ChevronUpDownIcon"
               label-key="name"
               value-key="id"
               :placeholder="
-                clientStore.isLoading
-                  ? 'Loading clients...'
-                  : clientStore.hasClients
-                    ? 'Select client'
-                    : 'No clients yet'
+                !hasWorkspaceAccess
+                  ? 'Billing required'
+                  : clientStore.isLoading
+                    ? 'Loading clients...'
+                    : clientStore.hasClients
+                      ? 'Select client'
+                      : 'No clients yet'
               "
               input-class="py-2.5 text-sm"
             />
 
             <p
-              v-if="!clientStore.hasClients"
+              v-if="!hasWorkspaceAccess"
+              class="mt-2 text-xs text-zinc-500 dark:text-zinc-400"
+            >
+              Billing needs to be active before client and workspace tools are available.
+            </p>
+
+            <p
+              v-else-if="!clientStore.hasClients"
               class="mt-2 text-xs text-zinc-500 dark:text-zinc-400"
             >
               Add a client from the clients screen to start working.
@@ -323,7 +381,7 @@ onClickOutside(menuRef, closeMenu)
                     </span>
                     <span
                       v-if="action.shortcut"
-                      class="shrink-0 text-[11px] text-zinc-400 dark:text-zinc-500"
+                      class="text-mini hidden shrink-0 text-zinc-400 sm:block dark:text-zinc-500"
                     >
                       {{ action.shortcut }}
                     </span>
@@ -344,7 +402,9 @@ onClickOutside(menuRef, closeMenu)
             <ArrowRightEndOnRectangleIcon class="size-4" />
             Sign out
           </TheButton>
-          <div class="text-xs text-zinc-500 dark:text-zinc-400">Ctr+Shift+S to open this menu</div>
+          <div class="hidden text-xs text-zinc-500 sm:block dark:text-zinc-400">
+            Ctr+Shift+S to open this menu
+          </div>
         </div>
       </section>
     </transition>

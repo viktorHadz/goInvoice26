@@ -377,13 +377,17 @@ func ListDeletePendingFiles(ctx context.Context, db *sql.DB) ([]StoredFile, erro
 	return files, nil
 }
 
-func GetLegacyLogoURL(ctx context.Context, db *sql.DB) (string, error) {
+func GetLegacyLogoURL(ctx context.Context, db *sql.DB, accountID int64) (string, error) {
+	if err := ensureAccountSettingsRow(ctx, db, accountID); err != nil {
+		return "", err
+	}
+
 	var logoURL sql.NullString
 	if err := db.QueryRowContext(ctx, `
-		SELECT logo_url
-		FROM user_settings
-		WHERE id = 1;
-	`).Scan(&logoURL); err != nil {
+		SELECT legacy_logo_url
+		FROM account_settings
+		WHERE account_id = ?;
+	`, accountID).Scan(&logoURL); err != nil {
 		return "", fmt.Errorf("get legacy logo url: %w", err)
 	}
 	if !logoURL.Valid {
@@ -392,12 +396,16 @@ func GetLegacyLogoURL(ctx context.Context, db *sql.DB) (string, error) {
 	return logoURL.String, nil
 }
 
-func ClearLegacyLogoURL(ctx context.Context, db *sql.DB) error {
+func ClearLegacyLogoURL(ctx context.Context, db *sql.DB, accountID int64) error {
+	if err := ensureAccountSettingsRow(ctx, db, accountID); err != nil {
+		return err
+	}
+
 	if _, err := db.ExecContext(ctx, `
-		UPDATE user_settings
-		SET logo_url = ''
-		WHERE id = 1;
-	`); err != nil {
+		UPDATE account_settings
+		SET legacy_logo_url = ''
+		WHERE account_id = ?;
+	`, accountID); err != nil {
 		return fmt.Errorf("clear legacy logo url: %w", err)
 	}
 	return nil

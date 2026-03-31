@@ -16,6 +16,14 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS accounts (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
+  stripe_customer_id TEXT NOT NULL DEFAULT '',
+  stripe_subscription_id TEXT NOT NULL DEFAULT '',
+  billing_price_id TEXT NOT NULL DEFAULT '',
+  billing_email TEXT NOT NULL DEFAULT '',
+  billing_status TEXT NOT NULL DEFAULT 'inactive',
+  billing_current_period_end TEXT NOT NULL DEFAULT '',
+  billing_cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+  billing_updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
   created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
 );
 
@@ -72,25 +80,9 @@ CREATE TABLE IF NOT EXISTS account_settings (
   payment_details TEXT NOT NULL DEFAULT '',
   notes_footer TEXT NOT NULL DEFAULT '',
   logo_asset_id INTEGER REFERENCES stored_files(id) ON DELETE SET NULL,
+  legacy_logo_url TEXT NOT NULL DEFAULT '',
   show_item_type_headers INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
-);
-
--- Legacy settings table retained for migration from older installs.
-CREATE TABLE IF NOT EXISTS user_settings (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  company_name TEXT NOT NULL DEFAULT '',
-  email TEXT NOT NULL DEFAULT '',
-  phone TEXT NOT NULL DEFAULT '',
-  company_address TEXT NOT NULL DEFAULT '',
-  invoice_prefix TEXT NOT NULL DEFAULT 'INV-',
-  currency TEXT NOT NULL DEFAULT 'GBP',
-  date_format TEXT NOT NULL DEFAULT 'dd/mm/yyyy',
-  payment_terms TEXT NOT NULL DEFAULT 'Please make payment within 14 days.',
-  payment_details TEXT NOT NULL DEFAULT '',
-  notes_footer TEXT NOT NULL DEFAULT '',
-  logo_url TEXT NOT NULL DEFAULT '',
-  show_item_type_headers INTEGER NOT NULL DEFAULT 1
 );
 
 -- -----------------------
