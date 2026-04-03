@@ -16,14 +16,30 @@ function assignDefined<T extends object>(target: T, patch: Partial<T>) {
     return target
 }
 
+function normalizedMinutesWorked(line: Pick<InvoiceLine, 'pricingMode' | 'minutesWorked'>): number | null {
+    if (line.pricingMode !== 'hourly') return null
+    if (line.minutesWorked == null) return null
+    return Number.isFinite(line.minutesWorked) ? line.minutesWorked : null
+}
+
+function canMergeInvoiceLine(existingLine: InvoiceLine, nextLine: Omit<InvoiceLine, 'sortOrder'>): boolean {
+    if (nextLine.lineType === 'custom' || nextLine.productId == null) return false
+
+    return (
+        existingLine.productId === nextLine.productId &&
+        existingLine.name === nextLine.name &&
+        existingLine.lineType === nextLine.lineType &&
+        existingLine.pricingMode === nextLine.pricingMode &&
+        existingLine.unitPriceMinor === nextLine.unitPriceMinor &&
+        normalizedMinutesWorked(existingLine) === normalizedMinutesWorked(nextLine)
+    )
+}
+
 //*---------------------------------
 // * CRUD Logic
 //*---------------------------------
 export function addInvoiceLine(inv: Invoice, line: Omit<InvoiceLine, 'sortOrder'>): void {
-    const canMerge = line.lineType !== 'custom' && line.productId != null
-    const existingLine = canMerge
-        ? inv.lines.find((ln) => ln.productId === line.productId)
-        : undefined
+    const existingLine = inv.lines.find((ln) => canMergeInvoiceLine(ln, line))
 
     if (existingLine) {
         const qtyToAdd = Number.isFinite(line.quantity) && line.quantity > 0 ? line.quantity : 1

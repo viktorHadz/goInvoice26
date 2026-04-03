@@ -49,8 +49,14 @@ const logoPreview = ref<string | null>(null)
 const logoFile = ref<File | null>(null)
 const isSaving = ref(false)
 
-const title = 'Invoice Settings'
-const subtitle = 'Manage business identity, and invoice display'
+const canEditSettings = computed(() => authStore.isOwner)
+const title = computed(() => (canEditSettings.value ? 'Invoice Settings' : 'Workspace Settings'))
+const subtitle = computed(() =>
+  canEditSettings.value
+    ? 'Manage business identity, and invoice display'
+    : 'View the workspace identity, branding, and invoice display settings',
+)
+const readOnlyNotice = 'Only the workspace admin can edit these settings'
 
 const currencyOptions: CurrencyCode[] = ['GBP', 'EUR', 'USD']
 const dateFormatOptions: DateFormat[] = ['dd/mm/yyyy', 'mm/dd/yyyy', 'yyyy-mm-dd']
@@ -87,6 +93,12 @@ function cloneSettings(settings: Settings): Settings {
   return { ...settings }
 }
 
+function syncFormFromSettings(settings: Settings) {
+  form.value = cloneSettings(settings)
+  logoPreview.value = settings.logoUrl || null
+  logoFile.value = null
+}
+
 function toSettingsPayload(settings: Settings): SettingsUpdate {
   const {
     logoUrl: _logoUrl,
@@ -113,9 +125,7 @@ async function openSettings() {
     const settings = await settingsStore.fetchSettings()
     if (!settings) throw new Error('Settings not found')
 
-    form.value = cloneSettings(settings)
-    logoPreview.value = form.value.logoUrl || null
-    logoFile.value = null
+    syncFormFromSettings(settings)
     settingsOpen.value = true
   } catch (err) {
     emitToastError({
@@ -140,6 +150,7 @@ defineExpose({
 })
 
 async function onLogoChange(e: Event) {
+  if (!canEditSettings.value) return
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
@@ -160,6 +171,7 @@ async function onLogoChange(e: Event) {
 }
 
 function removeLogo() {
+  if (!canEditSettings.value) return
   if (!form.value) return
   logoPreview.value = null
   logoFile.value = null
@@ -167,7 +179,7 @@ function removeLogo() {
 }
 
 async function save() {
-  if (isSaving.value || !form.value) return
+  if (isSaving.value || !form.value || !canEditSettings.value) return
 
   isSaving.value = true
 
@@ -204,7 +216,7 @@ async function save() {
 watch(
   () => settingsStore.needsSetup,
   (needsSetup) => {
-    if (needsSetup && authStore.hasBillingAccess && !settingsOpen.value) {
+    if (needsSetup && authStore.hasBillingAccess && canEditSettings.value && !settingsOpen.value) {
       openSettings()
     }
   },
@@ -217,6 +229,14 @@ watch(
     if (!hasAccess) {
       forceCloseSettings()
     }
+  },
+)
+
+watch(
+  () => settingsStore.settings,
+  (settings) => {
+    if (!settingsOpen.value || !settings || canEditSettings.value) return
+    syncFormFromSettings(settings)
   },
 )
 
@@ -303,6 +323,12 @@ const iconWrapClass =
                 <p class="mt-1 text-sm tracking-tight text-zinc-600 dark:text-zinc-300">
                   {{ subtitle }}
                 </p>
+                <p
+                  v-if="!canEditSettings"
+                  class="mt-1 text-xs font-medium text-amber-600 dark:text-amber-300"
+                >
+                  {{ readOnlyNotice }}
+                </p>
               </div>
             </div>
 
@@ -328,260 +354,277 @@ const iconWrapClass =
             <div class="space-y-5 pb-10">
               <!-- Business identity -->
               <section :class="cardClass">
-                <div class="mb-4 flex items-center gap-4">
-                  <div :class="iconWrapClass">
-                    <BuildingOffice2Icon class="size-5" />
+                <fieldset :disabled="!canEditSettings">
+                  <div class="mb-4 flex items-center gap-4">
+                    <div :class="iconWrapClass">
+                      <BuildingOffice2Icon class="size-5" />
+                    </div>
+                    <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
+                      Business details
+                    </h2>
                   </div>
-                  <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
-                    Business details
-                  </h2>
-                </div>
 
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <TheInput
-                    v-model="form.companyName"
-                    label="Company Name"
-                    :input-max-length="50"
-                    placeholder="Your business name"
-                    autocomplete="name"
-                  />
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <TheInput
+                      v-model="form.companyName"
+                      label="Company Name"
+                      :input-max-length="50"
+                      placeholder="Your business name"
+                      autocomplete="name"
+                      :disabled="!canEditSettings"
+                    />
 
-                  <TheInput
-                    v-model="form.email"
-                    label="Email"
-                    :input-max-length="50"
-                    placeholder="name@company.com"
-                    autocomplete="email"
-                  />
+                    <TheInput
+                      v-model="form.email"
+                      label="Email"
+                      :input-max-length="50"
+                      placeholder="name@company.com"
+                      autocomplete="email"
+                      :disabled="!canEditSettings"
+                    />
 
-                  <TheInput
-                    v-model="form.phone"
-                    label="Phone"
-                    :input-max-length="20"
-                    placeholder="+44..."
-                    autocomplete="tel"
-                  />
+                    <TheInput
+                      v-model="form.phone"
+                      label="Phone"
+                      :input-max-length="20"
+                      placeholder="+44..."
+                      autocomplete="tel"
+                      :disabled="!canEditSettings"
+                    />
 
-                  <TheInput
-                    v-model="form.invoicePrefix"
-                    :input-max-length="50"
-                    label="Invoice prefix"
-                    placeholder="INV-"
-                  />
-                </div>
+                    <TheInput
+                      v-model="form.invoicePrefix"
+                      :input-max-length="50"
+                      label="Invoice prefix"
+                      placeholder="INV-"
+                      :disabled="!canEditSettings"
+                    />
+                  </div>
 
-                <div class="mt-4">
-                  <label
-                    for="setts-c-addr"
-                    class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                  >
-                    Company address
-                  </label>
-                  <textarea
-                    id="setts-c-addr"
-                    v-model="form.companyAddress"
-                    rows="3"
-                    maxlength="160"
-                    class="input input-accent min-h-28 w-full resize-y rounded-lg px-3 py-2"
-                    placeholder="Street&#10;City&#10;Postcode"
-                  />
-                </div>
+                  <div class="mt-4">
+                    <label
+                      for="setts-c-addr"
+                      class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                    >
+                      Company address
+                    </label>
+                    <textarea
+                      id="setts-c-addr"
+                      v-model="form.companyAddress"
+                      rows="3"
+                      maxlength="160"
+                      class="input input-accent min-h-28 w-full resize-y rounded-lg px-3 py-2"
+                      placeholder="Street&#10;City&#10;Postcode"
+                      :disabled="!canEditSettings"
+                    />
+                  </div>
+                </fieldset>
               </section>
 
               <!-- Invoice defaults -->
               <section :class="cardClass">
-                <div class="mb-4 flex w-full items-center gap-4">
-                  <div :class="iconWrapClass">
-                    <DocumentTextIcon class="size-5" />
-                  </div>
-                  <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
-                    Invoice defaults
-                  </h2>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <TheDropdown
-                    v-model="form.currency"
-                    :options="currencyOptions"
-                    select-title="Currency"
-                  />
-
-                  <TheDropdown
-                    v-model="form.dateFormat"
-                    :options="dateFormatOptions"
-                    select-title="Date format"
-                  />
-                </div>
-
-                <div
-                  class="mt-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-950/50"
-                  :class="!canEditStartingInvoiceNumber ? 'opacity-70' : ''"
-                >
-                  <div class="mb-2 flex items-center justify-between gap-2">
-                    <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      Starting invoice number
+                <fieldset :disabled="!canEditSettings">
+                  <div class="mb-4 flex w-full items-center gap-4">
+                    <div :class="iconWrapClass">
+                      <DocumentTextIcon class="size-5" />
                     </div>
-                    <TheTooltip
-                      side="top"
-                      max-width-class="max-w-[320px]"
-                    >
-                      <template #content>
-                        <span>{{ startingInvoiceLockedMessage }}</span>
-                      </template>
-                      <button
-                        type="button"
-                        class="inline-flex cursor-help text-zinc-600 transition hover:text-sky-600 dark:text-zinc-400 dark:hover:text-emerald-400"
-                        aria-label="Starting invoice number help"
-                      >
-                        <InformationCircleIcon class="size-5 cursor-help" />
-                      </button>
-                    </TheTooltip>
+                    <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
+                      Invoice defaults
+                    </h2>
                   </div>
 
-                  <TheInput
-                    v-model="startingInvoiceNumberModel"
-                    type="number"
-                    labelHidden
-                    :reserveErrorSpace="false"
-                    placeholder="1"
-                    inputClass="w-full"
-                    :disabled="!canEditStartingInvoiceNumber"
-                  />
-                </div>
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <TheDropdown
+                      v-model="form.currency"
+                      :options="currencyOptions"
+                      select-title="Currency"
+                      :disabled="!canEditSettings"
+                    />
 
-                <label
-                  class="group mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-zinc-300 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-950/50 dark:hover:border-emerald-400/50 dark:hover:bg-zinc-950/10"
-                >
-                  <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
+                    <TheDropdown
+                      v-model="form.dateFormat"
+                      :options="dateFormatOptions"
+                      select-title="Date format"
+                      :disabled="!canEditSettings"
+                    />
+                  </div>
+
+                  <div
+                    class="mt-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-950/50"
+                    :class="!canEditStartingInvoiceNumber ? 'opacity-70' : ''"
+                  >
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                      <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        Starting invoice number
+                      </div>
+                      <TheTooltip
+                        side="top"
+                        max-width-class="max-w-[320px]"
+                      >
+                        <template #content>
+                          <span>{{ startingInvoiceLockedMessage }}</span>
+                        </template>
+                        <button
+                          type="button"
+                          class="inline-flex cursor-help text-zinc-600 transition hover:text-sky-600 dark:text-zinc-400 dark:hover:text-emerald-400"
+                          aria-label="Starting invoice number help"
+                        >
+                          <InformationCircleIcon class="size-5 cursor-help" />
+                        </button>
+                      </TheTooltip>
+                    </div>
+
+                    <TheInput
+                      v-model="startingInvoiceNumberModel"
+                      type="number"
+                      labelHidden
+                      :reserveErrorSpace="false"
+                      placeholder="1"
+                      inputClass="w-full"
+                      :disabled="!canEditSettings || !canEditStartingInvoiceNumber"
+                    />
+                  </div>
+
+                  <label
+                    class="group mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-zinc-300 bg-white px-4 py-3 transition hover:border-sky-600 dark:border-zinc-700 dark:bg-zinc-950/50 dark:hover:border-emerald-400/50 dark:hover:bg-zinc-950/10"
+                  >
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span
+                          class="text-sm font-medium text-zinc-900 transition group-hover:text-sky-600 dark:text-zinc-100 group-hover:dark:text-emerald-400"
+                        >
+                          Show item type headers
+                        </span>
+                      </div>
+
+                      <p class="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+                        Add section labels over Styles, Samples, and Other Items in the invoice.
+                      </p>
+                    </div>
+
+                    <span class="relative mt-0.5 shrink-0">
+                      <input
+                        v-model="form.showItemTypeHeaders"
+                        type="checkbox"
+                        class="peer sr-only"
+                        :disabled="!canEditSettings"
+                      />
                       <span
-                        class="text-sm font-medium text-zinc-900 transition group-hover:text-sky-600 dark:text-zinc-100 group-hover:dark:text-emerald-400"
-                      >
-                        Show item type headers
-                      </span>
-                    </div>
-
-                    <p class="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
-                      Add section labels over Styles, Samples, and Other Items in the invoice.
-                    </p>
-                  </div>
-
-                  <span class="relative mt-0.5 shrink-0">
-                    <input
-                      v-model="form.showItemTypeHeaders"
-                      type="checkbox"
-                      class="peer sr-only"
-                    />
-                    <span
-                      class="block h-6 w-11 rounded-full border border-zinc-300 bg-zinc-200 transition peer-checked:border-sky-600 peer-checked:bg-sky-600/50 dark:border-zinc-600 dark:bg-zinc-700 dark:peer-checked:border-emerald-400 dark:peer-checked:bg-emerald-400/50"
-                    />
-                    <span
-                      class="pointer-events-none absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition peer-checked:translate-x-5"
-                    />
-                  </span>
-                </label>
+                        class="block h-6 w-11 rounded-full border border-zinc-300 bg-zinc-200 transition peer-checked:border-sky-600 peer-checked:bg-sky-600/50 dark:border-zinc-600 dark:bg-zinc-700 dark:peer-checked:border-emerald-400 dark:peer-checked:bg-emerald-400/50"
+                      />
+                      <span
+                        class="pointer-events-none absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition peer-checked:translate-x-5"
+                      />
+                    </span>
+                  </label>
+                </fieldset>
               </section>
 
               <!-- Payment -->
               <section :class="cardClass">
-                <div class="mb-4 flex items-center gap-4">
-                  <div :class="iconWrapClass">
-                    <BanknotesIcon class="size-5" />
+                <fieldset :disabled="!canEditSettings">
+                  <div class="mb-4 flex items-center gap-4">
+                    <div :class="iconWrapClass">
+                      <BanknotesIcon class="size-5" />
+                    </div>
+                    <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
+                      Payment and footer
+                    </h2>
                   </div>
-                  <h2 class="font-semibold tracking-wide text-zinc-900 dark:text-zinc-100">
-                    Payment and footer
-                  </h2>
-                </div>
 
-                <div class="space-y-4">
-                  <div>
-                    <label
-                      for="setts-payment-terms"
-                      class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                    >
-                      Payment terms
-                    </label>
-                    <textarea
-                      v-model="form.paymentTerms"
-                      id="setts-payment-terms"
-                      rows="3"
-                      :maxlength="PAYMENT_TERMS_MAX"
-                      class="input input-accent w-full resize-y rounded-lg px-3 py-2"
-                      placeholder="Payment terms shown on invoices"
-                    />
-                    <div
-                      class="mt-1 text-right text-xs"
-                      :class="
-                        form.paymentTerms.length > PAYMENT_TERMS_MAX * 0.9
-                          ? 'text-rose-600 dark:text-rose-300'
-                          : form.paymentTerms.length > PAYMENT_TERMS_MAX * 0.8
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-zinc-500 dark:text-zinc-400'
-                      "
-                    >
-                      {{ form.paymentTerms.length }}/{{ PAYMENT_TERMS_MAX }}
+                  <div class="space-y-4">
+                    <div>
+                      <label
+                        for="setts-payment-terms"
+                        class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                      >
+                        Payment terms
+                      </label>
+                      <textarea
+                        v-model="form.paymentTerms"
+                        id="setts-payment-terms"
+                        rows="3"
+                        :maxlength="PAYMENT_TERMS_MAX"
+                        class="input input-accent w-full resize-y rounded-lg px-3 py-2"
+                        placeholder="Payment terms shown on invoices"
+                        :disabled="!canEditSettings"
+                      />
+                      <div
+                        class="mt-1 text-right text-xs"
+                        :class="
+                          form.paymentTerms.length > PAYMENT_TERMS_MAX * 0.9
+                            ? 'text-rose-600 dark:text-rose-300'
+                            : form.paymentTerms.length > PAYMENT_TERMS_MAX * 0.8
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-zinc-500 dark:text-zinc-400'
+                        "
+                      >
+                        {{ form.paymentTerms.length }}/{{ PAYMENT_TERMS_MAX }}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        for="setts-pmnt-details"
+                        class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                      >
+                        Payment details
+                      </label>
+                      <textarea
+                        id="setts-pmnt-details"
+                        v-model="form.paymentDetails"
+                        rows="3"
+                        :maxlength="PAYMENT_DETAILS_MAX"
+                        class="input input-accent w-full resize-y rounded-lg px-3 py-2"
+                        placeholder="Bank transfer details, sort code, account number, IBAN, etc."
+                        :disabled="!canEditSettings"
+                      />
+                      <div
+                        class="mt-1 text-right text-xs"
+                        :class="
+                          form.paymentDetails.length > PAYMENT_DETAILS_MAX * 0.9
+                            ? 'text-rose-600 dark:text-rose-300'
+                            : form.paymentDetails.length > PAYMENT_DETAILS_MAX * 0.8
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-zinc-500 dark:text-zinc-400'
+                        "
+                      >
+                        {{ form.paymentDetails.length }}/{{ PAYMENT_DETAILS_MAX }}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        for="setts-notes-footer"
+                        class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                      >
+                        Footer note
+                      </label>
+                      <textarea
+                        id="setts-notes-footer"
+                        v-model="form.notesFooter"
+                        rows="3"
+                        :maxlength="FOOTER_NOTE_MAX"
+                        class="input input-accent w-full resize-y rounded-lg px-3 py-2"
+                        placeholder="Optional footer or thank-you note"
+                        :disabled="!canEditSettings"
+                      />
+
+                      <div
+                        class="mt-1 text-right text-xs"
+                        :class="
+                          form.notesFooter.length > FOOTER_NOTE_MAX * 0.9
+                            ? 'text-rose-600 dark:text-rose-300'
+                            : form.notesFooter.length > FOOTER_NOTE_MAX * 0.8
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-zinc-500 dark:text-zinc-400'
+                        "
+                      >
+                        {{ form.notesFooter.length }}/{{ FOOTER_NOTE_MAX }}
+                      </div>
                     </div>
                   </div>
-
-                  <div>
-                    <label
-                      for="setts-pmnt-details"
-                      class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                    >
-                      Payment details
-                    </label>
-                    <textarea
-                      id="setts-pmnt-details"
-                      v-model="form.paymentDetails"
-                      rows="3"
-                      :maxlength="PAYMENT_DETAILS_MAX"
-                      class="input input-accent w-full resize-y rounded-lg px-3 py-2"
-                      placeholder="Bank transfer details, sort code, account number, IBAN, etc."
-                    />
-                    <div
-                      class="mt-1 text-right text-xs"
-                      :class="
-                        form.paymentDetails.length > PAYMENT_DETAILS_MAX * 0.9
-                          ? 'text-rose-600 dark:text-rose-300'
-                          : form.paymentDetails.length > PAYMENT_DETAILS_MAX * 0.8
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-zinc-500 dark:text-zinc-400'
-                      "
-                    >
-                      {{ form.paymentDetails.length }}/{{ PAYMENT_DETAILS_MAX }}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      for="setts-notes-footer"
-                      class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                    >
-                      Footer note
-                    </label>
-                    <textarea
-                      id="setts-notes-footer"
-                      v-model="form.notesFooter"
-                      rows="3"
-                      :maxlength="FOOTER_NOTE_MAX"
-                      class="input input-accent w-full resize-y rounded-lg px-3 py-2"
-                      placeholder="Optional footer or thank-you note"
-                    />
-
-                    <div
-                      class="mt-1 text-right text-xs"
-                      :class="
-                        form.notesFooter.length > FOOTER_NOTE_MAX * 0.9
-                          ? 'text-rose-600 dark:text-rose-300'
-                          : form.notesFooter.length > FOOTER_NOTE_MAX * 0.8
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-zinc-500 dark:text-zinc-400'
-                      "
-                    >
-                      {{ form.notesFooter.length }}/{{ FOOTER_NOTE_MAX }}
-                    </div>
-                  </div>
-                </div>
+                </fieldset>
               </section>
             </div>
           </div>
@@ -614,25 +657,33 @@ const iconWrapClass =
                     />
 
                     <div class="flex flex-wrap justify-center gap-2">
-                      <label
-                        class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100 dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200 dark:hover:bg-emerald-950/40"
+                      <template v-if="canEditSettings">
+                        <label
+                          class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100 dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200 dark:hover:bg-emerald-950/40"
+                        >
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            class="hidden"
+                            @change="onLogoChange"
+                          />
+                          Replace image
+                        </label>
+                        <TheButton
+                          type="button"
+                          @click="removeLogo"
+                          variant="danger"
+                          class="cursor-pointer"
+                        >
+                          Remove
+                        </TheButton>
+                      </template>
+                      <p
+                        v-else
+                        class="text-xs text-zinc-600 dark:text-zinc-400"
                       >
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          class="hidden"
-                          @change="onLogoChange"
-                        />
-                        Replace image
-                      </label>
-                      <TheButton
-                        type="button"
-                        @click="removeLogo"
-                        variant="danger"
-                        class="cursor-pointer"
-                      >
-                        Remove
-                      </TheButton>
+                        {{ readOnlyNotice }}
+                      </p>
                     </div>
                   </div>
 
@@ -656,6 +707,7 @@ const iconWrapClass =
                     </div>
 
                     <label
+                      v-if="canEditSettings"
                       class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100 dark:border-emerald-400/20 dark:bg-emerald-950/25 dark:text-emerald-200 dark:hover:bg-emerald-950/40"
                     >
                       <input
@@ -666,6 +718,12 @@ const iconWrapClass =
                       />
                       Choose image
                     </label>
+                    <p
+                      v-else
+                      class="text-xs text-zinc-600 dark:text-zinc-400"
+                    >
+                      {{ readOnlyNotice }}
+                    </p>
                   </div>
                 </div>
               </section>
@@ -692,18 +750,19 @@ const iconWrapClass =
 
         <!-- Footer -->
         <footer
-          class="border-t border-zinc-300 bg-white/90 px-5 py-3 sm:py-4 dark:border-zinc-800 dark:bg-zinc-900/90"
+          class="border-t border-zinc-300 bg-white/90 px-4 py-3 sm:px-10 sm:py-4 dark:border-zinc-800 dark:bg-zinc-900/90"
         >
           <div class="flex flex-wrap items-center justify-end gap-2">
             <TheButton
               type="button"
               @click="closeSettings"
-              variant="danger"
+              :variant="canEditSettings ? 'danger' : 'secondary'"
               class="cursor-pointer"
             >
-              Cancel
+              {{ canEditSettings ? 'Cancel' : 'Close' }}
             </TheButton>
             <TheButton
+              v-if="canEditSettings"
               type="button"
               @click="save"
               variant="success"

@@ -307,8 +307,8 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
             errors[prefix('unitPriceMinor')] = 'Enter a unit price of 0 or more.'
         }
 
-        if (line.sortOrder < 0) {
-            errors[prefix('sortOrder')] = 'Sort order must be 0 or more.'
+        if (line.sortOrder < 1) {
+            errors[prefix('sortOrder')] = 'Sort order must be 1 or more.'
         }
 
         if (line.lineTotalMinor < 0) {

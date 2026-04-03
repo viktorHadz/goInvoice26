@@ -154,7 +154,6 @@ async function saveEdit() {
     if (editForm.id === null) return
     editFieldErrors.value = {}
     try {
-        console.log('sending to server: ', editForm)
         await clientStore.edit(editForm.id, {
             name: editForm.name,
             companyName: editForm.companyName,

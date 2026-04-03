@@ -8,7 +8,14 @@ export const useClientStore = defineStore('clients', () => {
     const isLoading = ref(false)
     const hasLoaded = ref(false)
 
-    const LS_KEY = 'invoicer_selectedClientId'
+    const LEGACY_LS_KEY = 'invoicer_selectedClientId'
+    const storageKey = ref<string | null>(null)
+
+    function storageKeyForAccount(accountID: number | null | undefined): string | null {
+        const normalized = Number(accountID)
+        if (!Number.isInteger(normalized) || normalized <= 0) return null
+        return `${LEGACY_LS_KEY}:${normalized}`
+    }
 
     async function load() {
         if (hasLoaded.value) return
@@ -30,21 +37,37 @@ export const useClientStore = defineStore('clients', () => {
 
     const hasClients = computed(() => clients.value.length > 0)
 
-    function getClientIdFromLS(): number | null {
-        const clientLS = localStorage.getItem(LS_KEY)
+    function getClientIdFromLS(key: string | null): number | null {
+        if (!key) return null
+
+        const clientLS = localStorage.getItem(key)
         if (!clientLS) return null
 
         const n = Number(clientLS)
         return Number.isInteger(n) && n > 0 ? n : null
     }
 
-    const lsClientId = ref<number | null>(getClientIdFromLS())
+    function persistClientId(id: number | null) {
+        const key = storageKey.value
+        if (!key) return
+
+        if (id == null) {
+            localStorage.removeItem(key)
+            return
+        }
+
+        localStorage.setItem(key, String(id))
+    }
+
+    const lsClientId = ref<number | null>(null)
 
     /**
         Sets clientId to the value inside LocalStorage 
      */
-    function syncClientIdWithLS() {
-        lsClientId.value = getClientIdFromLS()
+    function syncClientIdWithLS(accountID: number | null | undefined) {
+        storageKey.value = storageKeyForAccount(accountID)
+        localStorage.removeItem(LEGACY_LS_KEY)
+        lsClientId.value = getClientIdFromLS(storageKey.value)
     }
 
     const selectedClient = computed<Client | null>({
@@ -55,19 +78,13 @@ export const useClientStore = defineStore('clients', () => {
         },
         set(client) {
             lsClientId.value = client ? client.id : null
+            persistClientId(lsClientId.value)
         },
-    })
-
-    watch(lsClientId, (id) => {
-        if (id == null) {
-            localStorage.removeItem(LS_KEY)
-        } else {
-            localStorage.setItem(LS_KEY, String(id))
-        }
     })
 
     function selectClientById(id: number | null) {
         lsClientId.value = id
+        persistClientId(lsClientId.value)
     }
 
     watch(
@@ -77,14 +94,14 @@ export const useClientStore = defineStore('clients', () => {
 
             if (clients.value.length === 0) {
                 if (lsClientId.value != null) lsClientId.value = null
-                localStorage.removeItem(LS_KEY)
+                persistClientId(null)
                 return
             }
 
             const id = lsClientId.value
             if (id != null && !clients.value.some((c) => c.id === id)) {
                 lsClientId.value = null
-                localStorage.removeItem(LS_KEY)
+                persistClientId(null)
             }
         },
         { deep: false },
@@ -113,8 +130,10 @@ export const useClientStore = defineStore('clients', () => {
         clients.value = []
         isLoading.value = false
         hasLoaded.value = false
+        persistClientId(null)
         lsClientId.value = null
-        localStorage.removeItem(LS_KEY)
+        storageKey.value = null
+        localStorage.removeItem(LEGACY_LS_KEY)
     }
 
     return {

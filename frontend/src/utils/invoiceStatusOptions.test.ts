@@ -48,7 +48,7 @@ function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
 
 describe('invoice status lifecycle helpers', () => {
     it('exposes the lifecycle transition options', () => {
-        expect(reachableStatuses('draft')).toEqual(['draft', 'issued', 'paid'])
+        expect(reachableStatuses('draft')).toEqual(['draft', 'issued'])
         expect(reachableStatuses('issued')).toEqual(['issued', 'paid', 'void'])
         expect(
             reachableStatuses('issued', {

@@ -34,7 +34,7 @@ export function reachableStatuses(
 ): InvoiceStatus[] {
     switch (from) {
         case 'draft':
-            return ['draft', 'issued', 'paid']
+            return ['draft', 'issued']
         case 'issued':
             return context.canReturnIssuedToDraft
                 ? ['issued', 'draft', 'paid', 'void']

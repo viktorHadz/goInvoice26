@@ -792,11 +792,23 @@ export const useEditorStore = defineStore('editorStore', () => {
 
         await fetchInvoice(node.baseNo, node.revisionNo)
     })
+
+    function reset() {
+        pendingInvoiceBookNode.value = null
+        activeNode.value = null
+        invoiceBookFilters.value = createDefaultInvoiceBookFilters()
+        clearInvoiceBook()
+        clearActiveInvoice()
+        isLoadingBook.value = false
+        isLoadingInvoice.value = false
+    }
+
     return {
         invoiceBook,
         invoiceBookFilters,
         activeInvoice,
         activeNode,
+        activeRevisionNo,
         draftInvoice,
         limit,
         offset,
@@ -857,5 +869,6 @@ export const useEditorStore = defineStore('editorStore', () => {
         serverCanonicalLineTotals,
         runServerVerify,
         scheduleServerVerify,
+        reset,
     }
 })

@@ -15,6 +15,7 @@ import { computed, ref } from 'vue'
 import EditorNote from './partials/EditorNote.vue'
 import { formatActiveEditorNodeLabel } from '@/utils/invoiceLabels'
 import { canEditInvoice } from '@/utils/invoiceStatusOptions'
+import { resolveEditorExportRevisionNo } from '@/utils/editorExport'
 
 const pdfStore = usePdfStore()
 const editStore = useEditorStore()
@@ -62,8 +63,10 @@ async function generatePdfOnly() {
     const inv = editStore.draftInvoice
     if (!inv || isGeneratingExport.value) return
 
-    const selectedRevisionNo =
-        editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
+    const selectedRevisionNo = resolveEditorExportRevisionNo(
+        editStore.activeNode,
+        editStore.activeRevisionNo,
+    )
 
     isGeneratingExport.value = true
     try {
@@ -77,8 +80,10 @@ async function generateDocxOnly() {
     const inv = editStore.draftInvoice
     if (!inv || isGeneratingExport.value) return
 
-    const selectedRevisionNo =
-        editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
+    const selectedRevisionNo = resolveEditorExportRevisionNo(
+        editStore.activeNode,
+        editStore.activeRevisionNo,
+    )
 
     isGeneratingExport.value = true
     try {

@@ -1,48 +1,122 @@
-# .
+# GoInvoicer Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+This is the Vue 3 frontend for GoInvoicer.
 
-## Recommended IDE Setup
+It handles:
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- login and signup flows
+- clients, invoices, revisions, and exports
+- billing UI
+- team and settings screens
 
-## Recommended Browser Setup
+## Requirements
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+- Node.js `22.x` or newer
+- npm
 
-## Type Support for `.vue` Imports in TS
+## Install
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+```bash
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+## Run Locally
 
-```sh
+```bash
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+The frontend runs at `http://localhost:5173`.
 
-```sh
+In local development, Vite proxies `/api` requests to the Go backend on `http://localhost:4206`.
+
+## Available Commands
+
+Start the local dev server:
+
+```bash
+npm run dev
+```
+
+Build the production frontend:
+
+```bash
 npm run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+Preview the production build locally:
 
-```sh
+```bash
+npm run preview
+```
+
+Run type-checking:
+
+```bash
+npm run type-check
+```
+
+Run the frontend test suite:
+
+```bash
+npm test
+```
+
+Run linting:
+
+```bash
 npm run lint
 ```
+
+## Frontend Environment Notes
+
+At the moment, the frontend does not depend on a required production `VITE_*` config set for API access.
+
+That is intentional:
+
+- local dev uses the Vite `/api` proxy
+- production uses same-origin hosting, where the frontend and backend sit behind the same domain
+
+There is a local `frontend/.env` file in this repo, but it is not part of the required production setup.
+
+## Production Hosting Model
+
+The production frontend is built into `frontend/dist`.
+
+For deployment, the intended setup is:
+
+1. build the frontend with `npm run build`
+2. serve `frontend/dist` with Caddy
+3. reverse proxy `/api/*` to the Go backend
+4. use SPA fallback so app routes such as `/app/invoice` still resolve to `index.html`
+
+A Caddy example lives at [backend/deploy/Caddyfile.example](../backend/deploy/Caddyfile.example).
+
+## Debian Production Notes
+
+The production setup for this repo assumes a Debian server.
+
+On Debian, the frontend is expected to end up here:
+
+```text
+/var/www/goinvoicer/current
+```
+
+Caddy then serves that directory and forwards `/api/*` to the backend on `127.0.0.1:4206`.
+
+The GitHub deploy workflow updates the frontend by:
+
+1. building `frontend/dist` in GitHub Actions
+2. uploading it to the Debian server
+3. extracting it into a release folder
+4. repointing `/var/www/goinvoicer/current` to the new release
+
+## Recommended Developer Workflow
+
+From the repo root, run the shared frontend checks with:
+
+```bash
+bash scripts/check-frontend.sh
+```
+
+That matches what local Git hooks and GitHub Actions run.

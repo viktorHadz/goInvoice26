@@ -1,0 +1,110 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy To Server
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT != '' && vars.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER != '' && vars.DEPLOY_USER || 'root' }}
+      DEPLOY_BACKEND_DIR: ${{ vars.DEPLOY_BACKEND_DIR != '' && vars.DEPLOY_BACKEND_DIR || '/opt/goinvoicer' }}
+      DEPLOY_FRONTEND_ROOT: ${{ vars.DEPLOY_FRONTEND_ROOT != '' && vars.DEPLOY_FRONTEND_ROOT || '/var/www/goinvoicer' }}
+      DEPLOY_SYSTEMD_SERVICE: ${{ vars.DEPLOY_SYSTEMD_SERVICE != '' && vars.DEPLOY_SYSTEMD_SERVICE || 'goinvoicer' }}
+      DEPLOY_RELEASE_ID: ${{ github.event_name == 'workflow_run' && format('{0}-{1}', github.event.workflow_run.head_sha, github.run_id) || format('{0}-{1}', github.sha, github.run_id) }}
+      DEPLOY_CHECKOUT_REF: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_CHECKOUT_REF }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+
+      - name: Build backend
+        working-directory: backend
+        run: go build -o dist/goinvoicer ./cmd
+
+      - name: Prepare release bundle
+        run: |
+          mkdir -p release
+          cp backend/dist/goinvoicer "release/goinvoicer-${DEPLOY_RELEASE_ID}"
+          tar -C frontend/dist -czf "release/frontend-${DEPLOY_RELEASE_ID}.tar.gz" .
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload release artifacts
+        run: |
+          scp -P "$DEPLOY_PORT" "release/goinvoicer-${DEPLOY_RELEASE_ID}" "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/goinvoicer-${DEPLOY_RELEASE_ID}"
+          scp -P "$DEPLOY_PORT" "release/frontend-${DEPLOY_RELEASE_ID}.tar.gz" "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/frontend-${DEPLOY_RELEASE_ID}.tar.gz"
+
+      - name: Deploy on server
+        run: |
+          ssh -p "$DEPLOY_PORT" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_RELEASE_ID='${DEPLOY_RELEASE_ID}' DEPLOY_BACKEND_DIR='${DEPLOY_BACKEND_DIR}' DEPLOY_FRONTEND_ROOT='${DEPLOY_FRONTEND_ROOT}' DEPLOY_SYSTEMD_SERVICE='${DEPLOY_SYSTEMD_SERVICE}' bash -s" <<'EOF'
+          set -euo pipefail
+
+          backend_target="$DEPLOY_BACKEND_DIR/goinvoicer"
+          frontend_release_dir="$DEPLOY_FRONTEND_ROOT/releases/$DEPLOY_RELEASE_ID"
+          frontend_current_link="$DEPLOY_FRONTEND_ROOT/current"
+
+          mkdir -p "$DEPLOY_BACKEND_DIR" "$DEPLOY_FRONTEND_ROOT/releases" "$frontend_release_dir"
+
+          install -m 755 "/tmp/goinvoicer-$DEPLOY_RELEASE_ID" "$backend_target"
+          tar -xzf "/tmp/frontend-$DEPLOY_RELEASE_ID.tar.gz" -C "$frontend_release_dir"
+          ln -sfn "$frontend_release_dir" "$frontend_current_link"
+
+          sudo systemctl restart "$DEPLOY_SYSTEMD_SERVICE"
+          sudo systemctl --no-pager --full status "$DEPLOY_SYSTEMD_SERVICE" --lines=20
+
+          rm -f "/tmp/goinvoicer-$DEPLOY_RELEASE_ID" "/tmp/frontend-$DEPLOY_RELEASE_ID.tar.gz"
+          EOF

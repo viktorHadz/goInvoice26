@@ -32,6 +32,7 @@ describe('settings store', () => {
             showItemTypeHeaders: true,
             startingInvoiceNumber: 120,
             canEditStartingInvoiceNumber: false,
+            readOnly: true,
         })
 
         const store = useSettingsStore()
@@ -39,6 +40,7 @@ describe('settings store', () => {
 
         expect(settings.startingInvoiceNumber).toBe(120)
         expect(settings.canEditStartingInvoiceNumber).toBe(false)
+        expect(settings.readOnly).toBe(true)
     })
 
     it('saves allocator-backed settings fields through the shared payload', async () => {
@@ -57,6 +59,7 @@ describe('settings store', () => {
             showItemTypeHeaders: true,
             startingInvoiceNumber: 200,
             canEditStartingInvoiceNumber: true,
+            readOnly: false,
         })
 
         const store = useSettingsStore()
@@ -97,5 +100,32 @@ describe('settings store', () => {
         )
         expect(settings.startingInvoiceNumber).toBe(200)
         expect(settings.canEditStartingInvoiceNumber).toBe(true)
+        expect(settings.readOnly).toBe(false)
+    })
+
+    it('supports background refresh without toggling loading state', async () => {
+        requestMock.mockResolvedValueOnce({
+            companyName: 'Acme',
+            email: '',
+            phone: '',
+            companyAddress: '',
+            invoicePrefix: 'INV-',
+            currency: 'GBP',
+            dateFormat: 'dd/mm/yyyy',
+            paymentTerms: '',
+            paymentDetails: '',
+            notesFooter: '',
+            logoUrl: '',
+            showItemTypeHeaders: true,
+            startingInvoiceNumber: 100,
+            canEditStartingInvoiceNumber: true,
+            readOnly: false,
+        })
+
+        const store = useSettingsStore()
+        const pending = store.fetchSettings({ background: true })
+
+        expect(store.isLoading).toBe(false)
+        await pending
     })
 })

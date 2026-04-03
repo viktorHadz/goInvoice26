@@ -83,4 +83,11 @@ describe('validateInvoicePayload payments', () => {
         const errors = validateInvoicePayload(payload)
         expect(errors['payments[0].paymentDate']).toBe('Choose a payment date.')
     })
+
+    it('rejects sortOrder values below one', () => {
+        const payload = basePayload()
+        payload.lines[0]!.sortOrder = 0
+        const errors = validateInvoicePayload(payload)
+        expect(errors['lines[0].sortOrder']).toBe('Sort order must be 1 or more.')
+    })
 })

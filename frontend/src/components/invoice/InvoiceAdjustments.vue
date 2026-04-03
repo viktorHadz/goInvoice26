@@ -10,10 +10,9 @@ import { ChevronUpDownIcon, InformationCircleIcon } from '@heroicons/vue/24/outl
 import { fmtGBPMinor, fromMinor, toMinor } from '@/utils/money'
 import { emitToastError } from '@/utils/toast'
 import { cloneInvoice } from '@/utils/cloneInvoice'
-import { validateInvoicePayload } from '@/utils/frontendValidation'
-import { apiDTO } from '@/utils/invoiceDto'
 import { fmtStrDate, todayISO } from '@/utils/dates'
 import DateField from './DateField.vue'
+import { findNewInvoiceValidationMessage } from '@/utils/invoiceValidationDiff'
 
 const inv = useInvoiceStore()
 const settingsStore = useSettingsStore()
@@ -92,23 +91,21 @@ function assertInvoiceStillValidOrRollback(
 ) {
     const current = inv.invoice
     if (!current) return true
-    const dto = apiDTO(
+    const payments = inv.pendingPayments.map((p) => ({
+        amountMinor: p.amountMinor,
+        paymentDate: p.paymentDate,
+        ...(p.label ? { label: p.label } : {}),
+    }))
+    const blockingMessage = findNewInvoiceValidationMessage(
+        snapshot,
         current,
-        inv.pendingPayments.map((p) => ({
-            amountMinor: p.amountMinor,
-            paymentDate: p.paymentDate,
-            ...(p.label ? { label: p.label } : {}),
-        })),
+        payments,
+        [...fieldNames, 'totals.paidMinor'],
     )
-    const errors = validateInvoicePayload(dto)
-    if (Object.keys(errors).length === 0) return true
+    if (!blockingMessage) return true
 
     inv.invoice = snapshot
-    const message =
-        fieldNames.map((f) => errors[f]).find((msg) => Boolean(msg)) ??
-        errors['totals.paidMinor'] ??
-        'This change would make totals invalid and has been reverted.'
-    emitToastError({ title: toastTitle, message })
+    emitToastError({ title: toastTitle, message: blockingMessage })
     return false
 }
 

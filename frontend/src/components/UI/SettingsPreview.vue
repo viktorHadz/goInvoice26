@@ -66,7 +66,7 @@ function invoiceNumberPreview(value: number | null | undefined) {
 
             <div
               v-else
-              class="text-tiny flex h-16 w-24 items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-zinc-50 font-medium tracking-wide text-zinc-400 uppercase dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-500"
+              class="text-tiny flex h-16 w-24 items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-zinc-50 font-medium tracking-wide text-zinc-400 uppercase dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-zinc-500"
             >
               Logo
             </div>

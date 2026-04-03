@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { Component } from 'vue'
 import ProductsEditor from '@/components/items/ProductsEditor.vue'
 import TeamQuickMenu from '@/components/team/TeamQuickMenu.vue'
+import PlatformAccessQuickMenu from '@/components/admin/PlatformAccessQuickMenu.vue'
 import { useClientStore } from '@/stores/clients'
 import { useAuthStore } from '@/stores/auth'
 import { useProductStore } from '@/stores/products'
@@ -12,7 +13,8 @@ import { useTheme } from '@/composables/theme'
 import { useRouter } from 'vue-router'
 import { emitToastError, emitToastInfo } from '@/utils/toast'
 import { getApiErrorMessage, isApiError } from '@/utils/apiErrors'
-import { onClickOutside, useFavicon } from '@vueuse/core'
+import { formatTimeRemaining } from '@/utils/duration'
+import { onClickOutside, useFavicon, useNow } from '@vueuse/core'
 import TheDropdown from './TheDropdown.vue'
 import TheButton from './TheButton.vue'
 import TheSettings from './TheSettings.vue'
@@ -27,6 +29,7 @@ import {
   ChevronDownIcon,
   ChevronUpDownIcon,
   Cog6ToothIcon,
+  KeyIcon,
   MoonIcon,
   SunIcon,
   UserIcon,
@@ -39,6 +42,10 @@ type SettingsController = {
 }
 
 type TeamMenuController = {
+  openMenu: () => void
+}
+
+type PlatformAccessMenuController = {
   openMenu: () => void
 }
 
@@ -58,6 +65,7 @@ const productStore = useProductStore()
 const settingsStore = useSettingsStore()
 const { mode } = useTheme()
 const favicon = computed(() => (mode.value === 'light' ? lightFavi : darkFavi))
+const now = useNow({ interval: 60_000 })
 useFavicon(favicon, {
   rel: 'icon',
 })
@@ -66,6 +74,7 @@ const open = ref(false)
 const menuRef = ref<HTMLElement | null>(null)
 const settingsRef = ref<SettingsController | null>(null)
 const teamMenuRef = ref<TeamMenuController | null>(null)
+const platformAccessMenuRef = ref<PlatformAccessMenuController | null>(null)
 
 const shortcuts: ShortcutDefinition[] = [
   { key: 'i', modifiers: ['ctrl'], action: openProducts },
@@ -88,6 +97,11 @@ const shortcuts: ShortcutDefinition[] = [
       open.value = true
     },
   },
+  {
+    key: 'x',
+    modifiers: ['ctrl', 'shift'],
+    action: openPlatformAccessMenu,
+  },
 ]
 useShortcuts(shortcuts)
 
@@ -100,6 +114,19 @@ const currentClientName = computed(() => {
   return clientStore.hasClients ? 'Select client' : 'No clients yet'
 })
 const roleLabel = computed(() => (authStore.user?.role === 'owner' ? 'Admin' : 'Member'))
+const promoStatusLabel = computed(() => {
+  const billing = authStore.billing
+  if (
+    billing?.accessSource !== 'promo' ||
+    billing.accessGranted !== true ||
+    !billing.accessExpiresAt
+  ) {
+    return ''
+  }
+
+  const remaining = formatTimeRemaining(billing.accessExpiresAt, now.value)
+  return remaining ? `promo period · ${remaining} remaining` : ''
+})
 const currentThemeIcon = computed<Component>(() => (mode.value === 'dark' ? MoonIcon : SunIcon))
 const currentThemeDetail = computed(() =>
   mode.value === 'dark' ? 'Currently dark' : 'Currently light',
@@ -152,14 +179,29 @@ const actionItems = computed<ActionItem[]>(() => {
     )
   }
 
-  if (authStore.isOwner && hasWorkspaceAccess.value) {
-    items.splice(2, 0, {
+  if (authStore.isOwner) {
+    items.splice(hasWorkspaceAccess.value ? 2 : items.length, 0, {
       key: 'team',
       label: 'Team',
-      detail: 'Members and invites',
+      detail: hasWorkspaceAccess.value
+        ? authStore.billing?.plan === 'team'
+          ? 'Members, invites, and workspace controls'
+          : 'Upgrade to the team plan for extra seats'
+        : 'Billing and workspace controls',
       shortcut: 'Ctrl+Shift+E',
       icon: UsersIcon,
       onSelect: openTeamMenu,
+    })
+  }
+
+  if (authStore.canManagePlatformAccess) {
+    items.push({
+      key: 'platform-access',
+      label: 'Platform access',
+      detail: 'Trusted access, promo codes, and team-tier test grants',
+      shortcut: 'Ctrl+Shift+X',
+      icon: KeyIcon,
+      onSelect: openPlatformAccessMenu,
     })
   }
 
@@ -186,9 +228,15 @@ function openProducts() {
 }
 
 function openTeamMenu() {
-  if (!requireWorkspaceAccess()) return
+  if (!authStore.isOwner) return
   closeMenu()
   teamMenuRef.value?.openMenu()
+}
+
+function openPlatformAccessMenu() {
+  if (!authStore.canManagePlatformAccess) return
+  closeMenu()
+  platformAccessMenuRef.value?.openMenu()
 }
 
 function openSettings() {
@@ -289,20 +337,29 @@ onClickOutside(menuRef, closeMenu)
               class="size-11 rounded-2xl"
             />
 
-            <div class="flex w-full min-w-0 items-center justify-between">
-              <div class="flex-1 items-center gap-2">
-                <h2 class="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-                  {{ userName }}
-                </h2>
-                <p class="truncate text-sm text-zinc-600 dark:text-zinc-400">
-                  {{ userEmail }}
-                </p>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <h2 class="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+                    {{ userName }}
+                  </h2>
+                  <p class="truncate text-sm text-zinc-600 dark:text-zinc-400">
+                    {{ userEmail }}
+                  </p>
+                </div>
+                <span
+                  class="rounded-full border border-zinc-300 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
+                >
+                  {{ roleLabel }}
+                </span>
               </div>
-              <span
-                class="rounded-full border border-zinc-300 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
+
+              <p
+                v-if="promoStatusLabel"
+                class="text-mini mt-1 text-emerald-700 dark:text-emerald-400"
               >
-                {{ roleLabel }}
-              </span>
+                {{ promoStatusLabel }}
+              </p>
             </div>
           </div>
         </header>
@@ -412,6 +469,10 @@ onClickOutside(menuRef, closeMenu)
     <ProductsEditor :show-trigger="false" />
     <TeamQuickMenu
       ref="teamMenuRef"
+      :show-trigger="false"
+    />
+    <PlatformAccessQuickMenu
+      ref="platformAccessMenuRef"
       :show-trigger="false"
     />
     <TheSettings

@@ -61,6 +61,28 @@
     filter: blur(0);
 }
 
+/* Public page transition */
+/* Best with mode="out-in" */
+.public-page-enter-active,
+.public-page-leave-active {
+    transition:
+        opacity 150ms ease,
+        filter 150ms ease;
+    will-change: opacity, filter;
+}
+
+.public-page-enter-from,
+.public-page-leave-to {
+    opacity: 0;
+    filter: blur(1px);
+}
+
+.public-page-enter-to,
+.public-page-leave-from {
+    opacity: 1;
+    filter: blur(0);
+}
+
 .picker-flash input {
     animation: picker-flash 220ms ease-out;
 }

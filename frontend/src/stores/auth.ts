@@ -5,6 +5,9 @@ import { useClientStore } from '@/stores/clients'
 import { useProductStore } from '@/stores/products'
 import { useSettingsStore } from '@/stores/settings'
 import { useTeamStore } from '@/stores/team'
+import { useInvoiceStore } from '@/stores/invoice'
+import { useEditorStore } from '@/stores/editor'
+import type { BillingInterval, BillingPlan } from '@/constants/billing'
 
 export type AuthMode = 'login' | 'signup'
 
@@ -25,8 +28,22 @@ export type AuthBilling = {
     configured: boolean
     status: string
     accessGranted: boolean
+    accessSource?: 'subscription' | 'direct' | 'promo'
+    accessExpiresAt?: string
+    promoCode?: string
+    promoExpired: boolean
     canManage: boolean
     portalAvailable: boolean
+    trialDays: number
+    plan: BillingPlan | ''
+    interval: BillingInterval | ''
+    seatLimit: number
+    singlePlanAvailable: boolean
+    teamPlanAvailable: boolean
+    singleMonthlyAvailable: boolean
+    singleYearlyAvailable: boolean
+    teamMonthlyAvailable: boolean
+    teamYearlyAvailable: boolean
     currentPeriodEnd?: string
     cancelAtPeriodEnd: boolean
 }
@@ -34,7 +51,9 @@ export type AuthBilling = {
 export type AuthStatus = {
     authenticated: boolean
     needsSetup: boolean
+    canRegister?: boolean
     googleEnabled: boolean
+    canManagePlatformAccess: boolean
     user?: AuthUser
     account?: AuthAccount
     billing?: AuthBilling
@@ -49,7 +68,11 @@ export const useAuthStore = defineStore('auth', () => {
 
     const isAuthenticated = computed(() => status.value?.authenticated === true)
     const isOwner = computed(() => status.value?.user?.role === 'owner')
+    const canManagePlatformAccess = computed(() => status.value?.canManagePlatformAccess === true)
     const needsSetup = computed(() => status.value?.needsSetup === true)
+    const canRegister = computed(
+        () => status.value?.canRegister === true || status.value?.needsSetup === true,
+    )
     const googleEnabled = computed(() => status.value?.googleEnabled === true)
     const user = computed(() => status.value?.user ?? null)
     const account = computed(() => status.value?.account ?? null)
@@ -100,6 +123,8 @@ export const useAuthStore = defineStore('auth', () => {
         useSettingsStore().reset()
         useProductStore().reset()
         useTeamStore().reset()
+        useInvoiceStore().reset()
+        useEditorStore().reset()
     }
 
     return {
@@ -108,7 +133,9 @@ export const useAuthStore = defineStore('auth', () => {
         hasLoaded,
         isAuthenticated,
         isOwner,
+        canManagePlatformAccess,
         needsSetup,
+        canRegister,
         googleEnabled,
         user,
         account,

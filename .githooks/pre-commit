@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+echo "[pre-commit] Running full verification suite..."
+"$repo_root/scripts/verify-all.sh"

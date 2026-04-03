@@ -21,9 +21,17 @@ export type Settings = {
     showItemTypeHeaders: boolean
     startingInvoiceNumber: number
     canEditStartingInvoiceNumber: boolean
+    readOnly: boolean
 }
 
-export type SettingsUpdate = Omit<Settings, 'logoUrl' | 'canEditStartingInvoiceNumber'>
+export type SettingsUpdate = Omit<
+    Settings,
+    'logoUrl' | 'canEditStartingInvoiceNumber' | 'readOnly'
+>
+
+type FetchSettingsOptions = {
+    background?: boolean
+}
 
 function normalizeSettings(data: Settings): Settings {
     return {
@@ -31,6 +39,7 @@ function normalizeSettings(data: Settings): Settings {
         showItemTypeHeaders: data.showItemTypeHeaders !== false,
         startingInvoiceNumber: Math.max(1, Math.round(Number(data.startingInvoiceNumber || 1))),
         canEditStartingInvoiceNumber: data.canEditStartingInvoiceNumber === true,
+        readOnly: data.readOnly === true,
     }
 }
 
@@ -50,8 +59,10 @@ export const useSettingsStore = defineStore('settings', () => {
 
     const hasSettings = computed(() => settings.value !== null)
 
-    async function fetchSettings() {
-        isLoading.value = true
+    async function fetchSettings(options: FetchSettingsOptions = {}) {
+        if (!options.background) {
+            isLoading.value = true
+        }
         try {
             const data = await request<Settings>('/api/settings')
             const normalized = normalizeSettings(data)
@@ -60,7 +71,9 @@ export const useSettingsStore = defineStore('settings', () => {
 
             return normalized
         } finally {
-            isLoading.value = false
+            if (!options.background) {
+                isLoading.value = false
+            }
         }
     }
 

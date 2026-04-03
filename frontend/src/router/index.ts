@@ -130,36 +130,9 @@ router.beforeEach(async (to) => {
 
     if (to.meta.appChrome && !authStore.isAuthenticated) {
         authStore.clearWorkspaceState()
-
-        return authStore.needsSetup
-            ? {
-                  name: 'signup',
-                  query: { redirect: to.fullPath },
-              }
-            : {
-                  name: 'login',
-                  query: { redirect: to.fullPath },
-              }
-    }
-
-    if (to.name === 'login' && !authStore.isAuthenticated && authStore.needsSetup) {
-        const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : undefined
-        return {
-            name: 'signup',
-            query: redirect && redirect.startsWith('/') ? { redirect } : undefined,
-        }
-    }
-
-    if (
-        to.name === 'signup' &&
-        !authStore.isAuthenticated &&
-        authStore.hasLoaded &&
-        !authStore.needsSetup
-    ) {
-        const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : undefined
         return {
             name: 'login',
-            query: redirect && redirect.startsWith('/') ? { redirect } : undefined,
+            query: { redirect: to.fullPath },
         }
     }
 
@@ -182,7 +155,7 @@ router.beforeEach(async (to) => {
     }
 
     if (to.meta.appChrome) {
-        clientStore.syncClientIdWithLS()
+        clientStore.syncClientIdWithLS(authStore.account?.id ?? null)
     }
 
     if (to.meta.appChrome && authStore.hasBillingAccess && !clientStore.hasLoaded) {

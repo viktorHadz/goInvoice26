@@ -11,8 +11,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { fmtStrDate, todayISO } from '@/utils/dates'
 import { emitToastError } from '@/utils/toast'
 import { cloneInvoice } from '@/utils/cloneInvoice'
-import { validateInvoicePayload } from '@/utils/frontendValidation'
-import { apiDTO } from '@/utils/invoiceDto'
+import { findNewInvoiceValidationMessage } from '@/utils/invoiceValidationDiff'
 import {
     clearInvoiceDeposit,
     clearInvoiceDiscount,
@@ -140,23 +139,21 @@ function assertEditorInvoiceValidOrRollback(
 ) {
     const current = editStore.draftInvoice
     if (!current) return true
-    const dto = apiDTO(
+    const payments = editStore.pendingPayments.map((p) => ({
+        amountMinor: p.amountMinor,
+        paymentDate: p.paymentDate,
+        ...(p.label ? { label: p.label } : {}),
+    }))
+    const blockingMessage = findNewInvoiceValidationMessage(
+        snapshot,
         current,
-        editStore.pendingPayments.map((p) => ({
-            amountMinor: p.amountMinor,
-            paymentDate: p.paymentDate,
-            ...(p.label ? { label: p.label } : {}),
-        })),
+        payments,
+        [...fieldNames, 'totals.paidMinor'],
     )
-    const errors = validateInvoicePayload(dto)
-    if (Object.keys(errors).length === 0) return true
+    if (!blockingMessage) return true
 
     editStore.draftInvoice = snapshot
-    const message =
-        fieldNames.map((f) => errors[f]).find((msg) => Boolean(msg)) ??
-        errors['totals.paidMinor'] ??
-        'This change would make totals invalid and has been reverted.'
-    emitToastError({ title: toastTitle, message })
+    emitToastError({ title: toastTitle, message: blockingMessage })
     return false
 }
 

@@ -23,7 +23,7 @@ import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 
                 <div>
                     <span class="font-semibold text-sky-600 dark:text-emerald-400">Paid</span>
-                    : fully paid. Locked from editing.
+                    : marked as paid. Locked from editing unless reopened to issued.
                 </div>
 
                 <div>

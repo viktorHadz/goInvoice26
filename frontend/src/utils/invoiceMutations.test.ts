@@ -102,6 +102,65 @@ describe('addInvoiceLine', () => {
         expect(inv.lines).toHaveLength(1)
         expect(inv.lines[0]).toMatchObject({ quantity: 5 })
     })
+
+    it('does not merge hourly lines when minutes differ', () => {
+        const inv = minimalInvoice({
+            lines: [
+                minimalLine({
+                    name: 'hourly sample',
+                    sortOrder: 1,
+                    lineType: 'sample',
+                    pricingMode: 'hourly',
+                    productId: 7,
+                    quantity: 1,
+                    unitPriceMinor: 10_000,
+                    minutesWorked: 30,
+                }),
+            ],
+        })
+
+        addInvoiceLine(inv, {
+            name: 'hourly sample',
+            lineType: 'sample',
+            pricingMode: 'hourly',
+            productId: 7,
+            quantity: 1,
+            unitPriceMinor: 10_000,
+            minutesWorked: 90,
+        })
+
+        expect(inv.lines).toHaveLength(2)
+        expect(inv.lines.map((l) => l.minutesWorked)).toEqual([30, 90])
+    })
+
+    it('does not merge when the same product has a different rate or edited name', () => {
+        const inv = minimalInvoice({
+            lines: [
+                minimalLine({
+                    name: 'Edited line name',
+                    sortOrder: 1,
+                    lineType: 'sample',
+                    pricingMode: 'flat',
+                    productId: 7,
+                    quantity: 1,
+                    unitPriceMinor: 8_000,
+                }),
+            ],
+        })
+
+        addInvoiceLine(inv, {
+            name: 'Original product name',
+            lineType: 'sample',
+            pricingMode: 'flat',
+            productId: 7,
+            quantity: 1,
+            unitPriceMinor: 10_000,
+            minutesWorked: null,
+        })
+
+        expect(inv.lines).toHaveLength(2)
+        expect(inv.lines.map((l) => l.unitPriceMinor)).toEqual([8_000, 10_000])
+    })
 })
 
 describe('updateInvoiceLine / removeInvoiceLine', () => {

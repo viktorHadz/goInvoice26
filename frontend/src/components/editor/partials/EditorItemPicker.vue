@@ -11,6 +11,7 @@ import type { Product, ProductType } from '@/utils/productHttpHandler'
 import TheTooltip from '@/components/UI/TheTooltip.vue'
 import { fmtGBPMinor, toMinor } from '@/utils/money'
 import { useEditorStore } from '@/stores/editor'
+import { resolvePickerMinutes } from '@/utils/pickerMinutes'
 
 const prod = useProductStore()
 const editStore = useEditorStore()
@@ -21,7 +22,7 @@ const open = ref(false)
 
 const form = reactive({
     qty: 1,
-    minutes: 60,
+    minutes: null as number | null,
 })
 
 watch(itemType, () => {
@@ -50,10 +51,8 @@ function safeQty(): number {
     return Math.floor(n)
 }
 
-function safeMinutes(defaultMinutes = 60): number {
-    const n = Number(form.minutes)
-    if (!Number.isFinite(n) || n <= 0) return defaultMinutes
-    return Math.floor(n)
+function safeMinutes(productMinutes?: number | null): number {
+    return resolvePickerMinutes(form.minutes, productMinutes)
 }
 
 function addFromProduct(p: Product) {
@@ -80,7 +79,7 @@ function addFromProduct(p: Product) {
             pricingMode: 'hourly',
             quantity: qty,
             unitPriceMinor: p.hourlyRateMinor ?? 0,
-            minutesWorked: safeMinutes(p.minutesWorked ?? 60),
+            minutesWorked: safeMinutes(p.minutesWorked),
         })
         return
     }
@@ -276,10 +275,11 @@ watch(itemType, () => {
                             type="number"
                             input-class="text-right py-1"
                             :disabled="itemType === 'style'"
+                            :placeholder="itemType === 'style' ? '—' : 'Default'"
                             :title="
                                 itemType === 'style'
                                     ? 'Styles do not use minutes'
-                                    : 'Used for hourly samples'
+                                    : 'Leave blank to use the saved product minutes'
                             "
                         />
                     </div>

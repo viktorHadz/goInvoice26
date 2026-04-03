@@ -25,6 +25,7 @@ import {
 } from '@/utils/invoiceStatusOptions'
 import { requestConfirmation } from '@/utils/confirm'
 import InvoiceStatusTooltip from '@/components/editor/partials/InvoiceStatusTooltip.vue'
+import { resolveEditorExportRevisionNo } from '@/utils/editorExport'
 
 const editStore = useEditorStore()
 const setsStore = useSettingsStore()
@@ -36,8 +37,10 @@ async function generatePdfOnly() {
     const draftOrSavedInvoice = editStore.activeInvoice
     if (!draftOrSavedInvoice || isGeneratingExport.value) return
 
-    const selectedRevisionNo =
-        editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
+    const selectedRevisionNo = resolveEditorExportRevisionNo(
+        editStore.activeNode,
+        editStore.activeRevisionNo,
+    )
 
     isGeneratingExport.value = true
     try {
@@ -51,8 +54,10 @@ async function generateDocxOnly() {
     const draftOrSavedInvoice = editStore.activeInvoice
     if (!draftOrSavedInvoice || isGeneratingExport.value) return
 
-    const selectedRevisionNo =
-        editStore.activeNode?.type === 'revision' ? editStore.activeNode.revisionNo : 1
+    const selectedRevisionNo = resolveEditorExportRevisionNo(
+        editStore.activeNode,
+        editStore.activeRevisionNo,
+    )
 
     isGeneratingExport.value = true
     try {

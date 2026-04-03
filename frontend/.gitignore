@@ -40,3 +40,6 @@ __screenshots__/
 
 # Env vars
 .env
+
+.cursor
+.codex

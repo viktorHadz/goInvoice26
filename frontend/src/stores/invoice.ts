@@ -49,7 +49,6 @@ import {
 } from '@/utils/invoiceMutations'
 import { useInvoicePricing } from '@/composables/useInvoicePricing'
 import type { DraftPaymentInput } from '@/utils/invoiceDto'
-// TODO: HOURLY LINES DO NOT RENDER PROPERLY ON THE INVOICE
 type PendingPayment = DraftPaymentInput & {
     tempId: string
 }
@@ -555,6 +554,20 @@ export const useInvoiceStore = defineStore('invoice', () => {
         serverFieldErrors.value = {}
     }
 
+    function reset() {
+        clearVerifyTimer()
+        abortVerify()
+        invoice.value = null
+        pendingPayments.value = []
+        serverFieldErrors.value = {}
+        showAllValidation.value = false
+        verifyStatus.value = 'idle'
+        lastVerifyAt.value = null
+        serverCanonicalTotals.value = null
+        serverCanonicalLineTotals.value = {}
+        lastVerifyFailureToastedAt.value = null
+    }
+
     return {
         // state
         invoice,
@@ -605,6 +618,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
         clearPendingPayments,
         getInvoiceClient,
         setClientSnapshot,
+        reset,
 
         // API
         newDraftInvoice,
