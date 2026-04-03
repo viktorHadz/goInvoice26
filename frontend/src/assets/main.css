@@ -136,3 +136,25 @@
         @apply dark:bg-[linear-gradient(160deg,#18181B_0%,#111115_48%,#101013_100%)];
     }
 }
+
+.float-slow {
+    animation: float 6.5s ease-in-out infinite;
+}
+
+.float-mid {
+    animation: float 7.4s ease-in-out infinite;
+}
+
+.float-fast {
+    animation: float 5.8s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
