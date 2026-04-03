@@ -11,13 +11,19 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/service/logo"
+	"github.com/viktorHadz/goInvoice26/internal/userscope"
 )
 
 const maxLogoUploadSize = 5 << 20 // 5 MiB
 
 func GetLogo(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		accountID := accountscope.AccountID(r.Context())
+		accountID, err := accountscope.Require(r.Context())
+		if err != nil {
+			slog.ErrorContext(r.Context(), "get logo missing account scope", "err", err)
+			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to load logo")
+			return
+		}
 
 		fileMeta, reader, err := a.Logos.OpenCurrent(r.Context(), accountID)
 		switch {
@@ -46,6 +52,11 @@ func GetLogo(a *app.App) http.HandlerFunc {
 
 func PutLogo(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if userscope.Role(r.Context()) != "owner" {
+			res.Error(w, http.StatusForbidden, "SETTINGS_OWNER_ONLY", "Only the workspace admin can edit settings")
+			return
+		}
+
 		r.Body = http.MaxBytesReader(w, r.Body, maxLogoUploadSize)
 
 		if err := r.ParseMultipartForm(maxLogoUploadSize); err != nil {
@@ -98,7 +109,13 @@ func PutLogo(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		accountID := accountscope.AccountID(r.Context())
+		accountID, err := accountscope.Require(r.Context())
+		if err != nil {
+			slog.ErrorContext(r.Context(), "replace logo missing account scope", "err", err)
+			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to save logo")
+			return
+		}
+
 		settings, err := a.Logos.Replace(r.Context(), accountID, file, ext, contentType)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "replace logo failed", "err", err, "account_id", accountID)
@@ -112,7 +129,17 @@ func PutLogo(a *app.App) http.HandlerFunc {
 
 func DeleteLogo(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		accountID := accountscope.AccountID(r.Context())
+		if userscope.Role(r.Context()) != "owner" {
+			res.Error(w, http.StatusForbidden, "SETTINGS_OWNER_ONLY", "Only the workspace admin can edit settings")
+			return
+		}
+
+		accountID, err := accountscope.Require(r.Context())
+		if err != nil {
+			slog.ErrorContext(r.Context(), "delete logo missing account scope", "err", err)
+			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to delete logo")
+			return
+		}
 		settings, err := a.Logos.Remove(r.Context(), accountID)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "delete logo failed", "err", err, "account_id", accountID)

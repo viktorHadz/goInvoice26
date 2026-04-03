@@ -5,11 +5,17 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
 func UpdateTx(a *app.App, ctx context.Context, productID int64, in models.ProductCreate) (models.Product, error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return models.Product{}, err
+	}
+
 	const q = `
 		UPDATE products
 		SET
@@ -20,7 +26,7 @@ func UpdateTx(a *app.App, ctx context.Context, productID int64, in models.Produc
 			hourly_rate_minor = ?,
 			default_minutes_worked = ?,
 			updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-		WHERE id = ? AND client_id = ?
+		WHERE id = ? AND account_id = ? AND client_id = ?
 		RETURNING
 			id,
 			product_type,
@@ -53,7 +59,7 @@ func UpdateTx(a *app.App, ctx context.Context, productID int64, in models.Produc
 	// updated_at nullable output
 	var updated sql.NullString
 
-	err := a.DB.QueryRowContext(
+	err = a.DB.QueryRowContext(
 		ctx,
 		q,
 		in.ProductType,
@@ -63,6 +69,7 @@ func UpdateTx(a *app.App, ctx context.Context, productID int64, in models.Produc
 		hourly,
 		minutes,
 		productID,
+		accountID,
 		in.ClientID,
 	).Scan(
 		&out.ID,

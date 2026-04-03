@@ -34,6 +34,9 @@ func Get(ctx context.Context, db *sql.DB, accountID int64) (models.Settings, err
 	if err := ensureAccountSettingsRow(ctx, db, accountID); err != nil {
 		return models.Settings{}, err
 	}
+	if err := ensureInvoiceSequenceRow(ctx, db, accountID); err != nil {
+		return models.Settings{}, err
+	}
 
 	const q = `
 		SELECT
@@ -78,21 +81,22 @@ func Get(ctx context.Context, db *sql.DB, accountID int64) (models.Settings, err
 	if s.LogoStorageKey == "" {
 		s.LogoAssetID = 0
 	}
-	s.LogoURL = buildLogoURL(s.LogoAssetID)
+	s.LogoURL = buildLogoURL(accountID, s.LogoAssetID)
 
 	if err := db.QueryRowContext(ctx, `
 		SELECT next_base_number
 		FROM invoice_number_seq
-		WHERE id = 1;
-	`).Scan(&s.StartingInvoiceNumber); err != nil {
+		WHERE account_id = ?;
+	`, accountID).Scan(&s.StartingInvoiceNumber); err != nil {
 		return models.Settings{}, fmt.Errorf("get invoice number sequence: %w", err)
 	}
 
 	var invoiceCount int64
 	if err := db.QueryRowContext(ctx, `
 		SELECT COUNT(*)
-		FROM invoices;
-	`).Scan(&invoiceCount); err != nil {
+		FROM invoices
+		WHERE account_id = ?;
+	`, accountID).Scan(&invoiceCount); err != nil {
 		return models.Settings{}, fmt.Errorf("count invoices: %w", err)
 	}
 	s.CanEditStartingInvoiceNumber = invoiceCount == 0
@@ -145,6 +149,9 @@ func Upsert(ctx context.Context, db *sql.DB, accountID int64, s models.Settings)
 	if err := ensureAccountSettingsRow(ctx, tx, accountID); err != nil {
 		return err
 	}
+	if err := ensureInvoiceSequenceRow(ctx, tx, accountID); err != nil {
+		return err
+	}
 
 	var (
 		invoiceCount    int64
@@ -152,15 +159,16 @@ func Upsert(ctx context.Context, db *sql.DB, accountID int64, s models.Settings)
 	)
 	if err := tx.QueryRowContext(ctx, `
 		SELECT COUNT(*)
-		FROM invoices;
-	`).Scan(&invoiceCount); err != nil {
+		FROM invoices
+		WHERE account_id = ?;
+	`, accountID).Scan(&invoiceCount); err != nil {
 		return fmt.Errorf("count invoices: %w", err)
 	}
 	if err := tx.QueryRowContext(ctx, `
 		SELECT next_base_number
 		FROM invoice_number_seq
-		WHERE id = 1;
-	`).Scan(&currentSequence); err != nil {
+		WHERE account_id = ?;
+	`, accountID).Scan(&currentSequence); err != nil {
 		return fmt.Errorf("get current invoice sequence: %w", err)
 	}
 
@@ -172,8 +180,8 @@ func Upsert(ctx context.Context, db *sql.DB, accountID int64, s models.Settings)
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE invoice_number_seq
 			SET next_base_number = ?
-			WHERE id = 1;
-		`, s.StartingInvoiceNumber); err != nil {
+			WHERE account_id = ?;
+		`, s.StartingInvoiceNumber, accountID); err != nil {
 			return fmt.Errorf("update invoice number sequence: %w", err)
 		}
 	}
@@ -411,11 +419,11 @@ func ClearLegacyLogoURL(ctx context.Context, db *sql.DB, accountID int64) error 
 	return nil
 }
 
-func buildLogoURL(assetID int64) string {
-	if assetID <= 0 {
+func buildLogoURL(accountID, assetID int64) string {
+	if accountID <= 0 || assetID <= 0 {
 		return ""
 	}
-	return fmt.Sprintf("/api/settings/logo?v=%d", assetID)
+	return fmt.Sprintf("/api/settings/logo?account=%d&v=%d", accountID, assetID)
 }
 
 func ensureAccountSettingsRow(ctx context.Context, exec execer, accountID int64) error {
@@ -434,6 +442,21 @@ func ensureAccountSettingsRow(ctx context.Context, exec execer, accountID int64)
 		VALUES (?);
 	`, accountID); err != nil {
 		return fmt.Errorf("ensure account settings row: %w", err)
+	}
+
+	return nil
+}
+
+func ensureInvoiceSequenceRow(ctx context.Context, exec execer, accountID int64) error {
+	if accountID <= 0 {
+		accountID = 1
+	}
+
+	if _, err := exec.ExecContext(ctx, `
+		INSERT OR IGNORE INTO invoice_number_seq (account_id, next_base_number)
+		VALUES (?, 1);
+	`, accountID); err != nil {
+		return fmt.Errorf("ensure invoice sequence row: %w", err)
 	}
 
 	return nil

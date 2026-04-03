@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/invoiceTx"
 )
@@ -62,7 +63,7 @@ func draftUpdatePayload(clientID, baseNumber int64, totalMinor int64, paidMinor 
 }
 
 func TestUpdateDraft_ReplacesBaseRevisionInPlace(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 	a, cleanup := newTestApp(t)
 	defer cleanup()
 
@@ -133,7 +134,7 @@ func TestUpdateDraft_ReplacesBaseRevisionInPlace(t *testing.T) {
 }
 
 func TestUpdateDraft_RejectsDraftWithMultipleRevisions(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 	a, cleanup := newTestApp(t)
 	defer cleanup()
 
@@ -185,7 +186,7 @@ func TestUpdateDraft_RejectsDraftWithMultipleRevisions(t *testing.T) {
 }
 
 func TestCreateRevision_RejectsNonIssuedInvoices(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 
 	tests := []struct {
 		name    string
@@ -214,7 +215,7 @@ func TestCreateRevision_RejectsNonIssuedInvoices(t *testing.T) {
 }
 
 func TestCreateRevision_AutoMarksIssuedInvoicePaidWhenSettled(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 	a, cleanup := newTestApp(t)
 	defer cleanup()
 

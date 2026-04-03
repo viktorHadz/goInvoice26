@@ -9,7 +9,6 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	authsvc "github.com/viktorHadz/goInvoice26/internal/service/auth"
-	"github.com/viktorHadz/goInvoice26/internal/transaction/authTx"
 )
 
 func Me(a *app.App) http.HandlerFunc {
@@ -160,10 +159,6 @@ func callbackErrorCode(err error) string {
 		return "account_not_linked"
 	case errors.Is(err, authsvc.ErrGoogleSubConflict):
 		return "account_conflict"
-	case errors.Is(err, authTx.ErrSetupAlreadyComplete):
-		return "owner_setup_complete"
-	case errors.Is(err, authTx.ErrSetupRequired):
-		return "owner_setup_required"
 	default:
 		return "google_auth_failed"
 	}

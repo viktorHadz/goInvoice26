@@ -25,9 +25,16 @@ var (
 	ErrInvalidEmail         = errors.New("invalid email")
 	ErrInviteAlreadyExists  = errors.New("invite already exists")
 	ErrMemberAlreadyExists  = errors.New("member already exists")
+	ErrTeamSeatLimitReached = errors.New("team seat limit reached")
 	ErrCannotRemoveSelf     = errors.New("cannot remove self")
 	ErrCannotRemoveOwner    = errors.New("cannot remove owner")
+	ErrAccountNotFound      = errors.New("account not found")
 )
+
+type TeamSeatUsage struct {
+	MemberCount        int
+	PendingInviteCount int
+}
 
 type User struct {
 	ID        int64
@@ -44,6 +51,9 @@ type Session struct {
 	UserID                   int64
 	AccountID                int64
 	AccountName              string
+	BillingPriceID           string
+	BillingPlan              string
+	BillingInterval          string
 	BillingStatus            string
 	BillingCurrentPeriodEnd  string
 	BillingCancelAtPeriodEnd bool
@@ -68,6 +78,79 @@ func SetupRequired(ctx context.Context, db *sql.DB) (bool, error) {
 	}
 
 	return count == 0, nil
+}
+
+func CreateAccountOwner(ctx context.Context, db *sql.DB, params CreateGoogleUserParams) (User, error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return User{}, fmt.Errorf("begin create account owner tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	if params.Role == "" {
+		params.Role = UserRoleOwner
+	}
+
+	accountName := accountNameFromParams(params)
+	result, err := tx.ExecContext(ctx, `
+		INSERT INTO accounts (name)
+		VALUES (?);
+	`, accountName)
+	if err != nil {
+		return User{}, fmt.Errorf("insert account: %w", err)
+	}
+
+	accountID, err := result.LastInsertId()
+	if err != nil {
+		return User{}, fmt.Errorf("get inserted account id: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO account_settings (account_id)
+		VALUES (?);
+	`, accountID); err != nil {
+		return User{}, fmt.Errorf("ensure account settings row: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO invoice_number_seq (account_id, next_base_number)
+		VALUES (?, 1);
+	`, accountID); err != nil {
+		return User{}, fmt.Errorf("ensure invoice number sequence row: %w", err)
+	}
+
+	userResult, err := tx.ExecContext(ctx, `
+		INSERT INTO users (
+			name,
+			email,
+			password_hash,
+			account_id,
+			google_sub,
+			avatar_url,
+			role
+		) VALUES (?, ?, '', ?, ?, ?, ?);
+	`,
+		strings.TrimSpace(params.Name),
+		strings.TrimSpace(params.Email),
+		accountID,
+		strings.TrimSpace(params.GoogleSub),
+		strings.TrimSpace(params.AvatarURL),
+		params.Role,
+	)
+	if err != nil {
+		return User{}, fmt.Errorf("insert account owner: %w", err)
+	}
+
+	userID, err := userResult.LastInsertId()
+	if err != nil {
+		return User{}, fmt.Errorf("get inserted owner id: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return User{}, fmt.Errorf("commit create account owner tx: %w", err)
+	}
+
+	return GetUserByID(ctx, db, userID)
 }
 
 func GetUserByGoogleSub(ctx context.Context, db *sql.DB, googleSub string) (User, bool, error) {
@@ -144,13 +227,7 @@ func CreateInitialOwner(ctx context.Context, db *sql.DB, params CreateGoogleUser
 		params.Role = UserRoleOwner
 	}
 
-	accountName := strings.TrimSpace(params.Name)
-	if accountName == "" {
-		accountName = strings.TrimSpace(strings.Split(params.Email, "@")[0])
-	}
-	if accountName == "" {
-		accountName = "Workspace"
-	}
+	accountName := accountNameFromParams(params)
 
 	if _, err := tx.ExecContext(ctx, `
 		INSERT OR IGNORE INTO accounts (id, name)
@@ -353,6 +430,9 @@ func GetSessionByTokenHash(ctx context.Context, db *sql.DB, tokenHash string, no
 			s.account_id,
 			s.expires_at,
 			COALESCE(a.name, ''),
+			COALESCE(a.billing_price_id, ''),
+			COALESCE(a.billing_plan, ''),
+			COALESCE(a.billing_interval, ''),
 			COALESCE(a.billing_status, 'inactive'),
 			COALESCE(a.billing_current_period_end, ''),
 			COALESCE(a.billing_cancel_at_period_end, 0),
@@ -375,6 +455,9 @@ func GetSessionByTokenHash(ctx context.Context, db *sql.DB, tokenHash string, no
 		&session.AccountID,
 		&expiresAtText,
 		&session.AccountName,
+		&session.BillingPriceID,
+		&session.BillingPlan,
+		&session.BillingInterval,
 		&session.BillingStatus,
 		&session.BillingCurrentPeriodEnd,
 		&cancelAtPeriodEnd,
@@ -522,7 +605,7 @@ func ListPendingInvites(ctx context.Context, db *sql.DB, accountID int64) ([]mod
 	return invites, nil
 }
 
-func CreateInvite(ctx context.Context, db *sql.DB, accountID, invitedByUserID int64, email string) (models.TeamInvite, error) {
+func CreateInvite(ctx context.Context, db *sql.DB, accountID, invitedByUserID int64, email string, maxSeats int) (models.TeamInvite, error) {
 	normalizedEmail, err := normalizeEmail(email)
 	if err != nil {
 		return models.TeamInvite{}, err
@@ -564,6 +647,14 @@ func CreateInvite(ctx context.Context, db *sql.DB, accountID, invitedByUserID in
 		return models.TeamInvite{}, fmt.Errorf("check existing invite: %w", err)
 	default:
 		return models.TeamInvite{}, ErrInviteAlreadyExists
+	}
+
+	seatUsage, err := getTeamSeatUsageTx(ctx, tx, accountID)
+	if err != nil {
+		return models.TeamInvite{}, fmt.Errorf("load team seat usage: %w", err)
+	}
+	if maxSeats > 0 && seatUsage.MemberCount+seatUsage.PendingInviteCount >= maxSeats {
+		return models.TeamInvite{}, ErrTeamSeatLimitReached
 	}
 
 	createdAt := formatTimestamp(time.Now())
@@ -614,6 +705,10 @@ func DeleteInvite(ctx context.Context, db *sql.DB, accountID, inviteID int64) (b
 	}
 
 	return affected > 0, nil
+}
+
+func GetTeamSeatUsage(ctx context.Context, db *sql.DB, accountID int64) (TeamSeatUsage, error) {
+	return getTeamSeatUsage(ctx, db, accountID)
 }
 
 func DeleteInviteByEmail(ctx context.Context, db *sql.DB, accountID int64, email string) error {
@@ -704,6 +799,71 @@ func RemoveMember(ctx context.Context, db *sql.DB, accountID, actingUserID, memb
 	return true, nil
 }
 
+func DeleteAccount(ctx context.Context, db *sql.DB, accountID int64) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin delete account tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	var exists int64
+	err = tx.QueryRowContext(ctx, `
+		SELECT 1
+		FROM accounts
+		WHERE id = ?
+		LIMIT 1;
+	`, accountID).Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrAccountNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("load account before delete: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM allowed_users
+		WHERE account_id = ?;
+	`, accountID); err != nil {
+		return fmt.Errorf("delete account invites: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM auth_sessions
+		WHERE account_id = ?;
+	`, accountID); err != nil {
+		return fmt.Errorf("delete account sessions: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM users
+		WHERE account_id = ?;
+	`, accountID); err != nil {
+		return fmt.Errorf("delete account users: %w", err)
+	}
+
+	result, err := tx.ExecContext(ctx, `
+		DELETE FROM accounts
+		WHERE id = ?;
+	`, accountID)
+	if err != nil {
+		return fmt.Errorf("delete account: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete account rows affected: %w", err)
+	}
+	if affected == 0 {
+		return ErrAccountNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit delete account tx: %w", err)
+	}
+
+	return nil
+}
+
 func normalizeEmail(email string) (string, error) {
 	address, err := mail.ParseAddress(strings.TrimSpace(email))
 	if err != nil {
@@ -718,10 +878,74 @@ func normalizeEmail(email string) (string, error) {
 	return normalized, nil
 }
 
+func accountNameFromParams(params CreateGoogleUserParams) string {
+	accountName := strings.TrimSpace(params.Name)
+	if accountName == "" {
+		accountName = strings.TrimSpace(strings.Split(params.Email, "@")[0])
+	}
+	if accountName == "" {
+		accountName = "Workspace"
+	}
+
+	return accountName
+}
+
 func nullInt64(v int64) sql.NullInt64 {
 	if v <= 0 {
 		return sql.NullInt64{}
 	}
 
 	return sql.NullInt64{Int64: v, Valid: true}
+}
+
+func getTeamSeatUsage(ctx context.Context, db *sql.DB, accountID int64) (TeamSeatUsage, error) {
+	var usage TeamSeatUsage
+
+	if err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM users
+		WHERE account_id = ?;
+	`, accountID).Scan(&usage.MemberCount); err != nil {
+		return TeamSeatUsage{}, fmt.Errorf("count team members: %w", err)
+	}
+
+	if err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM allowed_users au
+		LEFT JOIN users u
+			ON u.account_id = au.account_id
+		   AND LOWER(u.email) = LOWER(au.email)
+		WHERE au.account_id = ?
+		  AND u.id IS NULL;
+	`, accountID).Scan(&usage.PendingInviteCount); err != nil {
+		return TeamSeatUsage{}, fmt.Errorf("count team invites: %w", err)
+	}
+
+	return usage, nil
+}
+
+func getTeamSeatUsageTx(ctx context.Context, tx *sql.Tx, accountID int64) (TeamSeatUsage, error) {
+	var usage TeamSeatUsage
+
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM users
+		WHERE account_id = ?;
+	`, accountID).Scan(&usage.MemberCount); err != nil {
+		return TeamSeatUsage{}, fmt.Errorf("count team members in tx: %w", err)
+	}
+
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM allowed_users au
+		LEFT JOIN users u
+			ON u.account_id = au.account_id
+		   AND LOWER(u.email) = LOWER(au.email)
+		WHERE au.account_id = ?
+		  AND u.id IS NULL;
+	`, accountID).Scan(&usage.PendingInviteCount); err != nil {
+		return TeamSeatUsage{}, fmt.Errorf("count team invites in tx: %w", err)
+	}
+
+	return usage, nil
 }

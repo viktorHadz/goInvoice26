@@ -12,6 +12,7 @@ type Principal struct {
 	Role                 string
 	Name                 string
 	BillingStatus        string
+	BillingPlan          string
 	BillingAccessGranted bool
 }
 

@@ -7,16 +7,23 @@ import (
 	"strings"
 
 	"github.com/mattn/go-sqlite3"
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 )
 
 var ErrClientHasInvoices = errors.New("client has saved invoices")
 
 func DeleteClient(a *app.App, ctx context.Context, id int64) (int64, error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	res, err := a.DB.ExecContext(ctx, `
 		DELETE FROM clients 
 		WHERE id = ?
-	`, id)
+		  AND account_id = ?
+	`, id, accountID)
 
 	if err != nil {
 		if isForeignKeyConstraint(err) {

@@ -6,12 +6,18 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
 // Partial update PATCH
 func UpdateClient(ctx context.Context, a *app.App, id int64, input models.UpdateClient) (int64, error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	setParts := make([]string, 0, 5)
 	args := make([]any, 0, 6)
 
@@ -39,13 +45,15 @@ func UpdateClient(ctx context.Context, a *app.App, id int64, input models.Update
 	// update timestamp
 	setParts = append(setParts, "updated_at = CURRENT_TIMESTAMP")
 
-	// WHERE id = ? goes at the end
+	// WHERE id/account_id go at the end
 	args = append(args, id)
+	args = append(args, accountID)
 
 	query := fmt.Sprintf(`
 		UPDATE clients
 		SET %s
 		WHERE id = ?
+		  AND account_id = ?
 	`, strings.Join(setParts, ", "))
 
 	result, err := a.DB.ExecContext(ctx, query, args...)

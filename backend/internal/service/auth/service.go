@@ -16,9 +16,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/viktorHadz/goInvoice26/internal/accountscope"
+	"github.com/viktorHadz/goInvoice26/internal/billingcatalog"
+	"github.com/viktorHadz/goInvoice26/internal/billingplan"
 	"github.com/viktorHadz/goInvoice26/internal/billingstate"
 	"github.com/viktorHadz/goInvoice26/internal/models"
+	"github.com/viktorHadz/goInvoice26/internal/transaction/accessTx"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/authTx"
 )
 
@@ -37,15 +39,21 @@ var (
 )
 
 type Config struct {
-	AppBaseURL         string
-	GoogleClientID     string
-	GoogleClientSecret string
-	GoogleRedirectURL  string
-	SessionCookieName  string
-	SecureCookies      bool
-	BillingConfigured  bool
-	SessionTTL         time.Duration
-	HTTPClient         *http.Client
+	AppBaseURL                  string
+	GoogleClientID              string
+	GoogleClientSecret          string
+	GoogleRedirectURL           string
+	SessionCookieName           string
+	SecureCookies               bool
+	BillingConfigured           bool
+	BillingTrialDays            int
+	BillingSingleMonthlyPriceID string
+	BillingSingleYearlyPriceID  string
+	BillingTeamMonthlyPriceID   string
+	BillingTeamYearlyPriceID    string
+	PlatformAdminEmail          string
+	SessionTTL                  time.Duration
+	HTTPClient                  *http.Client
 }
 
 type Service struct {
@@ -57,6 +65,9 @@ type Service struct {
 	sessionCookieName  string
 	secureCookies      bool
 	billingConfigured  bool
+	billingTrialDays   int
+	billingCatalog     billingcatalog.Config
+	platformAdminEmail string
 	sessionTTL         time.Duration
 	httpClient         *http.Client
 }
@@ -116,6 +127,14 @@ func NewService(db *sql.DB, cfg Config) *Service {
 		sessionCookieName:  cookieName,
 		secureCookies:      cfg.SecureCookies,
 		billingConfigured:  cfg.BillingConfigured,
+		billingTrialDays:   max(cfg.BillingTrialDays, 0),
+		billingCatalog: billingcatalog.Config{
+			SingleMonthlyPriceID: strings.TrimSpace(cfg.BillingSingleMonthlyPriceID),
+			SingleYearlyPriceID:  strings.TrimSpace(cfg.BillingSingleYearlyPriceID),
+			TeamMonthlyPriceID:   strings.TrimSpace(cfg.BillingTeamMonthlyPriceID),
+			TeamYearlyPriceID:    strings.TrimSpace(cfg.BillingTeamYearlyPriceID),
+		},
+		platformAdminEmail: normalizeAdminEmail(cfg.PlatformAdminEmail),
 		sessionTTL:         sessionTTL,
 		httpClient:         httpClient,
 	}
@@ -129,20 +148,18 @@ func (s *Service) SessionCookieName() string {
 	return s.sessionCookieName
 }
 
-func (s *Service) SetupRequired(ctx context.Context) (bool, error) {
-	return authTx.SetupRequired(ctx, s.db)
+func (s *Service) IsPlatformAdminEmail(email string) bool {
+	normalizedEmail := normalizeAdminEmail(email)
+	return normalizedEmail != "" && normalizedEmail == s.platformAdminEmail
 }
 
 func (s *Service) Status(ctx context.Context, sessionToken string) (models.AuthStatus, bool, error) {
-	setupRequired, err := s.SetupRequired(ctx)
-	if err != nil {
-		return models.AuthStatus{}, false, err
-	}
-
 	status := models.AuthStatus{
-		Authenticated: false,
-		NeedsSetup:    setupRequired,
-		GoogleEnabled: s.GoogleEnabled(),
+		Authenticated:           false,
+		NeedsSetup:              false,
+		CanRegister:             s.GoogleEnabled(),
+		GoogleEnabled:           s.GoogleEnabled(),
+		CanManagePlatformAccess: false,
 	}
 
 	if strings.TrimSpace(sessionToken) == "" {
@@ -158,6 +175,7 @@ func (s *Service) Status(ctx context.Context, sessionToken string) (models.AuthS
 	}
 
 	status.Authenticated = true
+	status.CanManagePlatformAccess = s.IsPlatformAdminEmail(session.User.Email)
 	status.User = &session.User
 	status.Account = &session.Account
 	status.Billing = &session.Billing
@@ -182,6 +200,54 @@ func (s *Service) ResolveSession(ctx context.Context, sessionToken string) (Sess
 	if err := authTx.TouchSession(ctx, s.db, session.ID, time.Now()); err != nil {
 		return SessionPrincipal{}, false, err
 	}
+	currentSelection := billingcatalog.NormalizeSelection(session.BillingPlan, session.BillingInterval)
+	if currentSelection.Plan == "" || currentSelection.Interval == "" {
+		selectionFromPriceID := billingcatalog.DetermineFromPriceID(session.BillingPriceID, s.billingCatalog)
+		if currentSelection.Plan == "" {
+			currentSelection.Plan = selectionFromPriceID.Plan
+		}
+		if currentSelection.Interval == "" {
+			currentSelection.Interval = selectionFromPriceID.Interval
+		}
+	}
+	subscriptionAccess := billingstate.GrantsAccess(session.BillingStatus)
+	accountAccess, err := accessTx.ResolveAccountAccess(ctx, s.db, session.AccountID, time.Now())
+	if err != nil {
+		return SessionPrincipal{}, false, err
+	}
+	if s.IsPlatformAdminEmail(session.User.Email) {
+		accountAccess = models.AccountAccessState{
+			AccessGranted: true,
+			Source:        accessTx.AccessSourceDirect,
+			Plan:          billingplan.PlanTeam,
+		}
+	}
+	currentPlan := currentSelection.Plan
+	if !subscriptionAccess {
+		currentSelection.Interval = ""
+		switch {
+		case accountAccess.AccessGranted && accountAccess.Plan != "":
+			currentPlan = accountAccess.Plan
+		case accountAccess.AccessGranted && currentPlan != "":
+		case accountAccess.AccessGranted:
+			currentPlan = billingplan.PlanSingle
+		default:
+			currentPlan = ""
+		}
+	}
+	accessGranted := subscriptionAccess || accountAccess.AccessGranted
+	accessSource := ""
+	accessExpiresAt := ""
+	promoCode := ""
+	promoExpired := false
+	if subscriptionAccess {
+		accessSource = "subscription"
+	} else {
+		accessSource = accountAccess.Source
+		accessExpiresAt = accountAccess.ExpiresAt
+		promoCode = accountAccess.PromoCode
+		promoExpired = accountAccess.PromoExpired
+	}
 
 	principal := SessionPrincipal{
 		UserID:      session.UserID,
@@ -201,11 +267,41 @@ func (s *Service) ResolveSession(ctx context.Context, sessionToken string) (Sess
 			Name: session.AccountName,
 		},
 		Billing: models.AuthBilling{
-			Configured:        s.billingConfigured,
-			Status:            billingstate.Normalize(session.BillingStatus),
-			AccessGranted:     billingstate.GrantsAccess(session.BillingStatus),
-			CanManage:         session.User.Role == authTx.UserRoleOwner,
-			PortalAvailable:   strings.TrimSpace(session.StripeCustomerID) != "",
+			Configured:          s.billingConfigured,
+			Status:              billingstate.Normalize(session.BillingStatus),
+			AccessGranted:       accessGranted,
+			AccessSource:        accessSource,
+			AccessExpiresAt:     accessExpiresAt,
+			PromoCode:           promoCode,
+			PromoExpired:        promoExpired,
+			CanManage:           session.User.Role == authTx.UserRoleOwner,
+			PortalAvailable:     strings.TrimSpace(session.StripeCustomerID) != "",
+			TrialDays:           s.billingTrialDays,
+			Plan:                currentPlan,
+			Interval:            currentSelection.Interval,
+			SeatLimit:           billingplan.SeatLimit(currentPlan),
+			SinglePlanAvailable: billingcatalog.PlanAvailable(billingplan.PlanSingle, s.billingCatalog),
+			TeamPlanAvailable:   billingcatalog.PlanAvailable(billingplan.PlanTeam, s.billingCatalog),
+			SingleMonthlyAvailable: billingcatalog.IntervalAvailable(
+				billingplan.PlanSingle,
+				billingcatalog.IntervalMonthly,
+				s.billingCatalog,
+			),
+			SingleYearlyAvailable: billingcatalog.IntervalAvailable(
+				billingplan.PlanSingle,
+				billingcatalog.IntervalYearly,
+				s.billingCatalog,
+			),
+			TeamMonthlyAvailable: billingcatalog.IntervalAvailable(
+				billingplan.PlanTeam,
+				billingcatalog.IntervalMonthly,
+				s.billingCatalog,
+			),
+			TeamYearlyAvailable: billingcatalog.IntervalAvailable(
+				billingplan.PlanTeam,
+				billingcatalog.IntervalYearly,
+				s.billingCatalog,
+			),
 			CurrentPeriodEnd:  strings.TrimSpace(session.BillingCurrentPeriodEnd),
 			CancelAtPeriodEnd: session.BillingCancelAtPeriodEnd,
 		},
@@ -245,6 +341,17 @@ func (s *Service) StartGoogleAuth(mode, redirectPath string) (string, OAuthState
 		Mode:     mode,
 		Redirect: redirectPath,
 	}, nil
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func normalizeAdminEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 func (s *Service) AuthenticateWithGoogle(ctx context.Context, mode, code string) (SessionPrincipal, string, error) {
@@ -289,22 +396,17 @@ func (s *Service) AuthenticateWithGoogle(ctx context.Context, mode, code string)
 		return s.createSessionForUser(ctx, user.ID)
 	}
 
-	if mode == ModeSignup {
-		setupRequired, err := s.SetupRequired(ctx)
-		if err != nil {
-			return SessionPrincipal{}, "", err
-		}
-		if !setupRequired {
-			return SessionPrincipal{}, "", authTx.ErrSetupAlreadyComplete
-		}
-
-		user, err := authTx.CreateInitialOwner(ctx, s.db, authTx.CreateGoogleUserParams{
+	hasDirectAccess, err := accessTx.HasDirectAccessGrantForEmail(ctx, s.db, profile.Email)
+	if err != nil {
+		return SessionPrincipal{}, "", err
+	}
+	if hasDirectAccess {
+		user, err := authTx.CreateAccountOwner(ctx, s.db, authTx.CreateGoogleUserParams{
 			Name:      profile.Name,
 			Email:     profile.Email,
 			GoogleSub: profile.Sub,
 			AvatarURL: profile.Picture,
 			Role:      authTx.UserRoleOwner,
-			AccountID: accountscope.DefaultAccountID,
 		})
 		if err != nil {
 			return SessionPrincipal{}, "", err
@@ -336,12 +438,19 @@ func (s *Service) AuthenticateWithGoogle(ctx context.Context, mode, code string)
 		return s.createSessionForUser(ctx, user.ID)
 	}
 
-	setupRequired, err := s.SetupRequired(ctx)
-	if err != nil {
-		return SessionPrincipal{}, "", err
-	}
-	if setupRequired {
-		return SessionPrincipal{}, "", authTx.ErrSetupRequired
+	if mode == ModeSignup {
+		user, err := authTx.CreateAccountOwner(ctx, s.db, authTx.CreateGoogleUserParams{
+			Name:      profile.Name,
+			Email:     profile.Email,
+			GoogleSub: profile.Sub,
+			AvatarURL: profile.Picture,
+			Role:      authTx.UserRoleOwner,
+		})
+		if err != nil {
+			return SessionPrincipal{}, "", err
+		}
+
+		return s.createSessionForUser(ctx, user.ID)
 	}
 
 	return SessionPrincipal{}, "", ErrAccountNotLinked

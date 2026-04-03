@@ -74,30 +74,19 @@ func QuickDOCXHandler(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		var routeErrs []res.FieldError
-		if dtoInvoice.Overview.ClientID != clientID {
-			routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route parameter"))
-		}
-		if dtoInvoice.Overview.BaseNumber != baseNumber {
-			routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route parameter"))
-		}
-		if len(routeErrs) > 0 {
-			res.Validation(w, routeErrs...)
-			return
-		}
-
-		canonical := RecalcInvoice(dtoInvoice)
-		if errs := verifyTotalsMatch(dtoInvoice.Totals, canonical.Totals); len(errs) > 0 {
-			res.Validation(w, errs...)
-			return
-		}
-		if errs := ValidatePaidVsDepositTotal(canonical.Totals); len(errs) > 0 {
+		canonical, errs := validateQuickDocumentInvoice(dtoInvoice, clientID, baseNumber)
+		if len(errs) > 0 {
 			res.Validation(w, errs...)
 			return
 		}
 
 		builder := func() (models.InvoicePDFData, error) {
-			settings, err := settingsTx.Get(r.Context(), a.DB, accountscope.AccountID(r.Context()))
+			accountID, err := accountscope.Require(r.Context())
+			if err != nil {
+				return models.InvoicePDFData{}, fmt.Errorf("get account scope: %w", err)
+			}
+
+			settings, err := settingsTx.Get(r.Context(), a.DB, accountID)
 			if err != nil {
 				return models.InvoicePDFData{}, fmt.Errorf("get settings: %w", err)
 			}

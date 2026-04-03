@@ -14,10 +14,12 @@ type AuthAccount struct {
 }
 
 type AuthStatus struct {
-	Authenticated bool         `json:"authenticated"`
-	NeedsSetup    bool         `json:"needsSetup"`
-	GoogleEnabled bool         `json:"googleEnabled"`
-	User          *AuthUser    `json:"user,omitempty"`
-	Account       *AuthAccount `json:"account,omitempty"`
-	Billing       *AuthBilling `json:"billing,omitempty"`
+	Authenticated           bool         `json:"authenticated"`
+	NeedsSetup              bool         `json:"needsSetup"`
+	CanRegister             bool         `json:"canRegister"`
+	GoogleEnabled           bool         `json:"googleEnabled"`
+	CanManagePlatformAccess bool         `json:"canManagePlatformAccess"`
+	User                    *AuthUser    `json:"user,omitempty"`
+	Account                 *AuthAccount `json:"account,omitempty"`
+	Billing                 *AuthBilling `json:"billing,omitempty"`
 }

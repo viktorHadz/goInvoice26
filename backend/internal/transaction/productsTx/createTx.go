@@ -5,13 +5,20 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
 func InsertTx(a *app.App, ctx context.Context, in models.ProductCreate) (models.Product, error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return models.Product{}, err
+	}
+
 	const q = `
 		INSERT INTO products (
+			account_id,
 			product_type,
 			pricing_mode,
 			name,
@@ -20,7 +27,7 @@ func InsertTx(a *app.App, ctx context.Context, in models.ProductCreate) (models.
 			default_minutes_worked,
 			client_id
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING
 			id,
 			product_type,
@@ -52,9 +59,10 @@ func InsertTx(a *app.App, ctx context.Context, in models.ProductCreate) (models.
 		minutes = sql.NullInt64{Int64: *in.MinutesWorked, Valid: true}
 	}
 
-	err := a.DB.QueryRowContext(
+	err = a.DB.QueryRowContext(
 		ctx,
 		q,
+		accountID,
 		in.ProductType,
 		in.PricingMode,
 		in.ProductName,

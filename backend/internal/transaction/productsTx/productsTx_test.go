@@ -3,12 +3,14 @@ package productsTx_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/db"
 	"github.com/viktorHadz/goInvoice26/internal/models"
@@ -52,8 +54,22 @@ func insertClient(t *testing.T, a *app.App) int64 {
 	return id
 }
 
+func insertClientForAccount(t *testing.T, a *app.App, accountID int64, name string) int64 {
+	t.Helper()
+
+	res, err := a.DB.Exec(`INSERT INTO clients (account_id, name) VALUES (?, ?)`, accountID, name)
+	if err != nil {
+		t.Fatalf("insert client for account %d: %v", accountID, err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		t.Fatalf("client lastInsertId: %v", err)
+	}
+	return id
+}
+
 func TestProducts_CreateUpdateDelete(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 	a, cleanup := newTestApp(t)
 	defer cleanup()
 
@@ -121,6 +137,92 @@ func TestProducts_CreateUpdateDelete(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("expected deleted product, count=%d", count)
+	}
+}
+
+func TestProducts_AreScopedPerAccount(t *testing.T) {
+	defaultCtx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
+	secondCtx := accountscope.WithAccountID(context.Background(), 2)
+	a, cleanup := newTestApp(t)
+	defer cleanup()
+
+	if _, err := a.DB.Exec(`INSERT INTO accounts (id, name) VALUES (2, 'Second account')`); err != nil {
+		t.Fatalf("insert second account: %v", err)
+	}
+
+	defaultClientID := insertClientForAccount(t, a, accountscope.DefaultAccountID, "Default Client")
+	secondClientID := insertClientForAccount(t, a, 2, "Second Client")
+
+	defaultProduct, err := productsTx.InsertTx(a, defaultCtx, models.ProductCreate{
+		ProductType:    "style",
+		PricingMode:    "flat",
+		ProductName:    "Default Style",
+		FlatPriceMinor: ptrI64(900),
+		ClientID:       defaultClientID,
+	})
+	if err != nil {
+		t.Fatalf("insert default product: %v", err)
+	}
+
+	secondProduct, err := productsTx.InsertTx(a, secondCtx, models.ProductCreate{
+		ProductType:    "style",
+		PricingMode:    "flat",
+		ProductName:    "Second Style",
+		FlatPriceMinor: ptrI64(1200),
+		ClientID:       secondClientID,
+	})
+	if err != nil {
+		t.Fatalf("insert second product: %v", err)
+	}
+
+	defaultProducts, err := productsTx.ListAll(a, defaultCtx, defaultClientID)
+	if err != nil {
+		t.Fatalf("list default products: %v", err)
+	}
+	if len(defaultProducts) != 1 || defaultProducts[0].ID != defaultProduct.ID {
+		t.Fatalf("default products = %+v, want only %d", defaultProducts, defaultProduct.ID)
+	}
+
+	secondProducts, err := productsTx.ListAll(a, secondCtx, secondClientID)
+	if err != nil {
+		t.Fatalf("list second products: %v", err)
+	}
+	if len(secondProducts) != 1 || secondProducts[0].ID != secondProduct.ID {
+		t.Fatalf("second products = %+v, want only %d", secondProducts, secondProduct.ID)
+	}
+
+	_, err = productsTx.UpdateTx(a, defaultCtx, secondProduct.ID, models.ProductCreate{
+		ProductType:    "style",
+		PricingMode:    "flat",
+		ProductName:    "Hijacked",
+		FlatPriceMinor: ptrI64(1300),
+		ClientID:       secondClientID,
+	})
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("cross-account update error = %v, want sql.ErrNoRows", err)
+	}
+
+	err = productsTx.DeleteTx(a, defaultCtx, secondProduct.ID, secondClientID)
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("cross-account delete error = %v, want sql.ErrNoRows", err)
+	}
+}
+
+func TestProducts_RequireAccountScope(t *testing.T) {
+	a, cleanup := newTestApp(t)
+	defer cleanup()
+
+	clientID := insertClient(t, a)
+
+	_, err := productsTx.InsertTx(a, context.Background(), models.ProductCreate{
+		ProductType:    "style",
+		PricingMode:    "flat",
+		ProductName:    "Missing Scope",
+		FlatPriceMinor: ptrI64(500),
+		ClientID:       clientID,
+	})
+	if !errors.Is(err, accountscope.ErrMissing) {
+		t.Fatalf("InsertTx missing scope error = %v, want ErrMissing", err)
 	}
 }
 

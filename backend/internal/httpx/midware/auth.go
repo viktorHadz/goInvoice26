@@ -39,6 +39,7 @@ func RequireAuth(a *app.App) func(http.Handler) http.Handler {
 				Role:                 principal.Role,
 				Name:                 principal.User.Name,
 				BillingStatus:        principal.Billing.Status,
+				BillingPlan:          principal.Billing.Plan,
 				BillingAccessGranted: principal.Billing.AccessGranted,
 			})
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -54,7 +55,7 @@ func RequireBillingAccess(next http.Handler) http.Handler {
 				w,
 				http.StatusPaymentRequired,
 				"SUBSCRIPTION_REQUIRED",
-				"An active subscription is required to access the workspace",
+				"Active billing or a valid access grant is required to access the workspace",
 			)
 			return
 		}

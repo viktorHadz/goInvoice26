@@ -19,6 +19,8 @@ type AccountBilling struct {
 	StripeCustomerID         string
 	StripeSubscriptionID     string
 	BillingPriceID           string
+	BillingPlan              string
+	BillingInterval          string
 	BillingEmail             string
 	BillingStatus            string
 	BillingCurrentPeriodEnd  string
@@ -31,6 +33,8 @@ type UpdateAccountBillingParams struct {
 	StripeCustomerID         string
 	StripeSubscriptionID     string
 	BillingPriceID           string
+	BillingPlan              string
+	BillingInterval          string
 	BillingEmail             string
 	BillingStatus            string
 	BillingCurrentPeriodEnd  *time.Time
@@ -50,6 +54,8 @@ func GetAccountBilling(ctx context.Context, db *sql.DB, accountID int64) (Accoun
 			COALESCE(stripe_customer_id, ''),
 			COALESCE(stripe_subscription_id, ''),
 			COALESCE(billing_price_id, ''),
+			COALESCE(billing_plan, ''),
+			COALESCE(billing_interval, ''),
 			COALESCE(billing_email, ''),
 			COALESCE(billing_status, ''),
 			COALESCE(billing_current_period_end, ''),
@@ -63,6 +69,8 @@ func GetAccountBilling(ctx context.Context, db *sql.DB, accountID int64) (Accoun
 		&record.StripeCustomerID,
 		&record.StripeSubscriptionID,
 		&record.BillingPriceID,
+		&record.BillingPlan,
+		&record.BillingInterval,
 		&record.BillingEmail,
 		&record.BillingStatus,
 		&record.BillingCurrentPeriodEnd,
@@ -84,6 +92,64 @@ func FindAccountBillingByCustomerID(ctx context.Context, db *sql.DB, customerID 
 
 func FindAccountBillingBySubscriptionID(ctx context.Context, db *sql.DB, subscriptionID string) (AccountBilling, bool, error) {
 	return findAccountBillingByField(ctx, db, "stripe_subscription_id", subscriptionID)
+}
+
+func ListAccountsMissingBillingSelection(ctx context.Context, db *sql.DB) ([]AccountBilling, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT
+			id,
+			COALESCE(stripe_customer_id, ''),
+			COALESCE(stripe_subscription_id, ''),
+			COALESCE(billing_price_id, ''),
+			COALESCE(billing_plan, ''),
+			COALESCE(billing_interval, ''),
+			COALESCE(billing_email, ''),
+			COALESCE(billing_status, ''),
+			COALESCE(billing_current_period_end, ''),
+			COALESCE(billing_cancel_at_period_end, 0),
+			COALESCE(billing_updated_at, '')
+		FROM accounts
+		WHERE TRIM(COALESCE(stripe_subscription_id, '')) <> ''
+		  AND (
+			TRIM(COALESCE(billing_plan, '')) = '' OR
+			TRIM(COALESCE(billing_interval, '')) = ''
+		  );
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list accounts missing billing selection: %w", err)
+	}
+	defer rows.Close()
+
+	records := make([]AccountBilling, 0)
+	for rows.Next() {
+		var (
+			record AccountBilling
+			cancel int64
+		)
+		if err := rows.Scan(
+			&record.AccountID,
+			&record.StripeCustomerID,
+			&record.StripeSubscriptionID,
+			&record.BillingPriceID,
+			&record.BillingPlan,
+			&record.BillingInterval,
+			&record.BillingEmail,
+			&record.BillingStatus,
+			&record.BillingCurrentPeriodEnd,
+			&cancel,
+			&record.BillingUpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan account missing billing selection: %w", err)
+		}
+		record.BillingStatus = billingstate.Normalize(record.BillingStatus)
+		record.BillingCancelAtPeriodEnd = cancel > 0
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate accounts missing billing selection: %w", err)
+	}
+
+	return records, nil
 }
 
 func LinkStripeIdentifiers(
@@ -153,6 +219,14 @@ func UpdateAccountBilling(ctx context.Context, db *sql.DB, params UpdateAccountB
 				WHEN ? <> '' THEN ?
 				ELSE billing_price_id
 			END,
+			billing_plan = CASE
+				WHEN ? <> '' THEN ?
+				ELSE billing_plan
+			END,
+			billing_interval = CASE
+				WHEN ? <> '' THEN ?
+				ELSE billing_interval
+			END,
 			billing_email = CASE
 				WHEN ? <> '' THEN ?
 				ELSE billing_email
@@ -171,6 +245,10 @@ func UpdateAccountBilling(ctx context.Context, db *sql.DB, params UpdateAccountB
 		billingstate.StatusInactive,
 		strings.TrimSpace(params.BillingPriceID),
 		strings.TrimSpace(params.BillingPriceID),
+		strings.TrimSpace(params.BillingPlan),
+		strings.TrimSpace(params.BillingPlan),
+		strings.TrimSpace(params.BillingInterval),
+		strings.TrimSpace(params.BillingInterval),
 		strings.TrimSpace(params.BillingEmail),
 		strings.TrimSpace(params.BillingEmail),
 		status,
@@ -216,6 +294,8 @@ func findAccountBillingByField(ctx context.Context, db *sql.DB, field, value str
 			COALESCE(stripe_customer_id, ''),
 			COALESCE(stripe_subscription_id, ''),
 			COALESCE(billing_price_id, ''),
+			COALESCE(billing_plan, ''),
+			COALESCE(billing_interval, ''),
 			COALESCE(billing_email, ''),
 			COALESCE(billing_status, ''),
 			COALESCE(billing_current_period_end, ''),
@@ -230,6 +310,8 @@ func findAccountBillingByField(ctx context.Context, db *sql.DB, field, value str
 		&record.StripeCustomerID,
 		&record.StripeSubscriptionID,
 		&record.BillingPriceID,
+		&record.BillingPlan,
+		&record.BillingInterval,
 		&record.BillingEmail,
 		&record.BillingStatus,
 		&record.BillingCurrentPeriodEnd,

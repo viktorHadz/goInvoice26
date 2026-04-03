@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
@@ -128,9 +129,16 @@ func applyAutoPaidIfSettled(ctx context.Context, tx *sql.Tx, invoiceID int64, to
 
 // LoadInvoiceIDAndStatus loads invoice id and status for client + base number.
 func LoadInvoiceIDAndStatus(ctx context.Context, tx *sql.Tx, clientID, baseNumber int64) (invoiceID int64, status string, err error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return 0, "", err
+	}
+
 	err = tx.QueryRowContext(ctx, `
-		SELECT id, status FROM invoices WHERE client_id = ? AND base_number = ?
-	`, clientID, baseNumber).Scan(&invoiceID, &status)
+		SELECT id, status
+		FROM invoices
+		WHERE account_id = ? AND client_id = ? AND base_number = ?
+	`, accountID, clientID, baseNumber).Scan(&invoiceID, &status)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, "", ErrInvoiceNotFound
 	}
@@ -138,6 +146,25 @@ func LoadInvoiceIDAndStatus(ctx context.Context, tx *sql.Tx, clientID, baseNumbe
 		return 0, "", fmt.Errorf("load invoice: %w", err)
 	}
 	return invoiceID, status, nil
+}
+
+func assertClientBelongsToAccount(ctx context.Context, tx *sql.Tx, accountID, clientID int64) error {
+	var exists bool
+	if err := tx.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1
+			FROM clients
+			WHERE id = ?
+			  AND account_id = ?
+		);
+	`, clientID, accountID).Scan(&exists); err != nil {
+		return fmt.Errorf("verify invoice client ownership: %w", err)
+	}
+	if !exists {
+		return ErrInvoiceNotFound
+	}
+
+	return nil
 }
 
 func assertRevisionAllowed(status string) error {

@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/db"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/invoiceTx"
@@ -57,10 +58,15 @@ func insertClient(t *testing.T, a *app.App) int64 {
 func insertInvoiceGraph(t *testing.T, a *app.App, clientID, baseNumber int64, status string) int64 {
 	t.Helper()
 
+	var accountID int64
+	if err := a.DB.QueryRow(`SELECT account_id FROM clients WHERE id = ?`, clientID).Scan(&accountID); err != nil {
+		t.Fatalf("load client account id: %v", err)
+	}
+
 	res, err := a.DB.Exec(`
-		INSERT INTO invoices (client_id, base_number, status)
-		VALUES (?, ?, ?)
-	`, clientID, baseNumber, status)
+		INSERT INTO invoices (account_id, client_id, base_number, status)
+		VALUES (?, ?, ?, ?)
+	`, accountID, clientID, baseNumber, status)
 	if err != nil {
 		t.Fatalf("insert invoice: %v", err)
 	}
@@ -173,7 +179,7 @@ func countRows(t *testing.T, a *app.App, table string, invoiceID int64) int {
 }
 
 func TestDelete_RemovesInvoiceGraph(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 	a, cleanup := newTestApp(t)
 	defer cleanup()
 
@@ -192,7 +198,7 @@ func TestDelete_RemovesInvoiceGraph(t *testing.T) {
 }
 
 func TestDelete_AllowsIssuedAndPaidInvoices(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 
 	tests := []struct {
 		name   string
@@ -224,7 +230,7 @@ func TestDelete_AllowsIssuedAndPaidInvoices(t *testing.T) {
 }
 
 func TestDelete_RejectsVoidInvoices(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 	a, cleanup := newTestApp(t)
 	defer cleanup()
 

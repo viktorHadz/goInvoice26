@@ -11,6 +11,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/viktorHadz/goInvoice26/internal/accountscope"
+	"github.com/viktorHadz/goInvoice26/internal/billingplan"
 	"github.com/viktorHadz/goInvoice26/internal/db"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/authTx"
 )
@@ -87,6 +88,51 @@ func TestCreateInitialOwner_ClaimsDefaultAccountOnce(t *testing.T) {
 	}
 }
 
+func TestCreateAccountOwner_CreatesIndependentAccounts(t *testing.T) {
+	ctx := context.Background()
+	conn, cleanup := newAuthDB(t)
+	defer cleanup()
+
+	first, err := authTx.CreateAccountOwner(ctx, conn, authTx.CreateGoogleUserParams{
+		Name:      "First Workspace",
+		Email:     "first@example.com",
+		GoogleSub: "google-sub-first",
+		Role:      authTx.UserRoleOwner,
+	})
+	if err != nil {
+		t.Fatalf("CreateAccountOwner first: %v", err)
+	}
+
+	second, err := authTx.CreateAccountOwner(ctx, conn, authTx.CreateGoogleUserParams{
+		Name:      "Second Workspace",
+		Email:     "second@example.com",
+		GoogleSub: "google-sub-second",
+		Role:      authTx.UserRoleOwner,
+	})
+	if err != nil {
+		t.Fatalf("CreateAccountOwner second: %v", err)
+	}
+
+	if first.AccountID <= 0 || second.AccountID <= 0 {
+		t.Fatalf("account ids should be populated, got first=%d second=%d", first.AccountID, second.AccountID)
+	}
+	if first.AccountID == second.AccountID {
+		t.Fatalf("expected distinct account ids, both were %d", first.AccountID)
+	}
+
+	var seqCount int
+	if err := conn.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM invoice_number_seq
+		WHERE account_id IN (?, ?)
+	`, first.AccountID, second.AccountID).Scan(&seqCount); err != nil {
+		t.Fatalf("count invoice sequences: %v", err)
+	}
+	if seqCount != 2 {
+		t.Fatalf("invoice sequence rows = %d, want 2", seqCount)
+	}
+}
+
 func TestCreateSessionAndLookupByTokenHash(t *testing.T) {
 	ctx := context.Background()
 	conn, cleanup := newAuthDB(t)
@@ -142,7 +188,14 @@ func TestInviteLifecycleAndMemberRemoval(t *testing.T) {
 		t.Fatalf("CreateInitialOwner: %v", err)
 	}
 
-	invite, err := authTx.CreateInvite(ctx, conn, owner.AccountID, owner.ID, "teammate@example.com")
+	invite, err := authTx.CreateInvite(
+		ctx,
+		conn,
+		owner.AccountID,
+		owner.ID,
+		"teammate@example.com",
+		billingplan.TeamSeatLimit,
+	)
 	if err != nil {
 		t.Fatalf("CreateInvite: %v", err)
 	}
@@ -198,6 +251,87 @@ func TestInviteLifecycleAndMemberRemoval(t *testing.T) {
 	}
 }
 
+func TestDeleteAccount_RemovesUsersInvitesAndScopedData(t *testing.T) {
+	ctx := context.Background()
+	conn, cleanup := newAuthDB(t)
+	defer cleanup()
+
+	owner, err := authTx.CreateAccountOwner(ctx, conn, authTx.CreateGoogleUserParams{
+		Name:      "Owner Example",
+		Email:     "owner@example.com",
+		GoogleSub: "google-sub-owner",
+		Role:      authTx.UserRoleOwner,
+	})
+	if err != nil {
+		t.Fatalf("CreateAccountOwner: %v", err)
+	}
+
+	member, err := authTx.CreateMemberFromGoogle(ctx, conn, authTx.CreateGoogleUserParams{
+		Name:      "Teammate Example",
+		Email:     "member@example.com",
+		GoogleSub: "google-sub-member",
+		Role:      authTx.UserRoleMember,
+		AccountID: owner.AccountID,
+	})
+	if err != nil {
+		t.Fatalf("CreateMemberFromGoogle: %v", err)
+	}
+
+	if _, err := authTx.CreateInvite(
+		ctx,
+		conn,
+		owner.AccountID,
+		owner.ID,
+		"invitee@example.com",
+		billingplan.TeamSeatLimit,
+	); err != nil {
+		t.Fatalf("CreateInvite: %v", err)
+	}
+
+	if err := authTx.CreateSession(ctx, conn, owner.ID, owner.AccountID, "owner-session", time.Now().Add(24*time.Hour)); err != nil {
+		t.Fatalf("CreateSession owner: %v", err)
+	}
+	if err := authTx.CreateSession(ctx, conn, member.ID, member.AccountID, "member-session", time.Now().Add(24*time.Hour)); err != nil {
+		t.Fatalf("CreateSession member: %v", err)
+	}
+
+	if _, err := conn.ExecContext(ctx, `
+		INSERT INTO clients (account_id, name)
+		VALUES (?, 'Client');
+	`, owner.AccountID); err != nil {
+		t.Fatalf("insert client: %v", err)
+	}
+
+	if err := authTx.DeleteAccount(ctx, conn, owner.AccountID); err != nil {
+		t.Fatalf("DeleteAccount: %v", err)
+	}
+
+	assertCount := func(query string, args ...any) int {
+		t.Helper()
+		var count int
+		if err := conn.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
+			t.Fatalf("count query failed: %v", err)
+		}
+		return count
+	}
+
+	if got := assertCount(`SELECT COUNT(*) FROM accounts WHERE id = ?`, owner.AccountID); got != 0 {
+		t.Fatalf("accounts count = %d, want 0", got)
+	}
+	if got := assertCount(`SELECT COUNT(*) FROM users WHERE account_id = ?`, owner.AccountID); got != 0 {
+		t.Fatalf("users count = %d, want 0", got)
+	}
+	if got := assertCount(`SELECT COUNT(*) FROM allowed_users WHERE account_id = ?`, owner.AccountID); got != 0 {
+		t.Fatalf("allowed_users count = %d, want 0", got)
+	}
+	if got := assertCount(`SELECT COUNT(*) FROM auth_sessions WHERE account_id = ?`, owner.AccountID); got != 0 {
+		t.Fatalf("auth_sessions count = %d, want 0", got)
+	}
+	if got := assertCount(`SELECT COUNT(*) FROM clients WHERE account_id = ?`, owner.AccountID); got != 0 {
+		t.Fatalf("clients count = %d, want 0", got)
+	}
+}
+
 func TestRemoveMember_RejectsSelfAndOwnerRemoval(t *testing.T) {
 	ctx := context.Background()
 	conn, cleanup := newAuthDB(t)
@@ -220,5 +354,47 @@ func TestRemoveMember_RejectsSelfAndOwnerRemoval(t *testing.T) {
 	}
 	if removed {
 		t.Fatal("RemoveMember self removed = true, want false")
+	}
+}
+
+func TestCreateInvite_RejectsWhenTeamSeatLimitReached(t *testing.T) {
+	ctx := context.Background()
+	conn, cleanup := newAuthDB(t)
+	defer cleanup()
+
+	owner, err := authTx.CreateInitialOwner(ctx, conn, authTx.CreateGoogleUserParams{
+		Name:      "Owner Example",
+		Email:     "owner@example.com",
+		GoogleSub: "google-sub-owner",
+		Role:      authTx.UserRoleOwner,
+		AccountID: accountscope.DefaultAccountID,
+	})
+	if err != nil {
+		t.Fatalf("CreateInitialOwner: %v", err)
+	}
+
+	for i := 0; i < billingplan.TeamSeatLimit-1; i++ {
+		email := "member" + string(rune('a'+i)) + "@example.com"
+		if _, err := authTx.CreateMemberFromGoogle(ctx, conn, authTx.CreateGoogleUserParams{
+			Name:      "Member Example",
+			Email:     email,
+			GoogleSub: "google-sub-" + string(rune('a'+i)),
+			Role:      authTx.UserRoleMember,
+			AccountID: owner.AccountID,
+		}); err != nil {
+			t.Fatalf("CreateMemberFromGoogle %d: %v", i, err)
+		}
+	}
+
+	_, err = authTx.CreateInvite(
+		ctx,
+		conn,
+		owner.AccountID,
+		owner.ID,
+		"overflow@example.com",
+		billingplan.TeamSeatLimit,
+	)
+	if !errors.Is(err, authTx.ErrTeamSeatLimitReached) {
+		t.Fatalf("CreateInvite error = %v, want %v", err, authTx.ErrTeamSeatLimitReached)
 	}
 }

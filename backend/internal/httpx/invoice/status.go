@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/params"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
@@ -44,6 +45,13 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 			return
 		}
 
+		accountID, err := accountscope.Require(r.Context())
+		if err != nil {
+			slog.ErrorContext(r.Context(), "patch invoice status missing account scope", "err", err)
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
+			return
+		}
+
 		var (
 			current       string
 			rules         statusTransitionRules
@@ -52,7 +60,7 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 			depositMinor  int64
 			paidMinor     int64
 		)
-		err := a.DB.QueryRowContext(r.Context(), `
+		err = a.DB.QueryRowContext(r.Context(), `
 			SELECT
 				i.status,
 				COUNT(DISTINCT rev.id) AS revision_count,
@@ -64,9 +72,9 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 				ON cur.id = i.current_revision_id
 			LEFT JOIN invoice_revisions rev
 				ON rev.invoice_id = i.id
-			WHERE i.client_id = ? AND i.base_number = ?
+			WHERE i.account_id = ? AND i.client_id = ? AND i.base_number = ?
 			GROUP BY i.id, i.status, cur.total_minor, cur.deposit_minor
-		`, clientID, baseNumber).Scan(&current, &revisionCount, &totalMinor, &depositMinor, &paidMinor)
+		`, accountID, clientID, baseNumber).Scan(&current, &revisionCount, &totalMinor, &depositMinor, &paidMinor)
 		if errors.Is(err, sql.ErrNoRows) {
 			res.Error(w, http.StatusNotFound, "NOT_FOUND", "Invoice not found")
 			return
@@ -90,8 +98,8 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 		resExec, err := a.DB.ExecContext(r.Context(), `
 			UPDATE invoices
 			SET status = ?
-			WHERE client_id = ? AND base_number = ?
-		`, next, clientID, baseNumber)
+			WHERE account_id = ? AND client_id = ? AND base_number = ?
+		`, next, accountID, clientID, baseNumber)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "patch invoice status update failed", "err", err)
 			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
@@ -135,7 +143,7 @@ func allowedStatusTransition(from, to string, rules statusTransitionRules) bool 
 
 	switch from {
 	case "draft":
-		return to == "issued" || to == "paid"
+		return to == "issued"
 	case "issued":
 		if to == "draft" {
 			return rules.CanReturnIssuedToDraft

@@ -5,14 +5,20 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 )
 
 func DeleteTx(a *app.App, ctx context.Context, productID, clientID int64) error {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return err
+	}
+
 	res, err := a.DB.ExecContext(ctx, `
 		DELETE FROM products
-		WHERE id = ? AND client_id = ?
-	`, productID, clientID)
+		WHERE id = ? AND account_id = ? AND client_id = ?
+	`, productID, accountID, clientID)
 	if err != nil {
 		return fmt.Errorf("delete product: %w", err)
 	}

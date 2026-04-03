@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 )
 
 // ItemLine is a DB/query row for invoice items.
@@ -74,6 +76,11 @@ func QueryInvoiceSummary(
 	baseNumber int64,
 	revisionNo int64,
 ) (*InvoiceOverviewTotals, error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			i.status,
@@ -108,11 +115,11 @@ func QueryInvoiceSummary(
 		FROM invoices i
 		JOIN invoice_revisions r
 			ON r.invoice_id = i.id AND r.revision_no = ?
-		WHERE i.base_number = ? AND i.client_id = ?
+		WHERE i.account_id = ? AND i.base_number = ? AND i.client_id = ?
 	`
 
 	var o InvoiceOverviewTotals
-	err := db.QueryRowContext(ctx, query, revisionNo, baseNumber, clientID).Scan(
+	err = db.QueryRowContext(ctx, query, revisionNo, accountID, baseNumber, clientID).Scan(
 		&o.Status,
 		&o.BaseNumber, &o.RevisionNo,
 		&o.IssueDate, &o.DueByDate,
@@ -137,6 +144,11 @@ func QueryInvoicePaymentsForRevision(
 	baseNumber int64,
 	revisionNo int64,
 ) ([]PaymentRow, error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			p.id,
@@ -152,11 +164,12 @@ func QueryInvoicePaymentsForRevision(
 		JOIN invoice_revisions ap
 			ON ap.id = p.applied_in_revision_id
 		WHERE i.base_number = ? AND i.client_id = ?
+			AND i.account_id = ?
 			AND ap.revision_no <= r.revision_no
 		ORDER BY p.payment_date ASC, p.id ASC
 	`
 
-	rows, err := db.QueryContext(ctx, query, revisionNo, baseNumber, clientID)
+	rows, err := db.QueryContext(ctx, query, revisionNo, baseNumber, clientID, accountID)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"QueryInvoicePaymentsForRevision()=> %w\nrevisionNumber: %v,\nbaseNumber: %v,\nclientID: %v,",
@@ -201,6 +214,11 @@ func QueryInvoiceLines(
 	baseNumber int64,
 	revisionNo int64,
 ) ([]ItemLine, error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			it.sort_order,
@@ -217,11 +235,11 @@ func QueryInvoiceLines(
 			ON r.invoice_id = i.id AND r.revision_no = ?
 		JOIN invoice_items it
 			ON it.invoice_revision_id = r.id
-		WHERE i.base_number = ? AND i.client_id = ?
+		WHERE i.account_id = ? AND i.base_number = ? AND i.client_id = ?
 		ORDER BY it.sort_order ASC
 	`
 
-	rows, err := db.QueryContext(ctx, query, revisionNo, baseNumber, clientID)
+	rows, err := db.QueryContext(ctx, query, revisionNo, accountID, baseNumber, clientID)
 	if err != nil {
 		return nil, fmt.Errorf("QueryInvoiceItems()=> %w\nctx: %v,\nquery: %v,\nrevisionNumber: %v,\nbaseNumber: %v,\nclientID: %v,", err, ctx, query, revisionNo, baseNumber, clientID)
 	}

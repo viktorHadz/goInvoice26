@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/db"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/editorTx"
@@ -68,10 +69,15 @@ func insertInvoiceBookInvoice(
 ) int64 {
 	t.Helper()
 
+	var accountID int64
+	if err := a.DB.QueryRow(`SELECT account_id FROM clients WHERE id = ?`, clientID).Scan(&accountID); err != nil {
+		t.Fatalf("load client account id: %v", err)
+	}
+
 	res, err := a.DB.Exec(`
-		INSERT INTO invoices (client_id, base_number, status)
-		VALUES (?, ?, ?)
-	`, clientID, baseNumber, status)
+		INSERT INTO invoices (account_id, client_id, base_number, status)
+		VALUES (?, ?, ?, ?)
+	`, accountID, clientID, baseNumber, status)
 	if err != nil {
 		t.Fatalf("insert invoice: %v", err)
 	}
@@ -164,7 +170,7 @@ func insertInvoiceBookInvoice(
 }
 
 func TestQueryInvoiceBookPage_FiltersUnpaidAndSortsByOutstanding(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 	a, cleanup := newTestApp(t)
 	defer cleanup()
 
@@ -200,7 +206,7 @@ func TestQueryInvoiceBookPage_FiltersUnpaidAndSortsByOutstanding(t *testing.T) {
 }
 
 func TestQueryInvoiceBookPage_FiltersPaidInvoices(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 	a, cleanup := newTestApp(t)
 	defer cleanup()
 
@@ -238,7 +244,7 @@ func TestQueryInvoiceBookPage_FiltersPaidInvoices(t *testing.T) {
 }
 
 func TestQueryInvoiceBookPage_LoadsAllClientsByDefaultAndCanScopeToOneClient(t *testing.T) {
-	ctx := context.Background()
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
 	a, cleanup := newTestApp(t)
 	defer cleanup()
 
@@ -272,5 +278,45 @@ func TestQueryInvoiceBookPage_LoadsAllClientsByDefaultAndCanScopeToOneClient(t *
 	}
 	if len(scoped.Items) != 1 || scoped.Items[0].ClientID != clientOneID {
 		t.Fatalf("scoped items = %+v, want only client %d", scoped.Items, clientOneID)
+	}
+}
+
+func TestQueryInvoiceBookPage_IsScopedPerAccount(t *testing.T) {
+	defaultCtx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
+	secondCtx := accountscope.WithAccountID(context.Background(), 2)
+	a, cleanup := newTestApp(t)
+	defer cleanup()
+
+	if _, err := a.DB.Exec(`INSERT INTO accounts (id, name) VALUES (2, 'Second account')`); err != nil {
+		t.Fatalf("insert second account: %v", err)
+	}
+
+	defaultClientID := insertClient(t, a)
+	res, err := a.DB.Exec(`INSERT INTO clients (account_id, name) VALUES (2, 'Second Account Client')`)
+	if err != nil {
+		t.Fatalf("insert second account client: %v", err)
+	}
+	secondClientID, err := res.LastInsertId()
+	if err != nil {
+		t.Fatalf("second client lastInsertId: %v", err)
+	}
+
+	insertInvoiceBookInvoice(t, a, defaultClientID, 501, "issued", 1, "2026-03-21", 5000, 0, 0)
+	insertInvoiceBookInvoice(t, a, secondClientID, 601, "issued", 1, "2026-03-22", 6000, 0, 0)
+
+	defaultPage, err := editorTx.QueryInvoiceBookPage(a, defaultCtx, 0, 10, 0, editorTx.InvoiceBookPageFilters{})
+	if err != nil {
+		t.Fatalf("QueryInvoiceBookPage default account: %v", err)
+	}
+	if defaultPage.Total != 1 || len(defaultPage.Items) != 1 || defaultPage.Items[0].BaseNo != 501 {
+		t.Fatalf("default account page = %+v, want only base 501", defaultPage)
+	}
+
+	secondPage, err := editorTx.QueryInvoiceBookPage(a, secondCtx, 0, 10, 0, editorTx.InvoiceBookPageFilters{})
+	if err != nil {
+		t.Fatalf("QueryInvoiceBookPage second account: %v", err)
+	}
+	if secondPage.Total != 1 || len(secondPage.Items) != 1 || secondPage.Items[0].BaseNo != 601 {
+		t.Fatalf("second account page = %+v, want only base 601", secondPage)
 	}
 }

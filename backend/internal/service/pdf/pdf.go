@@ -44,7 +44,12 @@ func BuildInvoiceFromDB(
 		return models.InvoicePDFData{}, fmt.Errorf("get invoice items: %w", err)
 	}
 
-	settings, err := settingsTx.Get(ctx, db, accountscope.AccountID(ctx))
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return models.InvoicePDFData{}, fmt.Errorf("get account scope: %w", err)
+	}
+
+	settings, err := settingsTx.Get(ctx, db, accountID)
 	if err != nil {
 		return models.InvoicePDFData{}, fmt.Errorf("get settings: %w", err)
 	}

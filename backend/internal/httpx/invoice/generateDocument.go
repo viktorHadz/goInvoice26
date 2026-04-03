@@ -12,6 +12,38 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
+func validateQuickDocumentInvoice(
+	dtoInvoice models.FEInvoiceIn,
+	clientID int64,
+	baseNumber int64,
+) (models.FEInvoiceIn, []res.FieldError) {
+	var routeErrs []res.FieldError
+	if dtoInvoice.Overview.ClientID != clientID {
+		routeErrs = append(routeErrs, res.Invalid("clientId", "does not match route parameter"))
+	}
+	if dtoInvoice.Overview.BaseNumber != baseNumber {
+		routeErrs = append(routeErrs, res.Invalid("baseNumber", "does not match route parameter"))
+	}
+	if len(routeErrs) > 0 {
+		return models.FEInvoiceIn{}, routeErrs
+	}
+
+	validInvoice, errs := ValidateInvoiceCreate(dtoInvoice)
+	if len(errs) > 0 {
+		return models.FEInvoiceIn{}, errs
+	}
+
+	canonical := RecalcInvoice(validInvoice)
+	if errs := verifyTotalsMatch(validInvoice.Totals, canonical.Totals); len(errs) > 0 {
+		return models.FEInvoiceIn{}, errs
+	}
+	if errs := ValidatePaidVsDepositTotal(canonical.Totals); len(errs) > 0 {
+		return models.FEInvoiceIn{}, errs
+	}
+
+	return canonical, nil
+}
+
 type invoiceDocumentBuilder func() (models.InvoicePDFData, error)
 type invoiceDocumentRenderer func(models.InvoicePDFData) ([]byte, error)
 

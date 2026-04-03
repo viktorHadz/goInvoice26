@@ -223,7 +223,7 @@ func TestGet_DerivesStableLogoURLFromCurrentAsset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	want := "/api/settings/logo?v=" + fmt.Sprint(inserted.ID)
+	want := "/api/settings/logo?account=1&v=" + fmt.Sprint(inserted.ID)
 	if got.LogoURL != want {
 		t.Fatalf("logoUrl = %q, want %q", got.LogoURL, want)
 	}

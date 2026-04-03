@@ -12,17 +12,24 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/settingsTx"
+	"github.com/viktorHadz/goInvoice26/internal/userscope"
 )
 
 func Get(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		accountID := accountscope.AccountID(r.Context())
+		accountID, err := accountscope.Require(r.Context())
+		if err != nil {
+			slog.ErrorContext(r.Context(), "get settings missing account scope", "err", err)
+			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to load settings")
+			return
+		}
 		cfg, err := settingsTx.Get(r.Context(), a.DB, accountID)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "get settings failed", "err", err, "account_id", accountID)
 			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to load settings")
 			return
 		}
+		cfg.ReadOnly = userscope.Role(r.Context()) != "owner"
 
 		res.JSON(w, http.StatusOK, cfg)
 	}
@@ -30,7 +37,17 @@ func Get(a *app.App) http.HandlerFunc {
 
 func Put(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		accountID := accountscope.AccountID(r.Context())
+		if userscope.Role(r.Context()) != "owner" {
+			res.Error(w, http.StatusForbidden, "SETTINGS_OWNER_ONLY", "Only the workspace admin can edit settings")
+			return
+		}
+
+		accountID, err := accountscope.Require(r.Context())
+		if err != nil {
+			slog.ErrorContext(r.Context(), "put settings missing account scope", "err", err)
+			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to load settings")
+			return
+		}
 		var in models.Settings
 		var raw map[string]json.RawMessage
 		current, err := settingsTx.Get(r.Context(), a.DB, accountID)
@@ -83,6 +100,7 @@ func Put(a *app.App) http.HandlerFunc {
 			return
 		}
 		in.CanEditStartingInvoiceNumber = current.CanEditStartingInvoiceNumber
+		in.ReadOnly = false
 		in.LogoURL = current.LogoURL
 		in.LogoAssetID = current.LogoAssetID
 		in.LogoStorageKey = current.LogoStorageKey
@@ -107,6 +125,7 @@ func Put(a *app.App) http.HandlerFunc {
 			res.Error(w, http.StatusInternalServerError, "INTERNAL", "Failed to load settings")
 			return
 		}
+		cfg.ReadOnly = false
 
 		res.JSON(w, http.StatusOK, cfg)
 	}

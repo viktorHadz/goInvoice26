@@ -18,6 +18,14 @@ func EnsureAccountsBillingPriceIDColumn(ctx context.Context, tx *sql.Tx) error {
 	return ensureAccountsTextColumn(ctx, tx, "billing_price_id")
 }
 
+func EnsureAccountsBillingPlanColumn(ctx context.Context, tx *sql.Tx) error {
+	return ensureAccountsTextColumn(ctx, tx, "billing_plan")
+}
+
+func EnsureAccountsBillingIntervalColumn(ctx context.Context, tx *sql.Tx) error {
+	return ensureAccountsTextColumn(ctx, tx, "billing_interval")
+}
+
 func EnsureAccountsBillingEmailColumn(ctx context.Context, tx *sql.Tx) error {
 	return ensureAccountsTextColumn(ctx, tx, "billing_email")
 }

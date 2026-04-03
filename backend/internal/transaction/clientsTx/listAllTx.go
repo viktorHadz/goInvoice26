@@ -3,11 +3,17 @@ package clientsTx
 import (
 	"context"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
 func ListClients(a *app.App, ctx context.Context) ([]models.Client, error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := a.DB.QueryContext(ctx, `
 		SELECT
 			id,
@@ -18,8 +24,9 @@ func ListClients(a *app.App, ctx context.Context) ([]models.Client, error) {
 			created_at,
 			updated_at
 		FROM clients
+		WHERE account_id = ?
 		ORDER BY id DESC
-	`)
+	`, accountID)
 	if err != nil {
 		return nil, err
 	}

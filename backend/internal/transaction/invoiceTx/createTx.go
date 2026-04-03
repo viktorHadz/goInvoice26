@@ -15,15 +15,20 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
 // Create inserts a new invoice with revision 1 and all line items.
 func Create(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn) (invoiceID, revisionID int64, err error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+
 	tx, err := a.DB.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return 0, 0, err
@@ -32,11 +37,22 @@ func Create(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn) (inv
 
 	ov := &canonical.Overview
 
+	if err := assertClientBelongsToAccount(ctx, tx, accountID, ov.ClientID); err != nil {
+		return 0, 0, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO invoice_number_seq (account_id, next_base_number)
+		VALUES (?, 1);
+	`, accountID); err != nil {
+		return 0, 0, fmt.Errorf("ensure invoice sequence row: %w", err)
+	}
+
 	if err := tx.QueryRowContext(ctx, `
-		INSERT INTO invoices (client_id, base_number, status)
-		VALUES (?, ?, 'draft')
+		INSERT INTO invoices (account_id, client_id, base_number, status)
+		VALUES (?, ?, ?, 'draft')
 		RETURNING id;
-	`, ov.ClientID, ov.BaseNumber).Scan(&invoiceID); err != nil {
+	`, accountID, ov.ClientID, ov.BaseNumber).Scan(&invoiceID); err != nil {
 		if isUniqueViolation(err) {
 			return 0, 0, fmt.Errorf("invoice base_number %d already exists: %w", ov.BaseNumber, err)
 		}
@@ -63,15 +79,10 @@ func Create(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn) (inv
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE invoice_number_seq
 		SET next_base_number = MAX(next_base_number, ?)
-		WHERE id = 1;
-	`, ov.BaseNumber+1); err != nil {
+		WHERE account_id = ?;
+	`, ov.BaseNumber+1, accountID); err != nil {
 		return 0, 0, fmt.Errorf("sync invoice_number_seq: %w", err)
 	}
-
-	slog.DebugContext(ctx, "Create invoice => BASE NUMBER DEBUG",
-		"baseNumber", ov.BaseNumber,
-		"nextBaseNumber", ov.BaseNumber+1,
-	)
 
 	if err := tx.Commit(); err != nil {
 		return 0, 0, fmt.Errorf("commit: %w", err)
@@ -91,6 +102,14 @@ func CreateRevision(ctx context.Context, a *app.App, canonical *models.FEInvoice
 	defer tx.Rollback()
 
 	ov := &canonical.Overview
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	if err := assertClientBelongsToAccount(ctx, tx, accountID, ov.ClientID); err != nil {
+		return 0, 0, 0, err
+	}
 
 	invoiceID, invStatus, err := LoadInvoiceIDAndStatus(ctx, tx, ov.ClientID, ov.BaseNumber)
 	if err != nil {

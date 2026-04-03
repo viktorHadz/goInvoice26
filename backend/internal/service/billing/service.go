@@ -16,39 +16,55 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/viktorHadz/goInvoice26/internal/billingcatalog"
+	"github.com/viktorHadz/goInvoice26/internal/billingplan"
 	"github.com/viktorHadz/goInvoice26/internal/billingstate"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/billingTx"
 )
 
 var (
-	ErrNotConfigured       = errors.New("billing is not configured")
-	ErrOwnerOnly           = errors.New("billing management is owner-only")
-	ErrCustomerNotFound    = errors.New("stripe customer not found for account")
-	ErrInvalidCheckoutSync = errors.New("checkout session is not valid for this account")
-	ErrCheckoutPending     = errors.New("checkout session is still confirming")
-	ErrWebhookSignature    = errors.New("invalid stripe webhook signature")
+	ErrNotConfigured        = errors.New("billing is not configured")
+	ErrOwnerOnly            = errors.New("billing management is owner-only")
+	ErrCustomerNotFound     = errors.New("stripe customer not found for account")
+	ErrInvalidCheckoutSync  = errors.New("checkout session is not valid for this account")
+	ErrCheckoutPending      = errors.New("checkout session is still confirming")
+	ErrWebhookSignature     = errors.New("invalid stripe webhook signature")
+	ErrSubscriptionNotFound = errors.New("stripe subscription not found for account")
+	ErrInvalidPlan          = errors.New("invalid billing plan")
+	ErrInvalidInterval      = errors.New("invalid billing interval")
+	ErrPlanUnavailable      = errors.New("billing plan is not available")
+	ErrPlanAlreadyActive    = errors.New("billing plan is already active")
 )
 
 type Config struct {
-	AppBaseURL          string
-	StripeSecretKey     string
-	StripePriceID       string
-	StripeWebhookSecret string
-	APIBaseURL          string
-	HTTPClient          *http.Client
+	AppBaseURL                 string
+	StripeSecretKey            string
+	StripeSingleMonthlyPriceID string
+	StripeSingleYearlyPriceID  string
+	StripeTeamMonthlyPriceID   string
+	StripeTeamYearlyPriceID    string
+	StripeTrialDays            int
+	StripeWebhookSecret        string
+	APIBaseURL                 string
+	HTTPClient                 *http.Client
 }
 
 type Service struct {
 	db                  *sql.DB
 	appBaseURL          string
 	stripeSecretKey     string
-	stripePriceID       string
+	billingCatalog      billingcatalog.Config
+	stripeTrialDays     int
 	stripeWebhookSecret string
 	apiBaseURL          string
 	httpClient          *http.Client
+	publicCatalogMu     sync.RWMutex
+	publicCatalog       models.PublicBillingCatalog
+	publicCatalogAt     time.Time
 }
 
 type stripeCheckoutSession struct {
@@ -73,6 +89,7 @@ type stripeSubscription struct {
 	Metadata          map[string]string `json:"metadata"`
 	Items             struct {
 		Data []struct {
+			ID    string `json:"id"`
 			Price struct {
 				ID string `json:"id"`
 			} `json:"price"`
@@ -85,12 +102,23 @@ type stripeInvoice struct {
 	Subscription string `json:"subscription"`
 }
 
+type stripePrice struct {
+	ID         string `json:"id"`
+	Currency   string `json:"currency"`
+	UnitAmount int64  `json:"unit_amount"`
+	Recurring  struct {
+		Interval string `json:"interval"`
+	} `json:"recurring"`
+}
+
 type stripeEvent struct {
 	Type string `json:"type"`
 	Data struct {
 		Object json.RawMessage `json:"object"`
 	} `json:"data"`
 }
+
+const publicCatalogCacheTTL = 10 * time.Minute
 
 func NewService(db *sql.DB, cfg Config) *Service {
 	httpClient := cfg.HTTPClient
@@ -104,10 +132,16 @@ func NewService(db *sql.DB, cfg Config) *Service {
 	}
 
 	return &Service{
-		db:                  db,
-		appBaseURL:          strings.TrimRight(strings.TrimSpace(cfg.AppBaseURL), "/"),
-		stripeSecretKey:     strings.TrimSpace(cfg.StripeSecretKey),
-		stripePriceID:       strings.TrimSpace(cfg.StripePriceID),
+		db:              db,
+		appBaseURL:      strings.TrimRight(strings.TrimSpace(cfg.AppBaseURL), "/"),
+		stripeSecretKey: strings.TrimSpace(cfg.StripeSecretKey),
+		billingCatalog: billingcatalog.Config{
+			SingleMonthlyPriceID: strings.TrimSpace(cfg.StripeSingleMonthlyPriceID),
+			SingleYearlyPriceID:  strings.TrimSpace(cfg.StripeSingleYearlyPriceID),
+			TeamMonthlyPriceID:   strings.TrimSpace(cfg.StripeTeamMonthlyPriceID),
+			TeamYearlyPriceID:    strings.TrimSpace(cfg.StripeTeamYearlyPriceID),
+		},
+		stripeTrialDays:     normalizeTrialDays(cfg.StripeTrialDays),
 		stripeWebhookSecret: strings.TrimSpace(cfg.StripeWebhookSecret),
 		apiBaseURL:          apiBaseURL,
 		httpClient:          httpClient,
@@ -115,11 +149,80 @@ func NewService(db *sql.DB, cfg Config) *Service {
 }
 
 func (s *Service) Configured() bool {
-	return s.stripeSecretKey != "" && s.stripePriceID != ""
+	return s.stripeSecretKey != "" && billingcatalog.AnyConfigured(s.billingCatalog)
 }
 
 func (s *Service) WebhooksConfigured() bool {
 	return s.stripeSecretKey != "" && s.stripeWebhookSecret != ""
+}
+
+func (s *Service) PublicCatalog(ctx context.Context) (models.PublicBillingCatalog, error) {
+	baseCatalog := models.PublicBillingCatalog{
+		Configured:             s.Configured(),
+		TrialDays:              s.stripeTrialDays,
+		SingleMonthlyAvailable: billingcatalog.IntervalAvailable(billingplan.PlanSingle, billingcatalog.IntervalMonthly, s.billingCatalog),
+		SingleYearlyAvailable:  billingcatalog.IntervalAvailable(billingplan.PlanSingle, billingcatalog.IntervalYearly, s.billingCatalog),
+		TeamMonthlyAvailable:   billingcatalog.IntervalAvailable(billingplan.PlanTeam, billingcatalog.IntervalMonthly, s.billingCatalog),
+		TeamYearlyAvailable:    billingcatalog.IntervalAvailable(billingplan.PlanTeam, billingcatalog.IntervalYearly, s.billingCatalog),
+	}
+	if !baseCatalog.Configured {
+		return baseCatalog, nil
+	}
+
+	if cached, ok := s.cachedPublicCatalog(baseCatalog); ok {
+		return cached, nil
+	}
+
+	catalog, err := s.loadPublicCatalog(ctx, baseCatalog)
+	if err == nil {
+		s.cachePublicCatalog(catalog)
+		return catalog, nil
+	}
+
+	if cached, ok := s.cachedPublicCatalog(baseCatalog); ok {
+		slog.WarnContext(ctx, "billing public catalog refresh failed, falling back to cached catalog", "err", err)
+		return cached, nil
+	}
+
+	slog.WarnContext(ctx, "billing public catalog refresh failed, returning availability-only catalog", "err", err)
+	return baseCatalog, nil
+}
+
+func (s *Service) BackfillPersistedSelections(ctx context.Context) error {
+	if !s.Configured() {
+		return nil
+	}
+
+	records, err := billingTx.ListAccountsMissingBillingSelection(ctx, s.db)
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		subscription, err := s.retrieveSubscription(ctx, record.StripeSubscriptionID)
+		if err != nil {
+			slog.WarnContext(
+				ctx,
+				"billing selection backfill failed to load subscription",
+				"accountID", record.AccountID,
+				"subscriptionID", shortStripeID(record.StripeSubscriptionID),
+				"err", err,
+			)
+			continue
+		}
+
+		if err := s.applySubscription(ctx, record.AccountID, subscription, record.BillingEmail); err != nil {
+			slog.WarnContext(
+				ctx,
+				"billing selection backfill failed to persist subscription",
+				"accountID", record.AccountID,
+				"subscriptionID", shortStripeID(record.StripeSubscriptionID),
+				"err", err,
+			)
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) CreateCheckoutSession(
@@ -127,6 +230,9 @@ func (s *Service) CreateCheckoutSession(
 	accountID int64,
 	accountName string,
 	customerEmail string,
+	plan string,
+	interval string,
+	redirectPath string,
 ) (models.BillingSessionLink, error) {
 	if !s.Configured() {
 		slog.WarnContext(ctx, "billing checkout requested but service is not configured", "accountID", accountID)
@@ -137,6 +243,14 @@ func (s *Service) CreateCheckoutSession(
 	if err != nil {
 		return models.BillingSessionLink{}, err
 	}
+	selection, err := s.resolveCheckoutSelection(plan, interval)
+	if err != nil {
+		return models.BillingSessionLink{}, err
+	}
+	priceID := billingcatalog.PriceIDFor(selection.Plan, selection.Interval, s.billingCatalog)
+	if strings.TrimSpace(priceID) == "" {
+		return models.BillingSessionLink{}, ErrPlanUnavailable
+	}
 
 	slog.InfoContext(
 		ctx,
@@ -144,19 +258,36 @@ func (s *Service) CreateCheckoutSession(
 		"accountID", accountID,
 		"hasCustomer", strings.TrimSpace(record.StripeCustomerID) != "",
 		"hasEmail", strings.TrimSpace(customerEmail) != "",
-		"priceID", shortStripeID(s.stripePriceID),
+		"priceID", shortStripeID(priceID),
+		"plan", selection.Plan,
+		"interval", selection.Interval,
+		"trialDays", s.stripeTrialDays,
 	)
+
+	sanitizedRedirectPath := sanitizeRedirectPath(redirectPath)
 
 	form := url.Values{}
 	form.Set("mode", "subscription")
-	form.Set("success_url", s.appURL("/app/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}"))
-	form.Set("cancel_url", s.appURL("/app/billing?checkout=canceled"))
-	form.Set("line_items[0][price]", s.stripePriceID)
+	form.Set(
+		"success_url",
+		s.appURL("/app/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}&redirect="+url.QueryEscape(sanitizedRedirectPath)),
+	)
+	form.Set("cancel_url", s.appURL("/app/billing?checkout=canceled&redirect="+url.QueryEscape(sanitizedRedirectPath)))
+	form.Set("payment_method_collection", "always")
+	form.Set("line_items[0][price]", priceID)
 	form.Set("line_items[0][quantity]", "1")
+	if s.stripeTrialDays > 0 {
+		form.Set("subscription_data[trial_period_days]", strconv.Itoa(s.stripeTrialDays))
+		form.Set("subscription_data[trial_settings][end_behavior][missing_payment_method]", "cancel")
+	}
 	form.Set("client_reference_id", strconv.FormatInt(accountID, 10))
 	form.Set("metadata[account_id]", strconv.FormatInt(accountID, 10))
 	form.Set("metadata[account_name]", strings.TrimSpace(accountName))
+	form.Set("metadata[plan]", selection.Plan)
+	form.Set("metadata[interval]", selection.Interval)
 	form.Set("subscription_data[metadata][account_id]", strconv.FormatInt(accountID, 10))
+	form.Set("subscription_data[metadata][plan]", selection.Plan)
+	form.Set("subscription_data[metadata][interval]", selection.Interval)
 	if strings.TrimSpace(accountName) != "" {
 		form.Set("subscription_data[metadata][account_name]", strings.TrimSpace(accountName))
 	}
@@ -183,6 +314,63 @@ func (s *Service) CreateCheckoutSession(
 	)
 
 	return models.BillingSessionLink{URL: session.URL}, nil
+}
+
+func (s *Service) ChangeSubscriptionPlan(ctx context.Context, accountID int64, plan string, interval string) error {
+	if !s.Configured() {
+		slog.WarnContext(ctx, "billing plan change requested but service is not configured", "accountID", accountID)
+		return ErrNotConfigured
+	}
+
+	record, err := billingTx.GetAccountBilling(ctx, s.db, accountID)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(record.StripeSubscriptionID) == "" {
+		return ErrSubscriptionNotFound
+	}
+	currentSelection := billingcatalog.NormalizeSelection(record.BillingPlan, record.BillingInterval)
+	if currentSelection.Plan == "" || currentSelection.Interval == "" {
+		selectionFromPriceID := billingcatalog.DetermineFromPriceID(record.BillingPriceID, s.billingCatalog)
+		if currentSelection.Plan == "" {
+			currentSelection.Plan = selectionFromPriceID.Plan
+		}
+		if currentSelection.Interval == "" {
+			currentSelection.Interval = selectionFromPriceID.Interval
+		}
+	}
+	targetSelection, err := s.resolveChangeSelection(currentSelection, plan, interval)
+	if err != nil {
+		return err
+	}
+	if currentSelection == targetSelection {
+		return ErrPlanAlreadyActive
+	}
+	priceID := billingcatalog.PriceIDFor(targetSelection.Plan, targetSelection.Interval, s.billingCatalog)
+
+	subscription, err := s.retrieveSubscription(ctx, record.StripeSubscriptionID)
+	if err != nil {
+		return err
+	}
+	itemID := firstSubscriptionItemID(subscription)
+	if itemID == "" {
+		return errors.New("stripe subscription missing updatable item")
+	}
+
+	form := url.Values{}
+	form.Set("items[0][id]", itemID)
+	form.Set("items[0][price]", priceID)
+	form.Set("proration_behavior", "create_prorations")
+	form.Set("cancel_at_period_end", "false")
+	form.Set("metadata[plan]", targetSelection.Plan)
+	form.Set("metadata[interval]", targetSelection.Interval)
+
+	updatedSubscription, err := s.updateSubscription(ctx, record.StripeSubscriptionID, form)
+	if err != nil {
+		return err
+	}
+
+	return s.applySubscription(ctx, accountID, updatedSubscription, record.BillingEmail)
 }
 
 func (s *Service) CreatePortalSession(ctx context.Context, accountID int64) (models.BillingSessionLink, error) {
@@ -313,6 +501,63 @@ func (s *Service) SyncCheckoutSession(ctx context.Context, accountID int64, sess
 	return nil
 }
 
+func (s *Service) CancelSubscriptionAtPeriodEnd(ctx context.Context, accountID int64) error {
+	if !s.Configured() {
+		slog.WarnContext(ctx, "billing cancellation requested but service is not configured", "accountID", accountID)
+		return ErrNotConfigured
+	}
+
+	record, err := billingTx.GetAccountBilling(ctx, s.db, accountID)
+	if err != nil {
+		return err
+	}
+
+	subscriptionID := strings.TrimSpace(record.StripeSubscriptionID)
+	if subscriptionID == "" {
+		return ErrSubscriptionNotFound
+	}
+	if record.BillingCancelAtPeriodEnd {
+		return nil
+	}
+
+	slog.InfoContext(ctx, "billing cancel-at-period-end requested", "accountID", accountID, "subscriptionID", shortStripeID(subscriptionID))
+
+	form := url.Values{}
+	form.Set("cancel_at_period_end", "true")
+
+	subscription, err := s.updateSubscription(ctx, subscriptionID, form)
+	if err != nil {
+		return err
+	}
+
+	return s.applySubscription(ctx, accountID, subscription, record.BillingEmail)
+}
+
+func (s *Service) CancelSubscriptionImmediately(ctx context.Context, accountID int64) error {
+	record, err := billingTx.GetAccountBilling(ctx, s.db, accountID)
+	if err != nil {
+		return err
+	}
+
+	subscriptionID := strings.TrimSpace(record.StripeSubscriptionID)
+	if subscriptionID == "" {
+		return nil
+	}
+	if !s.Configured() {
+		slog.WarnContext(ctx, "immediate billing cancellation requested but service is not configured", "accountID", accountID)
+		return ErrNotConfigured
+	}
+
+	slog.InfoContext(ctx, "billing immediate cancellation requested", "accountID", accountID, "subscriptionID", shortStripeID(subscriptionID))
+
+	subscription, err := s.cancelSubscription(ctx, subscriptionID)
+	if err != nil {
+		return err
+	}
+
+	return s.applySubscription(ctx, accountID, subscription, record.BillingEmail)
+}
+
 func (s *Service) HandleWebhook(ctx context.Context, payload []byte, signature string) error {
 	if !s.WebhooksConfigured() {
 		slog.WarnContext(ctx, "stripe webhook received but billing webhooks are not configured")
@@ -441,6 +686,109 @@ func (s *Service) retrieveSubscription(ctx context.Context, subscriptionID strin
 	return subscription, nil
 }
 
+func (s *Service) retrievePrice(ctx context.Context, priceID string) (stripePrice, error) {
+	var price stripePrice
+	if err := s.doRequest(ctx, http.MethodGet, "/v1/prices/"+url.PathEscape(strings.TrimSpace(priceID)), nil, &price); err != nil {
+		return stripePrice{}, err
+	}
+
+	return price, nil
+}
+
+func (s *Service) updateSubscription(ctx context.Context, subscriptionID string, form url.Values) (stripeSubscription, error) {
+	var subscription stripeSubscription
+	if err := s.doFormRequest(
+		ctx,
+		http.MethodPost,
+		"/v1/subscriptions/"+url.PathEscape(strings.TrimSpace(subscriptionID)),
+		form,
+		&subscription,
+	); err != nil {
+		return stripeSubscription{}, err
+	}
+	return subscription, nil
+}
+
+func (s *Service) cachedPublicCatalog(baseCatalog models.PublicBillingCatalog) (models.PublicBillingCatalog, bool) {
+	s.publicCatalogMu.RLock()
+	defer s.publicCatalogMu.RUnlock()
+
+	if s.publicCatalogAt.IsZero() || time.Since(s.publicCatalogAt) > publicCatalogCacheTTL {
+		return models.PublicBillingCatalog{}, false
+	}
+
+	catalog := s.publicCatalog
+	catalog.Configured = baseCatalog.Configured
+	catalog.TrialDays = baseCatalog.TrialDays
+	catalog.SingleMonthlyAvailable = baseCatalog.SingleMonthlyAvailable
+	catalog.SingleYearlyAvailable = baseCatalog.SingleYearlyAvailable
+	catalog.TeamMonthlyAvailable = baseCatalog.TeamMonthlyAvailable
+	catalog.TeamYearlyAvailable = baseCatalog.TeamYearlyAvailable
+	return catalog, true
+}
+
+func (s *Service) cachePublicCatalog(catalog models.PublicBillingCatalog) {
+	s.publicCatalogMu.Lock()
+	defer s.publicCatalogMu.Unlock()
+
+	s.publicCatalog = catalog
+	s.publicCatalogAt = time.Now()
+}
+
+func (s *Service) loadPublicCatalog(
+	ctx context.Context,
+	baseCatalog models.PublicBillingCatalog,
+) (models.PublicBillingCatalog, error) {
+	catalog := baseCatalog
+
+	var loadErr error
+	loadPrice := func(priceID, interval string, assign func(string)) {
+		if loadErr != nil || strings.TrimSpace(priceID) == "" {
+			return
+		}
+
+		price, err := s.retrievePrice(ctx, priceID)
+		if err != nil {
+			loadErr = err
+			return
+		}
+		assign(formatStripePriceLabel(price.Currency, price.UnitAmount, interval))
+	}
+
+	loadPrice(s.billingCatalog.SingleMonthlyPriceID, billingcatalog.IntervalMonthly, func(label string) {
+		catalog.SingleMonthlyPriceLabel = label
+	})
+	loadPrice(s.billingCatalog.SingleYearlyPriceID, billingcatalog.IntervalYearly, func(label string) {
+		catalog.SingleYearlyPriceLabel = label
+	})
+	loadPrice(s.billingCatalog.TeamMonthlyPriceID, billingcatalog.IntervalMonthly, func(label string) {
+		catalog.TeamMonthlyPriceLabel = label
+	})
+	loadPrice(s.billingCatalog.TeamYearlyPriceID, billingcatalog.IntervalYearly, func(label string) {
+		catalog.TeamYearlyPriceLabel = label
+	})
+
+	if loadErr != nil {
+		return models.PublicBillingCatalog{}, loadErr
+	}
+
+	return catalog, nil
+}
+
+func (s *Service) cancelSubscription(ctx context.Context, subscriptionID string) (stripeSubscription, error) {
+	var subscription stripeSubscription
+	if err := s.doRequest(
+		ctx,
+		http.MethodDelete,
+		"/v1/subscriptions/"+url.PathEscape(strings.TrimSpace(subscriptionID)),
+		nil,
+		&subscription,
+	); err != nil {
+		return stripeSubscription{}, err
+	}
+	return subscription, nil
+}
+
 func (s *Service) applyCheckoutCompletion(ctx context.Context, session stripeCheckoutSession) error {
 	accountID, ok := billingTx.AccountIDFromString(session.ClientReferenceID)
 	if !ok {
@@ -467,6 +815,8 @@ func (s *Service) applySubscription(
 	subscription stripeSubscription,
 	billingEmail string,
 ) error {
+	selection := determineSubscriptionSelection(subscription, s.billingCatalog)
+
 	var currentPeriodEnd *time.Time
 	if subscription.CurrentPeriodEnd > 0 {
 		ts := time.Unix(subscription.CurrentPeriodEnd, 0).UTC()
@@ -478,6 +828,8 @@ func (s *Service) applySubscription(
 		StripeCustomerID:         strings.TrimSpace(subscription.Customer),
 		StripeSubscriptionID:     strings.TrimSpace(subscription.ID),
 		BillingPriceID:           firstSubscriptionPriceID(subscription),
+		BillingPlan:              selection.Plan,
+		BillingInterval:          selection.Interval,
 		BillingEmail:             strings.TrimSpace(billingEmail),
 		BillingStatus:            billingstate.Normalize(subscription.Status),
 		BillingCurrentPeriodEnd:  currentPeriodEnd,
@@ -533,6 +885,61 @@ func (s *Service) doFormRequest(ctx context.Context, method, path string, form u
 		dst,
 		withHeader("Content-Type", "application/x-www-form-urlencoded"),
 	)
+}
+
+func normalizeTrialDays(days int) int {
+	if days < 0 {
+		return 0
+	}
+	return days
+}
+
+func (s *Service) resolveCheckoutSelection(plan string, interval string) (billingcatalog.Selection, error) {
+	selection := billingcatalog.DefaultCheckoutSelection(plan, interval, s.billingCatalog)
+	if selection.Plan == "" {
+		return billingcatalog.Selection{}, ErrInvalidPlan
+	}
+	if selection.Interval == "" {
+		if billingcatalog.NormalizeInterval(interval) == "" && strings.TrimSpace(interval) != "" {
+			return billingcatalog.Selection{}, ErrInvalidInterval
+		}
+		return billingcatalog.Selection{}, ErrPlanUnavailable
+	}
+	if !billingcatalog.IntervalAvailable(selection.Plan, selection.Interval, s.billingCatalog) {
+		return billingcatalog.Selection{}, ErrPlanUnavailable
+	}
+	return selection, nil
+}
+
+func (s *Service) resolveChangeSelection(
+	current billingcatalog.Selection,
+	plan string,
+	interval string,
+) (billingcatalog.Selection, error) {
+	normalizedPlan := billingplan.Normalize(plan)
+	if normalizedPlan == "" {
+		return billingcatalog.Selection{}, ErrInvalidPlan
+	}
+
+	normalizedInterval := billingcatalog.NormalizeInterval(interval)
+	switch {
+	case strings.TrimSpace(interval) == "":
+		normalizedInterval = current.Interval
+	case normalizedInterval == "":
+		return billingcatalog.Selection{}, ErrInvalidInterval
+	}
+	if normalizedInterval == "" {
+		normalizedInterval = billingcatalog.DefaultIntervalForPlan(normalizedPlan, s.billingCatalog)
+	}
+
+	selection := billingcatalog.Selection{
+		Plan:     normalizedPlan,
+		Interval: normalizedInterval,
+	}
+	if selection.Interval == "" || !billingcatalog.IntervalAvailable(selection.Plan, selection.Interval, s.billingCatalog) {
+		return billingcatalog.Selection{}, ErrPlanUnavailable
+	}
+	return selection, nil
 }
 
 type requestOpt func(*http.Request)
@@ -619,6 +1026,109 @@ func firstSubscriptionPriceID(subscription stripeSubscription) string {
 	}
 
 	return ""
+}
+
+func firstSubscriptionItemID(subscription stripeSubscription) string {
+	for _, item := range subscription.Items.Data {
+		if strings.TrimSpace(item.ID) != "" {
+			return strings.TrimSpace(item.ID)
+		}
+	}
+
+	return ""
+}
+
+func determineSubscriptionSelection(
+	subscription stripeSubscription,
+	cfg billingcatalog.Config,
+) billingcatalog.Selection {
+	selection := billingcatalog.NormalizeSelection(subscription.Metadata["plan"], subscription.Metadata["interval"])
+	selectionFromPriceID := billingcatalog.DetermineFromPriceID(firstSubscriptionPriceID(subscription), cfg)
+
+	if selection.Plan == "" {
+		selection.Plan = selectionFromPriceID.Plan
+	}
+	if selection.Interval == "" {
+		selection.Interval = selectionFromPriceID.Interval
+	}
+
+	return selection
+}
+
+func sanitizeRedirectPath(path string) string {
+	normalized := strings.TrimSpace(path)
+	if normalized == "" || !strings.HasPrefix(normalized, "/") || strings.HasPrefix(normalized, "//") {
+		return "/app"
+	}
+
+	return normalized
+}
+
+func formatStripePriceLabel(currency string, unitAmount int64, interval string) string {
+	if unitAmount <= 0 {
+		return ""
+	}
+
+	divisor := int64(100)
+	if zeroDecimalCurrency(currency) {
+		divisor = 1
+	}
+
+	whole := unitAmount / divisor
+	remainder := unitAmount % divisor
+
+	amountLabel := ""
+	switch {
+	case divisor == 1:
+		amountLabel = fmt.Sprintf("%s%d", currencySymbol(currency), whole)
+	case remainder == 0:
+		amountLabel = fmt.Sprintf("%s%d", currencySymbol(currency), whole)
+	default:
+		amountLabel = fmt.Sprintf("%s%d.%02d", currencySymbol(currency), whole, remainder)
+	}
+
+	suffix := interval
+	switch suffix {
+	case billingcatalog.IntervalMonthly:
+		suffix = "month"
+	case billingcatalog.IntervalYearly:
+		suffix = "year"
+	}
+	if suffix == "" {
+		suffix = "period"
+	}
+
+	return amountLabel + " / " + suffix
+}
+
+func currencySymbol(currency string) string {
+	switch strings.ToUpper(strings.TrimSpace(currency)) {
+	case "GBP":
+		return "£"
+	case "USD":
+		return "$"
+	case "EUR":
+		return "€"
+	case "AUD":
+		return "A$"
+	case "CAD":
+		return "C$"
+	case "JPY":
+		return "¥"
+	case "NZD":
+		return "NZ$"
+	default:
+		return strings.ToUpper(strings.TrimSpace(currency)) + " "
+	}
+}
+
+func zeroDecimalCurrency(currency string) bool {
+	switch strings.ToUpper(strings.TrimSpace(currency)) {
+	case "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV", "XAF", "XOF", "XPF":
+		return true
+	default:
+		return false
+	}
 }
 
 func verifyStripeWebhookSignature(payload []byte, signatureHeader, secret string, tolerance time.Duration) error {

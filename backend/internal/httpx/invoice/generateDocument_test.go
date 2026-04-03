@@ -1,6 +1,19 @@
 package invoice
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
+)
+
+func hasFieldError(errs []res.FieldError, field string) bool {
+	for _, err := range errs {
+		if err.Field == field {
+			return true
+		}
+	}
+	return false
+}
 
 func TestBuildDocumentFilename(t *testing.T) {
 	tests := []struct {
@@ -47,5 +60,38 @@ func TestBuildDocumentFilename(t *testing.T) {
 				t.Fatalf("buildDocumentFilename() = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestValidateQuickDocumentInvoice_AcceptsValidPayload(t *testing.T) {
+	in := validInvoiceInput()
+
+	got, errs := validateQuickDocumentInvoice(in, in.Overview.ClientID, in.Overview.BaseNumber)
+	if len(errs) > 0 {
+		t.Fatalf("validateQuickDocumentInvoice() returned errs: %#v", errs)
+	}
+
+	if got.Totals.TotalMinor != 12000 {
+		t.Fatalf("totalMinor = %d, want 12000", got.Totals.TotalMinor)
+	}
+}
+
+func TestValidateQuickDocumentInvoice_RejectsInvalidLineStructure(t *testing.T) {
+	in := validInvoiceInput()
+	in.Lines = nil
+
+	_, errs := validateQuickDocumentInvoice(in, in.Overview.ClientID, in.Overview.BaseNumber)
+	if !hasFieldError(errs, "lines") {
+		t.Fatalf("expected lines validation error, got %#v", errs)
+	}
+}
+
+func TestValidateQuickDocumentInvoice_RejectsSortOrderZero(t *testing.T) {
+	in := validInvoiceInput()
+	in.Lines[0].SortOrder = 0
+
+	_, errs := validateQuickDocumentInvoice(in, in.Overview.ClientID, in.Overview.BaseNumber)
+	if !hasFieldError(errs, "lines[0].sortOrder") {
+		t.Fatalf("expected sortOrder validation error, got %#v", errs)
 	}
 }

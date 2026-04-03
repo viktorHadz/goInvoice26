@@ -3,11 +3,17 @@ package productsTx
 import (
 	"context"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
 func ListAll(a *app.App, ctx context.Context, clientID int64) ([]models.Product, error) {
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := a.DB.QueryContext(ctx, `
 		SELECT
 			id,
@@ -21,8 +27,9 @@ func ListAll(a *app.App, ctx context.Context, clientID int64) ([]models.Product,
 			created_at,
 			updated_at
 		FROM products
-		WHERE client_id = ?
-`, clientID)
+		WHERE account_id = ?
+		  AND client_id = ?
+`, accountID, clientID)
 	if err != nil {
 		return nil, err
 	}

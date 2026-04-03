@@ -18,6 +18,11 @@ type LocalStore struct {
 	rootDir string
 }
 
+type StagedAccountDirRemoval struct {
+	originalPath string
+	stagedPath   string
+}
+
 func NewLocalStore(rootDir string) *LocalStore {
 	rootDir = strings.TrimSpace(rootDir)
 	if rootDir == "" {
@@ -29,6 +34,10 @@ func NewLocalStore(rootDir string) *LocalStore {
 
 func (s *LocalStore) RootDir() string {
 	return s.rootDir
+}
+
+func (s *LocalStore) AccountDir(accountID int64) string {
+	return filepath.Join(s.rootDir, "accounts", strconv.FormatInt(accountID, 10))
 }
 
 func (s *LocalStore) WriteTemp(r io.Reader, ext string) (string, error) {
@@ -104,6 +113,57 @@ func (s *LocalStore) Path(storageKey string) string {
 		return s.rootDir
 	}
 	return filepath.Join(s.rootDir, filepath.FromSlash(cleanKey))
+}
+
+func (s *LocalStore) StageAccountDirRemoval(accountID int64) (StagedAccountDirRemoval, bool, error) {
+	accountDir := s.AccountDir(accountID)
+	if _, err := os.Stat(accountDir); err != nil {
+		if os.IsNotExist(err) {
+			return StagedAccountDirRemoval{}, false, nil
+		}
+		return StagedAccountDirRemoval{}, false, fmt.Errorf("stage account dir removal: stat account dir: %w", err)
+	}
+
+	trashDir := filepath.Join(s.rootDir, ".trash")
+	if err := os.MkdirAll(trashDir, 0o755); err != nil {
+		return StagedAccountDirRemoval{}, false, fmt.Errorf("stage account dir removal: create trash dir: %w", err)
+	}
+
+	stagedPath := filepath.Join(trashDir, "account-"+strconv.FormatInt(accountID, 10)+"-"+uuid.NewString())
+	if err := os.Rename(accountDir, stagedPath); err != nil {
+		return StagedAccountDirRemoval{}, false, fmt.Errorf("stage account dir removal: move account dir: %w", err)
+	}
+
+	return StagedAccountDirRemoval{
+		originalPath: accountDir,
+		stagedPath:   stagedPath,
+	}, true, nil
+}
+
+func (r StagedAccountDirRemoval) Rollback() error {
+	if r.stagedPath == "" {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(r.originalPath), 0o755); err != nil {
+		return fmt.Errorf("restore staged account dir: create parent dir: %w", err)
+	}
+	if err := os.Rename(r.stagedPath, r.originalPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("restore staged account dir: %w", err)
+	}
+	return nil
+}
+
+func (r StagedAccountDirRemoval) Commit() error {
+	if r.stagedPath == "" {
+		return nil
+	}
+	if err := os.RemoveAll(r.stagedPath); err != nil {
+		return fmt.Errorf("delete staged account dir: %w", err)
+	}
+	return nil
 }
 
 func (s *LocalStore) CleanupTemp() error {

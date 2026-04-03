@@ -24,6 +24,8 @@ import (
 	billingsvc "github.com/viktorHadz/goInvoice26/internal/service/billing"
 	"github.com/viktorHadz/goInvoice26/internal/service/logo"
 	"github.com/viktorHadz/goInvoice26/internal/service/storage"
+	"github.com/viktorHadz/goInvoice26/internal/service/workspace"
+	"github.com/viktorHadz/goInvoice26/internal/transaction/accessTx"
 )
 
 func main() {
@@ -43,23 +45,36 @@ func main() {
 	if err := db.Migrate(ctx, dbConn); err != nil {
 		log.Fatal(err)
 	}
+	if err := accessTx.SweepExpiredPromoRedemptionClaims(ctx, dbConn, time.Now()); err != nil {
+		log.Fatal(err)
+	}
 
 	logoStore := storage.NewLocalStore(storage.DefaultRootDir)
 	logoService := logo.NewService(dbConn, logoStore)
 	billingService := billingsvc.NewService(dbConn, billingsvc.Config{
-		AppBaseURL:          cfg.AppBaseURL,
-		StripeSecretKey:     cfg.StripeSecretKey,
-		StripePriceID:       cfg.StripePriceID,
-		StripeWebhookSecret: cfg.StripeWebhookSecret,
+		AppBaseURL:                 cfg.AppBaseURL,
+		StripeSecretKey:            cfg.StripeSecretKey,
+		StripeSingleMonthlyPriceID: cfg.StripeSingleMonthlyPriceID,
+		StripeSingleYearlyPriceID:  cfg.StripeSingleYearlyPriceID,
+		StripeTeamMonthlyPriceID:   cfg.StripeTeamMonthlyPriceID,
+		StripeTeamYearlyPriceID:    cfg.StripeTeamYearlyPriceID,
+		StripeTrialDays:            cfg.StripeTrialDays,
+		StripeWebhookSecret:        cfg.StripeWebhookSecret,
 	})
 	authService := authsvc.NewService(dbConn, authsvc.Config{
-		AppBaseURL:         cfg.AppBaseURL,
-		GoogleClientID:     cfg.GoogleClientID,
-		GoogleClientSecret: cfg.GoogleClientSecret,
-		GoogleRedirectURL:  cfg.GoogleRedirectURL,
-		SessionCookieName:  cfg.SessionCookieName,
-		SecureCookies:      cfg.SecureCookies(),
-		BillingConfigured:  billingService.Configured(),
+		AppBaseURL:                  cfg.AppBaseURL,
+		GoogleClientID:              cfg.GoogleClientID,
+		GoogleClientSecret:          cfg.GoogleClientSecret,
+		GoogleRedirectURL:           cfg.GoogleRedirectURL,
+		SessionCookieName:           cfg.SessionCookieName,
+		SecureCookies:               cfg.SecureCookies(),
+		BillingConfigured:           billingService.Configured(),
+		BillingTrialDays:            cfg.StripeTrialDays,
+		BillingSingleMonthlyPriceID: cfg.StripeSingleMonthlyPriceID,
+		BillingSingleYearlyPriceID:  cfg.StripeSingleYearlyPriceID,
+		BillingTeamMonthlyPriceID:   cfg.StripeTeamMonthlyPriceID,
+		BillingTeamYearlyPriceID:    cfg.StripeTeamYearlyPriceID,
+		PlatformAdminEmail:          cfg.PlatformAdminEmail,
 	})
 	if err := logoService.CleanupTemp(); err != nil {
 		log.Fatal(err)
@@ -70,10 +85,15 @@ func main() {
 	if err := logoService.SweepPendingDeletes(ctx); err != nil {
 		log.Fatal(err)
 	}
+	workspaceService := workspace.NewService(dbConn, billingService, logoStore)
 
 	r := chi.NewRouter()
 
 	logger, opts := logging.InitLogger(cfg)
+
+	if err := billingService.BackfillPersistedSelections(ctx); err != nil {
+		logger.Warn("billing selection backfill failed", "err", err)
+	}
 
 	// Request-scoped tracing / logging
 	r.Use(traceid.Middleware)
@@ -96,10 +116,13 @@ func main() {
 	))
 
 	httpx.RegisterAllRouters(r, &app.App{
-		DB:      dbConn,
-		Auth:    authService,
-		Billing: billingService,
-		Logos:   logoService,
+		DB:                           dbConn,
+		Auth:                         authService,
+		Billing:                      billingService,
+		Logos:                        logoService,
+		Workspaces:                   workspaceService,
+		AccessLedgerSecret:           cfg.AccessLedgerSecret,
+		PromoRedemptionRetentionDays: cfg.PromoRedemptionRetentionDays,
 	})
 
 	logger.Info("init",
@@ -109,8 +132,14 @@ func main() {
 		"billingConfigured", billingService.Configured(),
 		"billingWebhooksConfigured", billingService.WebhooksConfigured(),
 		"hasStripeSecretKey", strings.TrimSpace(cfg.StripeSecretKey) != "",
-		"hasStripePriceID", strings.TrimSpace(cfg.StripePriceID) != "",
+		"hasStripeSingleMonthlyPriceID", strings.TrimSpace(cfg.StripeSingleMonthlyPriceID) != "",
+		"hasStripeSingleYearlyPriceID", strings.TrimSpace(cfg.StripeSingleYearlyPriceID) != "",
+		"hasStripeTeamMonthlyPriceID", strings.TrimSpace(cfg.StripeTeamMonthlyPriceID) != "",
+		"hasStripeTeamYearlyPriceID", strings.TrimSpace(cfg.StripeTeamYearlyPriceID) != "",
+		"stripeTrialDays", cfg.StripeTrialDays,
 		"hasStripeWebhookSecret", strings.TrimSpace(cfg.StripeWebhookSecret) != "",
+		"hasAccessLedgerSecret", strings.TrimSpace(cfg.AccessLedgerSecret) != "",
+		"promoRedemptionRetentionDays", cfg.PromoRedemptionRetentionDays,
 	)
 
 	if err := http.ListenAndServe(cfg.Port, r); err != nil {

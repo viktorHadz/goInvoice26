@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/models"
 )
@@ -73,12 +74,12 @@ func invoiceBookOrderClause(filters InvoiceBookPageFilters) string {
 	return fmt.Sprintf("ORDER BY issue_date %s, base_number %s", direction, direction)
 }
 
-func invoiceBookBaseCTE(filters InvoiceBookPageFilters) (string, []any) {
-	clientWhere := ""
-	args := make([]any, 0, 1)
-
+func invoiceBookBaseCTE(accountID int64, filters InvoiceBookPageFilters) (string, []any) {
+	clientWhere := "WHERE i.account_id = ?"
+	args := make([]any, 0, 2)
+	args = append(args, accountID)
 	if filters.ClientID > 0 {
-		clientWhere = "WHERE i.client_id = ?"
+		clientWhere += " AND i.client_id = ?"
 		args = append(args, filters.ClientID)
 	}
 
@@ -140,8 +141,12 @@ func QueryInvoiceBookPage(
 	}
 
 	filters = normalizeInvoiceBookPageFilters(filters)
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return models.INVBookOut{}, err
+	}
 	filters.ClientID = clientID
-	baseCTE, baseArgs := invoiceBookBaseCTE(filters)
+	baseCTE, baseArgs := invoiceBookBaseCTE(accountID, filters)
 	whereClause := invoiceBookWhereClause(filters)
 
 	var total int

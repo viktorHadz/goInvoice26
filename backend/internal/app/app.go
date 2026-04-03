@@ -6,11 +6,15 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/service/auth"
 	"github.com/viktorHadz/goInvoice26/internal/service/billing"
 	"github.com/viktorHadz/goInvoice26/internal/service/logo"
+	"github.com/viktorHadz/goInvoice26/internal/service/workspace"
 )
 
 type App struct {
-	DB      *sql.DB
-	Auth    *auth.Service
-	Billing *billing.Service
-	Logos   *logo.Service
+	DB                           *sql.DB
+	Auth                         *auth.Service
+	Billing                      *billing.Service
+	Logos                        *logo.Service
+	Workspaces                   *workspace.Service
+	AccessLedgerSecret           string
+	PromoRedemptionRetentionDays int
 }

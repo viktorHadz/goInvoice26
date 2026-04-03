@@ -3,6 +3,7 @@ package httpx
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/viktorHadz/goInvoice26/internal/app"
+	adminhttp "github.com/viktorHadz/goInvoice26/internal/httpx/admin"
 	authhttp "github.com/viktorHadz/goInvoice26/internal/httpx/auth"
 	billinghttp "github.com/viktorHadz/goInvoice26/internal/httpx/billing"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/clients"
@@ -22,6 +23,7 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 		r.Get("/google/callback", authhttp.GoogleCallback(a))
 	})
 
+	r.Get("/api/billing/public", billinghttp.PublicCatalog(a))
 	r.Post("/api/billing/stripe/webhook", billinghttp.StripeWebhook(a))
 
 	r.Group(func(r chi.Router) {
@@ -31,6 +33,22 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 			r.Post("/checkout-session", billinghttp.CreateCheckoutSession(a))
 			r.Post("/portal-session", billinghttp.CreatePortalSession(a))
 			r.Post("/checkout/sync", billinghttp.SyncCheckoutSession(a))
+			r.Post("/promo-codes/redeem", billinghttp.RedeemPromoCode(a))
+			r.Post("/subscription/plan", billinghttp.ChangeSubscriptionPlan(a))
+			r.Post("/subscription/cancel", billinghttp.CancelSubscription(a))
+		})
+
+		r.Route("/api/admin/access", func(r chi.Router) {
+			r.Get("/", adminhttp.Overview(a))
+			r.Post("/grants", adminhttp.CreateDirectAccessGrant(a))
+			r.Delete("/grants/{grantID}", adminhttp.DeleteDirectAccessGrant(a))
+			r.Post("/promo-codes", adminhttp.CreatePromoCode(a))
+			r.Patch("/promo-codes/{promoCodeID}", adminhttp.UpdatePromoCodeStatus(a))
+		})
+
+		r.Route("/api/workspace", func(r chi.Router) {
+			r.Use(midware.RequireOwner)
+			r.Delete("/", team.DeleteWorkspace(a))
 		})
 
 		r.Group(func(r chi.Router) {
@@ -81,8 +99,6 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 							r.Delete("/", products.DeleteProduct(a))
 						})
 					})
-					// TODO: rate limit create revision manually
-
 					// /api/clients/{clientID}/invoice/...
 					r.Route("/invoice", func(r chi.Router) {
 						r.Get("/", invoice.GetNextInvoiceNumber(a))
@@ -92,7 +108,7 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 							r.Delete("/", invoice.DeleteInvoice(a))
 							r.Patch("/status", invoice.PatchInvoiceStatus(a))
 							r.Post("/verify", invoice.VerifyInvoice())
-							r.Post("/revisions", invoice.CreateRevision(a))
+							r.With(midware.LimitInvoiceRevisionCreateByUser()).Post("/revisions", invoice.CreateRevision(a))
 							r.Get("/{revisionNo}/pdf", invoice.GeneratePDFHandler(a))
 							r.Post("/{revisionNo}/pdf/quick", invoice.QuickPDFHandler(a))
 							r.Get("/{revisionNo}/docx", invoice.GenerateDOCXHandler(a))

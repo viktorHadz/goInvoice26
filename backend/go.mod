@@ -26,7 +26,6 @@ require (
 	github.com/phpdave11/gofpdf v1.4.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
-	github.com/stripe/stripe-go/v85 v85.0.0 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect

@@ -10,6 +10,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/httpx/params"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/res"
 	"github.com/viktorHadz/goInvoice26/internal/models"
+	"github.com/viktorHadz/goInvoice26/internal/transaction/clientsTx"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/invoiceTx"
 )
 
@@ -22,6 +23,17 @@ func CreateInvoice(a *app.App) http.HandlerFunc {
 		}
 		baseNumber, ok := params.ValidateParam(w, r, "baseNumber")
 		if !ok {
+			return
+		}
+
+		if err := clientsTx.VerifyClientID(r.Context(), a, clientID); err != nil {
+			if errors.Is(err, clientsTx.ErrClientNotFound) {
+				res.NotFound(w, "client not found")
+				return
+			}
+
+			slog.ErrorContext(r.Context(), "verify client failed before invoice create", "client_id", clientID, "err", err)
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 
@@ -71,7 +83,7 @@ func CreateInvoice(a *app.App) http.HandlerFunc {
 		invID, revID, err := invoiceTx.Create(r.Context(), a, &canonical)
 		if err != nil {
 			if strings.Contains(err.Error(), "already exists") {
-				res.Validation(w, res.Invalid("baseNumber", "invoice number already in use"))
+				res.Validation(w, res.Invalid("baseNumber", "invoice number already in use. Refresh page and try again."))
 				return
 			}
 			if errors.Is(err, invoiceTx.ErrPaymentTotalsMismatch) {
@@ -105,6 +117,17 @@ func CreateRevision(a *app.App) http.HandlerFunc {
 		}
 		baseNumber, ok := params.ValidateParam(w, r, "baseNumber")
 		if !ok {
+			return
+		}
+
+		if err := clientsTx.VerifyClientID(r.Context(), a, clientID); err != nil {
+			if errors.Is(err, clientsTx.ErrClientNotFound) {
+				res.NotFound(w, "client not found")
+				return
+			}
+
+			slog.ErrorContext(r.Context(), "verify client failed before invoice revision", "client_id", clientID, "err", err)
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
 			return
 		}
 

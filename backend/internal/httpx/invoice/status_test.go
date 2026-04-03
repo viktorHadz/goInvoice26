@@ -11,7 +11,7 @@ func TestAllowedStatusTransition(t *testing.T) {
 	}{
 		{from: "draft", to: "draft", want: false},
 		{from: "draft", to: "issued", want: true},
-		{from: "draft", to: "paid", want: true},
+		{from: "draft", to: "paid", want: false},
 		{from: "draft", to: "void", want: false},
 		{from: "issued", to: "paid", want: true},
 		{from: "issued", to: "void", want: true},
