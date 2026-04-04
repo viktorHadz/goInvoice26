@@ -10,6 +10,7 @@ import {
   GlobeAltIcon,
   ShieldCheckIcon,
 } from '@heroicons/vue/24/outline'
+import LandingHeader from '@/components/landing/LandingHeader.vue'
 
 const props = defineProps<{
   mode: 'login' | 'signup'
@@ -119,6 +120,8 @@ function authErrorMessage(code: string) {
   <main
     class="min-h-screen bg-linear-to-b from-sky-50 via-white to-slate-100 text-zinc-900 dark:from-[#08100f] dark:via-[#0a1211] dark:to-[#0d1715] dark:text-zinc-100"
   >
+    <LandingHeader class="sticky top-0 z-10 mx-auto" />
+
     <div class="relative isolate min-h-screen overflow-hidden">
       <div class="hdr-grid pointer-events-none absolute inset-0 opacity-50 dark:opacity-100" />
       <div

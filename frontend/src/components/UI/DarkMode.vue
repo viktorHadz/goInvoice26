@@ -17,7 +17,7 @@ const { mode } = useTheme()
 const nextModeLabel = computed(() => (mode.value === 'dark' ? 'Light' : 'Dark'))
 </script>
 <template>
-  <!-- WITH TOOLTIP (icon + desktop only) -->
+  <!-- WITH TOOLTIP icon + desktop only -->
   <TheTooltip
     v-if="props.variant !== 'pill'"
     side="bottom"

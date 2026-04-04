@@ -46,56 +46,56 @@ const floatingCards = [
     title: 'Quick set up',
     meta: 'Make it yours',
     icon: Cog6ToothIcon,
-    className: 'top-18 sm:top-0 -right-3 sm:-right-5 lg:-right-4 rotate-[3deg] float-slow',
+    className: 'top-18 sm:-top-6 -right-3 sm:-left-5 lg:-left-4 rotate-[3deg] float-slow',
     tone: 'default',
   },
   {
-    title: 'Invoice book',
+    title: 'Book keeping',
     meta: 'Easy records',
     icon: BookOpenIcon,
-    className: 'top-[38%] -left-3 sm:-left-6 lg:-left-9 -rotate-[3deg] float-mid',
+    className: 'top-[38%] -right-3 sm:-right-6 lg:-right-9 -rotate-[3deg] float-mid',
     tone: 'default',
   },
   {
     title: 'Safe edits',
     meta: 'Revision tracking',
     icon: PencilSquareIcon,
-    className: 'bottom-38 -left-3 sm:-left-6 lg:-left-9 rotate-[2deg] float-fast',
+    className: 'bottom-34  -left-3 sm:-left-6 lg:-left-9 rotate-[2deg] float-fast',
     tone: 'success',
   },
 ]
 </script>
 
 <template>
-  <section class="relative isolate overflow-visible py-8 select-none sm:py-12 lg:py-16">
+  <section class="relative isolate overflow-visible py-8 sm:py-12 lg:py-16">
     <!-- grid background -->
     <div
-      class="hdr-grid pointer-events-none absolute inset-x-0 top-0 bottom-0 mask-radial-from-20% mask-radial-at-center opacity-50 dark:opacity-100"
+      class="hdr-grid pointer-events-none absolute inset-x-0 top-0 bottom-0 mask-radial-from-20% mask-radial-at-center opacity-100 dark:opacity-100"
     />
 
-    <div class="relative grid gap-14 lg:grid-cols-2 lg:items-center lg:gap-20">
+    <div class="relative grid gap-14 lg:grid-cols-2 lg:items-start lg:gap-20">
       <!-- LEFT -->
       <div class="max-w-xl lg:mb-12">
-        <p
-          class="text-tiny inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 font-semibold tracking-widest text-sky-700 uppercase shadow-sm sm:text-xs dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300"
-        >
-          <SparklesIcon class="size-4" />
-          Simple invoicing · Built for small business
-        </p>
-
         <h1
-          class="mt-5 text-5xl leading-[1.08] font-bold tracking-tight text-zinc-950 lg:text-7xl dark:text-white"
+          class="mt-5 text-5xl leading-[1.08] font-bold tracking-tight text-zinc-900 lg:text-7xl dark:text-white"
         >
-          Set up fast.
+          Set up
+          <span class="text-sky-600 dark:text-emerald-400">fast</span>
           <br />
-          <span class="text-zinc-700 dark:text-zinc-300">Send invoices quickly.</span>
+          <span class="text-zinc-900 dark:text-zinc-100">
+            Send invoices
+            <span class="text-sky-600 dark:text-emerald-400">quickly</span>
+          </span>
           <br />
-          <span class="text-zinc-600 dark:text-zinc-400">Get paid.</span>
+          <span class="text-zinc-900 dark:text-zinc-200">
+            Get
+            <span class="text-sky-600 dark:text-emerald-400">paid</span>
+          </span>
         </h1>
 
-        <p class="mt-5 text-base leading-7 text-zinc-600 sm:text-lg dark:text-zinc-300">
-          Invoice&nbsp;&amp;&nbsp;Go is built for freelancers, trade professions, and small
-          businesses who just want invoicing to work. No learning curve, no spreadsheets, no fuss.
+        <p class="mt-5 text-base leading-7 text-zinc-700 sm:text-lg dark:text-zinc-200">
+          Invoice-And-Go is built for freelancers, trade professions, and small businesses who just
+          want invoicing to work. No learning curve, no spreadsheets, no fuss.
         </p>
 
         <div class="mt-8 flex flex-wrap items-center gap-3">
@@ -113,20 +113,6 @@ const floatingCards = [
           >
             Log in
           </RouterLink>
-        </div>
-
-        <div class="mt-8 flex flex-wrap gap-2">
-          <div
-            v-for="point in trustPoints"
-            :key="point.label"
-            class="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
-          >
-            <component
-              :is="point.icon"
-              class="size-5"
-            />
-            {{ point.label }}
-          </div>
         </div>
       </div>
 
@@ -173,7 +159,7 @@ const floatingCards = [
                   class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300"
                 >
                   <CheckCircleIcon class="size-3.5" />
-                  Ready to send
+                  Issued
                 </span>
               </div>
 
@@ -290,21 +276,15 @@ const floatingCards = [
             v-for="card in floatingCards"
             :key="card.title"
             :class="[
-              'absolute z-20 w-56 rounded-2xl border p-3.5 shadow-xl',
+              'absolute z-20 w-56 rounded-2xl border p-3.5 shadow-xl select-none',
               card.className,
-              card.tone === 'success'
-                ? 'border-emerald-200/80 bg-emerald-50/90 dark:border-emerald-400/20 dark:bg-emerald-500/10'
-                : 'border-zinc-200/90 bg-white/95 dark:border-zinc-800/90 dark:bg-zinc-900/95',
+              'border-zinc-200/90 bg-white/95 dark:border-zinc-800/90 dark:bg-zinc-900/95',
             ]"
           >
             <div class="flex items-center gap-3">
               <div
                 class="flex size-11 shrink-0 items-center justify-center rounded-xl border"
-                :class="
-                  card.tone === 'success'
-                    ? 'border-emerald-300/60 bg-white/80 text-emerald-600 dark:border-emerald-400/25 dark:bg-zinc-950/40 dark:text-emerald-300'
-                    : 'border-sky-200 bg-sky-50 text-sky-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200'
-                "
+                :class="'border-sky-200 bg-sky-50 text-sky-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200'"
               >
                 <component
                   :is="card.icon"
