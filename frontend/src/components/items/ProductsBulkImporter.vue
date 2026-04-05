@@ -210,22 +210,20 @@ async function runImport() {
   <section class="pt-2">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
-        <TheTooltip text="Add multiple products to the currently selected client from a CSV file.">
-          <button
-            type="button"
-            class="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-zinc-900 transition hover:text-sky-700 focus-visible:ring-0 dark:text-zinc-100 dark:hover:text-emerald-300"
-            :aria-expanded="open ? 'true' : 'false'"
-            @click="open = !open"
-          >
-            <span>Bulk import products</span>
-            <ChevronDownIcon
-              class="size-4 transition-transform"
-              :class="open ? 'rotate-180' : ''"
-            />
-          </button>
-        </TheTooltip>
+        <button
+          type="button"
+          class="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-zinc-900 transition hover:text-sky-700 focus-visible:ring-0 dark:text-zinc-100 dark:hover:text-emerald-300"
+          :aria-expanded="open ? 'true' : 'false'"
+          @click="open = !open"
+        >
+          <span>Bulk import products</span>
+          <ChevronDownIcon
+            class="size-4 transition-transform"
+            :class="open ? 'rotate-180' : ''"
+          />
+        </button>
         <div class="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-          Add products to the selected client from a CSV file.
+          Add multiple products to the selected client from a CSV file.
         </div>
       </div>
     </div>
