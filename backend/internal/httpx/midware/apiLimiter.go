@@ -44,11 +44,42 @@ func LimitByAuthenticatedUser(requestLimit int, windowLength time.Duration, mess
 	)
 }
 
+func LimitByIP(requestLimit int, windowLength time.Duration, message string) func(http.Handler) http.Handler {
+	if message == "" {
+		message = "Too many requests"
+	}
+
+	return httprate.Limit(
+		requestLimit,
+		windowLength,
+		httprate.WithKeyFuncs(httprate.KeyByIP),
+		httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {
+			res.Error(w, http.StatusTooManyRequests, "RATE_LIMITED", message)
+		}),
+	)
+}
+
 func LimitInvoiceRevisionCreateByUser() func(http.Handler) http.Handler {
 	return LimitByAuthenticatedUser(
 		10,
 		time.Minute,
 		"Too many revision saves. Please wait a moment and try again.",
+	)
+}
+
+func LimitProductImportByUser() func(http.Handler) http.Handler {
+	return LimitByAuthenticatedUser(
+		1,
+		30*time.Second,
+		"Please wait 30 seconds before starting another product import.",
+	)
+}
+
+func LimitProductImportByIP() func(http.Handler) http.Handler {
+	return LimitByIP(
+		10,
+		time.Minute,
+		"Too many product import attempts from this IP. Please try again in a minute.",
 	)
 }
 

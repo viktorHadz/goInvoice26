@@ -19,11 +19,13 @@ type APIErrorEnvelope = {
 const ERROR_CODE_MESSAGES: Record<string, string> = {
     VALIDATION_FAILED: 'Please review the highlighted fields.',
     BAD_JSON: 'We could not read that request. Please try again.',
+    BAD_DATA: 'We could not process that upload. Please check the file and try again.',
     NOT_FOUND: 'The requested resource was not found.',
     DATABASE_ERROR: 'Something went wrong while saving data. Please try again.',
     INTERNAL: 'Something went wrong on our side. Please try again.',
     UNAUTHENTICATED: 'Please sign in to continue.',
     FORBIDDEN: 'You do not have access to that area.',
+    RATE_LIMITED: 'Too many requests. Please wait a moment and try again.',
     INVALID_ID: 'The selected item is invalid.',
     INVOICE_DRAFT: 'Issue the draft before saving a revision.',
     INVOICE_ISSUED: 'Issued invoices are locked from deletion and must use revisions for edits.',
@@ -36,7 +38,8 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
     TEAM_CANNOT_REMOVE_OWNER: 'The owner account cannot be removed here.',
     TEAM_PLAN_REQUIRED: 'Upgrade to the team plan before inviting teammates.',
     TEAM_SEAT_LIMIT_REACHED: 'That team plan is full. Remove someone or upgrade the plan later.',
-    SUBSCRIPTION_REQUIRED: 'Active billing or a valid access grant is required to use the workspace.',
+    SUBSCRIPTION_REQUIRED:
+        'Active billing or a valid access grant is required to use the workspace.',
     BILLING_OWNER_ONLY: 'Only the workspace admin can manage billing.',
     BILLING_SUBSCRIPTION_NOT_FOUND: 'There is no active subscription to cancel.',
     BILLING_NOT_CONFIGURED: 'Billing is temporarily unavailable. Please get in touch.',
@@ -60,6 +63,8 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
     WORKSPACE_DELETE_BILLING_BLOCKED:
         'Cancel the Stripe subscription before deleting this workspace.',
     SETTINGS_OWNER_ONLY: 'Only the workspace admin can edit settings.',
+    PRODUCT_IMPORT_IN_PROGRESS:
+        'Another product import is already running for this workspace. Please wait for it to finish.',
     CLIENT_HAS_INVOICES:
         "This client can't be deleted because there are saved invoices linked to them.",
 }

@@ -40,6 +40,26 @@ func TestLimitByAuthenticatedUser_LimitsPerUser(t *testing.T) {
 	}
 }
 
+func TestLimitProductImportByUser_EnforcesCooldown(t *testing.T) {
+	limiter := LimitProductImportByUser()
+	handler := limiter(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	}))
+
+	first := doLimitedRequest(t, handler, 1)
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first status = %d, want %d", first.Code, http.StatusCreated)
+	}
+
+	second := doLimitedRequest(t, handler, 1)
+	if second.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status = %d, want %d", second.Code, http.StatusTooManyRequests)
+	}
+	if !strings.Contains(second.Body.String(), "RATE_LIMITED") {
+		t.Fatalf("second body = %q, want RATE_LIMITED", second.Body.String())
+	}
+}
+
 func doLimitedRequest(t *testing.T, handler http.Handler, userID int64) *httptest.ResponseRecorder {
 	t.Helper()
 

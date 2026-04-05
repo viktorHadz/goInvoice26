@@ -4,10 +4,12 @@ import { useClientStore } from './clients'
 import {
     createProduct,
     deleteProduct,
+    importProducts,
     listClientProducts,
     updateProduct,
 } from '@/utils/productHttpHandler'
 import type { Product, ProductType, ProductUpsert } from '@/utils/productHttpHandler'
+import type { ProductImportKind } from '@/utils/productImport'
 
 export const useProductStore = defineStore('products', () => {
     const clientStore = useClientStore()
@@ -89,6 +91,15 @@ export const useProductStore = defineStore('products', () => {
         products.value = products.value.filter((p) => p.id !== productId)
     }
 
+    async function importCsv(kind: ProductImportKind, file: File) {
+        const clientId = clientStore.lsClientId
+        if (!clientId) throw new Error('No client selected')
+
+        const result = await importProducts(clientId, kind, file)
+        await reload()
+        return result
+    }
+
     function reset() {
         products.value = []
         open.value = false
@@ -107,6 +118,7 @@ export const useProductStore = defineStore('products', () => {
         create,
         update,
         remove,
+        importCsv,
         reset,
     }
 })

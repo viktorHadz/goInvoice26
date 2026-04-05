@@ -23,6 +23,7 @@ import { validateProductForm } from '@/utils/frontendValidation'
 import { emitToastSuccess } from '@/utils/toast'
 import { handleActionError } from '@/utils/errors/handleActionError'
 import QuickMenuSidebar from '../UI/QuickMenuSidebar.vue'
+import ProductsBulkImporter from './ProductsBulkImporter.vue'
 
 const store = useProductStore()
 const clientStore = useClientStore()
@@ -196,6 +197,10 @@ function buildUpsert(): ProductUpsert {
 
 function labelForTab(type: ProductType) {
   return type === 'style' ? 'Style' : 'Sample'
+}
+
+function handleImported(productType: ProductType) {
+  tab.value = productType
 }
 
 async function save() {
@@ -602,6 +607,10 @@ useEscape(
               {{ isDeleting ? 'Deleting…' : 'Delete' }}
             </button>
           </div>
+          <ProductsBulkImporter
+            :busy="isSaving || isDeleting"
+            @imported="handleImported"
+          />
         </div>
       </section>
     </div>

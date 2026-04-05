@@ -1,4 +1,5 @@
 import { request } from './fetchHelper'
+import type { ProductImportKind, ProductImportResult } from './productImport'
 
 export type ProductType = 'style' | 'sample'
 export type PricingMode = 'flat' | 'hourly'
@@ -51,5 +52,16 @@ export function updateProduct(clientId: number, productId: number, payload: Prod
 export function deleteProduct(clientId: number, productId: number) {
     return request<void>(`${base(clientId)}/${productId}`, {
         method: 'DELETE',
+    })
+}
+
+export function importProducts(clientId: number, kind: ProductImportKind, file: File) {
+    const formData = new FormData()
+    formData.append('kind', kind)
+    formData.append('file', file)
+
+    return request<ProductImportResult>(`${base(clientId)}/import`, {
+        method: 'POST',
+        body: formData,
     })
 }

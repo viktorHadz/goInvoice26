@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	adminhttp "github.com/viktorHadz/goInvoice26/internal/httpx/admin"
 	authhttp "github.com/viktorHadz/goInvoice26/internal/httpx/auth"
@@ -13,6 +14,7 @@ import (
 	"github.com/viktorHadz/goInvoice26/internal/httpx/products"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/settings"
 	"github.com/viktorHadz/goInvoice26/internal/httpx/team"
+	"time"
 )
 
 func RegisterAllRouters(r chi.Router, a *app.App) {
@@ -94,6 +96,12 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 					r.Route("/products", func(r chi.Router) {
 						r.Get("/", products.ListItems(a))
 						r.Post("/", products.CreateProduct(a))
+						r.With(
+							midware.LimitBodyMaxSize(64<<10),
+							midware.LimitProductImportByIP(),
+							midware.LimitProductImportByUser(),
+							middleware.Timeout(15*time.Second),
+						).Post("/import", products.ImportProducts(a))
 						r.Route("/{productID}", func(r chi.Router) {
 							r.Patch("/", products.UpdateProduct(a))
 							r.Delete("/", products.DeleteProduct(a))

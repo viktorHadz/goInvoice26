@@ -23,6 +23,7 @@ import (
 	authsvc "github.com/viktorHadz/goInvoice26/internal/service/auth"
 	billingsvc "github.com/viktorHadz/goInvoice26/internal/service/billing"
 	"github.com/viktorHadz/goInvoice26/internal/service/logo"
+	"github.com/viktorHadz/goInvoice26/internal/service/productimport"
 	"github.com/viktorHadz/goInvoice26/internal/service/storage"
 	"github.com/viktorHadz/goInvoice26/internal/service/workspace"
 	"github.com/viktorHadz/goInvoice26/internal/transaction/accessTx"
@@ -86,6 +87,7 @@ func main() {
 		log.Fatal(err)
 	}
 	workspaceService := workspace.NewService(dbConn, billingService, logoStore)
+	importCoordinator := productimport.NewCoordinator()
 
 	r := chi.NewRouter()
 
@@ -120,6 +122,7 @@ func main() {
 		Auth:                         authService,
 		Billing:                      billingService,
 		Logos:                        logoService,
+		ProductImports:               importCoordinator,
 		Workspaces:                   workspaceService,
 		AccessLedgerSecret:           cfg.AccessLedgerSecret,
 		PromoRedemptionRetentionDays: cfg.PromoRedemptionRetentionDays,

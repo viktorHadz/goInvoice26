@@ -226,4 +226,82 @@ func TestProducts_RequireAccountScope(t *testing.T) {
 	}
 }
 
+func TestProducts_BulkInsertTx_InsertsAllRows(t *testing.T) {
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
+	a, cleanup := newTestApp(t)
+	defer cleanup()
+
+	clientID := insertClient(t, a)
+	rows := []models.ProductCreate{
+		{
+			ProductType:    "style",
+			PricingMode:    "flat",
+			ProductName:    "Hemline",
+			FlatPriceMinor: ptrI64(1250),
+			ClientID:       clientID,
+		},
+		{
+			ProductType:     "sample",
+			PricingMode:     "hourly",
+			ProductName:     "Pattern Adjustment",
+			HourlyRateMinor: ptrI64(3000),
+			MinutesWorked:   ptrI64(90),
+			ClientID:        clientID,
+		},
+	}
+
+	inserted, err := productsTx.BulkInsertTx(a, ctx, rows)
+	if err != nil {
+		t.Fatalf("BulkInsertTx: %v", err)
+	}
+	if inserted != len(rows) {
+		t.Fatalf("inserted = %d, want %d", inserted, len(rows))
+	}
+
+	listed, err := productsTx.ListAll(a, ctx, clientID)
+	if err != nil {
+		t.Fatalf("ListAll: %v", err)
+	}
+	if len(listed) != 2 {
+		t.Fatalf("listed len = %d, want 2", len(listed))
+	}
+}
+
+func TestProducts_BulkInsertTx_RollsBackOnError(t *testing.T) {
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
+	a, cleanup := newTestApp(t)
+	defer cleanup()
+
+	clientID := insertClient(t, a)
+	rows := []models.ProductCreate{
+		{
+			ProductType:    "style",
+			PricingMode:    "flat",
+			ProductName:    "Hemline",
+			FlatPriceMinor: ptrI64(1250),
+			ClientID:       clientID,
+		},
+		{
+			ProductType:    "style",
+			PricingMode:    "flat",
+			ProductName:    "Broken Row",
+			FlatPriceMinor: nil,
+			ClientID:       clientID,
+		},
+	}
+
+	_, err := productsTx.BulkInsertTx(a, ctx, rows)
+	if err == nil {
+		t.Fatal("expected bulk insert error")
+	}
+
+	listed, listErr := productsTx.ListAll(a, ctx, clientID)
+	if listErr != nil {
+		t.Fatalf("ListAll: %v", listErr)
+	}
+	if len(listed) != 0 {
+		t.Fatalf("listed len = %d, want 0 after rollback", len(listed))
+	}
+}
+
 func ptrI64(v int64) *int64 { return &v }
