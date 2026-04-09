@@ -8,7 +8,7 @@ GoInvoicer is a full-stack invoicing app with:
 - a Go + SQLite backend in [`backend`](./backend)
 - shared Git hooks and GitHub Actions for local and hosted verification
 
-This README is the quickest path for a developer who wants to run the project locally.
+This README is the quickest path to getting the repo running.
 
 ## Deployment Target
 
@@ -17,6 +17,7 @@ The intended production target for this repo is:
 - a Debian server
 - `systemd` for the Go backend service
 - Nginx for HTTPS, static frontend hosting, and reverse proxying `/api/*`
+- one deploy root such as `/srv/goinvoicer`
 - same-origin hosting on one public domain
 
 ## What You Need
@@ -34,14 +35,18 @@ The intended production target for this repo is:
 - [`scripts`](./scripts): shared verification commands used by hooks and CI
 - [`.githooks`](./.githooks): local `pre-commit` and `pre-push` guards
 
-## Quick Local Setup
+## Quick Start
 
-### 1. Clone and install dependencies
+### 1. Clone the repo
 
 ```bash
 git clone https://github.com/viktorHadz/goInvoice26.git
 cd goInvoice26
+```
 
+### 2. Install dependencies
+
+```bash
 cd frontend
 npm install
 cd ../backend
@@ -49,45 +54,27 @@ go mod download
 cd ..
 ```
 
-### 2. Configure the backend env file
+### 3. Copy the backend env file
 
 ```bash
-cd backend
-cp .env.example .env
-mkdir -p data
+cp backend/.env.example backend/.env
+mkdir -p backend/data
 ```
 
-Edit `backend/.env` and fill in:
+### 4. Fill in your local secrets
 
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URL`
-- `APP_BASE_URL`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_PUBLISHABLE_KEY`
-- `STRIPE_SINGLE_MONTHLY_PRICE_ID`
-- `STRIPE_SINGLE_YEARLY_PRICE_ID`
-- `STRIPE_TEAM_MONTHLY_PRICE_ID`
-- `STRIPE_TEAM_YEARLY_PRICE_ID`
-- `STRIPE_TRIAL_DAYS`
-- `STRIPE_WEBHOOK_SECRET`
+Edit `backend/.env` and fill in the Google and Stripe values you want to use locally.
 
-For local development, these values usually look like:
+Use `backend/.env.example` as the source of truth for the required keys and the default local callback and webhook URLs.
 
-- `APP_BASE_URL=http://localhost:5173`
-- `GOOGLE_REDIRECT_URL=http://localhost:4206/api/auth/google/callback`
-- `CORS_ORIGIN=http://localhost:5173`
-
-### 3. Start the backend
+### 5. Start the backend
 
 ```bash
 cd backend
 make run
 ```
 
-The API listens on `http://localhost:4206`.
-
-### 4. Start the frontend
+### 6. Start the frontend
 
 Open a second terminal:
 
@@ -96,30 +83,22 @@ cd frontend
 npm run dev
 ```
 
-The app opens on `http://localhost:5173`.
+The frontend proxies local `/api` requests to the backend during development.
 
 ## Local Login And Billing Setup
 
 ### Google OAuth
 
-Create a Google OAuth app and add this callback:
-
-```text
-http://localhost:4206/api/auth/google/callback
-```
+Create a Google OAuth app and register the local callback URL from `backend/.env`.
 
 ### Stripe
 
-If you want to test billing locally, configure a Stripe webhook that points to:
-
-```text
-http://localhost:4206/api/billing/stripe/webhook
-```
+If you want to test billing locally, point Stripe at the local webhook URL from `backend/.env`.
 
 The Stripe CLI works well for local forwarding:
 
 ```bash
-stripe listen --forward-to localhost:4206/api/billing/stripe/webhook
+stripe listen --forward-to <your local billing webhook URL>
 ```
 
 Use `STRIPE_TRIAL_DAYS=7` for the default 7-day trial, or `STRIPE_TRIAL_DAYS=0` if you want checkout to start the paid subscription immediately. Configure `STRIPE_SINGLE_MONTHLY_PRICE_ID` and `STRIPE_SINGLE_YEARLY_PRICE_ID` for the £5/£50 solo prices, plus `STRIPE_TEAM_MONTHLY_PRICE_ID` and `STRIPE_TEAM_YEARLY_PRICE_ID` for the £10/£100 team prices.
@@ -170,8 +149,8 @@ The deploy workflow is designed around a Debian server with:
 
 - `systemd`
 - Nginx
-- a writable backend directory such as `/opt/goinvoicer`
-- a frontend web root such as `/var/www/goinvoicer/current`
+- a single deploy root such as `/srv/goinvoicer`
+- the backend binary, env file, SQLite data, uploads, and frontend releases kept under that one directory tree
 
 ## Where To Read Next
 

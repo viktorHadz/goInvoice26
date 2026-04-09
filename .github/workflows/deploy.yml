@@ -29,8 +29,8 @@ jobs:
       DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
       DEPLOY_PORT: ${{ vars.DEPLOY_PORT != '' && vars.DEPLOY_PORT || '22' }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER != '' && vars.DEPLOY_USER || 'root' }}
-      DEPLOY_BACKEND_DIR: ${{ vars.DEPLOY_BACKEND_DIR != '' && vars.DEPLOY_BACKEND_DIR || '/opt/goinvoicer' }}
-      DEPLOY_FRONTEND_ROOT: ${{ vars.DEPLOY_FRONTEND_ROOT != '' && vars.DEPLOY_FRONTEND_ROOT || '/var/www/goinvoicer' }}
+      DEPLOY_BACKEND_DIR: ${{ vars.DEPLOY_BACKEND_DIR != '' && vars.DEPLOY_BACKEND_DIR || '/srv/goinvoicer' }}
+      DEPLOY_FRONTEND_ROOT: ${{ vars.DEPLOY_FRONTEND_ROOT != '' && vars.DEPLOY_FRONTEND_ROOT || '/srv/goinvoicer' }}
       DEPLOY_SYSTEMD_SERVICE: ${{ vars.DEPLOY_SYSTEMD_SERVICE != '' && vars.DEPLOY_SYSTEMD_SERVICE || 'goinvoicer' }}
       DEPLOY_RELEASE_ID: ${{ github.event_name == 'workflow_run' && format('{0}-{1}', github.event.workflow_run.head_sha, github.run_id) || format('{0}-{1}', github.sha, github.run_id) }}
       DEPLOY_CHECKOUT_REF: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}

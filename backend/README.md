@@ -127,6 +127,17 @@ The intended production setup is:
 - frontend and backend share the same public domain
 - the server is Debian
 
+The default production layout is intentionally simple and keeps everything under one directory:
+
+- `/srv/goinvoicer/goinvoicer`
+- `/srv/goinvoicer/goinvoicer.env`
+- `/srv/goinvoicer/certs/origin.crt`
+- `/srv/goinvoicer/certs/origin.key`
+- `/srv/goinvoicer/data/goinvoicer.db`
+- `/srv/goinvoicer/uploads`
+- `/srv/goinvoicer/releases`
+- `/srv/goinvoicer/current`
+
 Useful deployment files in this folder:
 
 - [deploy/goinvoicer.service](./deploy/goinvoicer.service): example `systemd` unit
@@ -138,14 +149,14 @@ Useful deployment files in this folder:
 These steps assume:
 
 - Debian 12 or another recent Debian release
-- a public domain already pointing at the server
+- a public domain already pointing at Cloudflare and proxied through Cloudflare
 - SSH access to the machine
 
 ### 1. Install base packages
 
 ```bash
 sudo apt update
-sudo apt install -y nginx certbot python3-certbot-nginx curl
+sudo apt install -y nginx curl
 ```
 
 If you want to build the backend manually on the server instead of using GitHub Actions, also install Go:
@@ -157,28 +168,25 @@ sudo apt install -y golang-go
 ### 2. Create the application user and directories
 
 ```bash
-sudo useradd --system --home /opt/goinvoicer --shell /usr/sbin/nologin goinvoicer || true
+sudo useradd --system --home /srv/goinvoicer --shell /usr/sbin/nologin goinvoicer || true
 
-sudo mkdir -p /opt/goinvoicer
-sudo mkdir -p /etc/goinvoicer
-sudo mkdir -p /var/lib/goinvoicer/data
-sudo mkdir -p /var/lib/goinvoicer/uploads
-sudo mkdir -p /var/www/goinvoicer/releases
+sudo mkdir -p /srv/goinvoicer/certs
+sudo mkdir -p /srv/goinvoicer/data
+sudo mkdir -p /srv/goinvoicer/uploads
+sudo mkdir -p /srv/goinvoicer/releases
 
-sudo chown -R goinvoicer:goinvoicer /opt/goinvoicer
-sudo chown -R goinvoicer:goinvoicer /var/lib/goinvoicer
-sudo chown -R root:root /etc/goinvoicer
-sudo chown -R www-data:www-data /var/www/goinvoicer
+sudo chown -R goinvoicer:goinvoicer /srv/goinvoicer
 ```
 
 ### 3. Create the production env file
 
 ```bash
-sudo cp backend/deploy/goinvoicer.env.example /etc/goinvoicer/goinvoicer.env
-sudo chmod 600 /etc/goinvoicer/goinvoicer.env
+sudo cp backend/deploy/goinvoicer.env.example /srv/goinvoicer/goinvoicer.env
+sudo chown goinvoicer:goinvoicer /srv/goinvoicer/goinvoicer.env
+sudo chmod 600 /srv/goinvoicer/goinvoicer.env
 ```
 
-Edit `/etc/goinvoicer/goinvoicer.env` and set:
+Edit `/srv/goinvoicer/goinvoicer.env` and set:
 
 - `PORT=127.0.0.1:4206`
 - `APP_BASE_URL=https://your-domain`
@@ -215,42 +223,69 @@ sudo systemctl reload nginx
 
 Edit `/etc/nginx/sites-available/goinvoicer.conf` and replace `your-app.example.com` with your real domain.
 
-### 6. Issue the TLS certificate
+### 6. Add the Cloudflare origin certificate
+
+From the Cloudflare dashboard, create an origin certificate for your domain and save the certificate and key on the server:
 
 ```bash
-sudo certbot --nginx -d your-app.example.com
+sudo mkdir -p /srv/goinvoicer/certs
+sudo chmod 700 /srv/goinvoicer/certs
+sudo nano /srv/goinvoicer/certs/origin.crt
+sudo nano /srv/goinvoicer/certs/origin.key
+sudo chmod 600 /srv/goinvoicer/certs/origin.key
 ```
 
-### 7. Put the first backend binary in place
+The example Nginx config expects:
+
+- `/srv/goinvoicer/certs/origin.crt`
+- `/srv/goinvoicer/certs/origin.key`
+
+After saving the files:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### 7. Match the Cloudflare SSL mode
+
+In Cloudflare:
+
+- keep the DNS record proxied through Cloudflare
+- `Full` matches your current setup
+- if you install a Cloudflare origin certificate on the server, `Full (strict)` is the safer setting and is recommended
+
+### 8. Put the first backend binary in place
 
 If you are doing the first deployment manually:
 
 ```bash
 cd backend
 go build -o dist/goinvoicer ./cmd
-sudo install -m 755 dist/goinvoicer /opt/goinvoicer/goinvoicer
+sudo install -m 755 dist/goinvoicer /srv/goinvoicer/goinvoicer
 sudo systemctl restart goinvoicer
 ```
 
-### 8. Put the first frontend build in place
+### 9. Put the first frontend build in place
 
 ```bash
 cd frontend
 npm install
 npm run build
 
-sudo mkdir -p /var/www/goinvoicer/releases/manual-first
-sudo cp -R dist/. /var/www/goinvoicer/releases/manual-first/
-sudo ln -sfn /var/www/goinvoicer/releases/manual-first /var/www/goinvoicer/current
+sudo mkdir -p /srv/goinvoicer/releases/manual-first
+sudo cp -R dist/. /srv/goinvoicer/releases/manual-first/
+sudo ln -sfn /srv/goinvoicer/releases/manual-first /srv/goinvoicer/current
 sudo systemctl reload nginx
 ```
 
-### 9. Verify the app
+### 10. Verify the app
 
 Check that:
 
 - `https://your-domain` serves the frontend
 - `https://your-domain/api/auth/me` responds from the Go backend
+- Cloudflare is proxying the domain and the origin cert is installed on the server
 - Google OAuth callback URL matches your deployed domain
 - Stripe webhook URL is set to `https://your-domain/api/billing/stripe/webhook`
 
@@ -260,13 +295,13 @@ After the Debian server is ready, configure GitHub so deployments can happen aut
 
 ### Example Server Directories
 
-- backend binary: `/opt/goinvoicer/goinvoicer`
-- backend env file: `/etc/goinvoicer/goinvoicer.env`
-- backend working directory: `/var/lib/goinvoicer`
-- SQLite database: `/var/lib/goinvoicer/data/goinvoicer.db`
-- uploads directory: `/var/lib/goinvoicer/uploads`
-- frontend releases: `/var/www/goinvoicer/releases`
-- frontend current symlink: `/var/www/goinvoicer/current`
+- deploy root: `/srv/goinvoicer`
+- backend binary: `/srv/goinvoicer/goinvoicer`
+- backend env file: `/srv/goinvoicer/goinvoicer.env`
+- SQLite database: `/srv/goinvoicer/data/goinvoicer.db`
+- uploads directory: `/srv/goinvoicer/uploads`
+- frontend releases: `/srv/goinvoicer/releases`
+- frontend current symlink: `/srv/goinvoicer/current`
 
 ## GitHub Deploy Workflow
 
@@ -287,14 +322,14 @@ To use it, configure these GitHub repository settings.
 - `DEPLOY_HOST`
 - `DEPLOY_PORT` (optional, defaults to `22`)
 - `DEPLOY_USER` (optional, defaults to `root`)
-- `DEPLOY_BACKEND_DIR` (optional, defaults to `/opt/goinvoicer`)
-- `DEPLOY_FRONTEND_ROOT` (optional, defaults to `/var/www/goinvoicer`)
+- `DEPLOY_BACKEND_DIR` (optional, defaults to `/srv/goinvoicer`)
+- `DEPLOY_FRONTEND_ROOT` (optional, defaults to `/srv/goinvoicer`)
 - `DEPLOY_SYSTEMD_SERVICE` (optional, defaults to `goinvoicer`)
 
 Recommended Debian values:
 
-- `DEPLOY_BACKEND_DIR=/opt/goinvoicer`
-- `DEPLOY_FRONTEND_ROOT=/var/www/goinvoicer`
+- `DEPLOY_BACKEND_DIR=/srv/goinvoicer`
+- `DEPLOY_FRONTEND_ROOT=/srv/goinvoicer`
 - `DEPLOY_SYSTEMD_SERVICE=goinvoicer`
 
 ### Repository Secrets
@@ -338,8 +373,8 @@ You can also trigger the deploy workflow manually from the GitHub Actions UI.
 The current deploy workflow assumes:
 
 - Debian or another Linux distro with `systemd`
-- the backend binary should live at `/opt/goinvoicer/goinvoicer`
-- the frontend should be served from `/var/www/goinvoicer/current`
+- the backend binary should live at `/srv/goinvoicer/goinvoicer`
+- the frontend should be served from `/srv/goinvoicer/current`
 - Nginx is already installed and configured
 - the SSH user can upload files and restart the backend service
 

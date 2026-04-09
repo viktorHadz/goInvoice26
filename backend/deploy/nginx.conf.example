@@ -3,7 +3,21 @@ server {
     listen [::]:80;
     server_name your-app.example.com;
 
-    root /var/www/goinvoicer/current;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name your-app.example.com;
+
+    ssl_certificate /srv/goinvoicer/certs/origin.crt;
+    ssl_certificate_key /srv/goinvoicer/certs/origin.key;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    root /srv/goinvoicer/current;
     index index.html;
 
     gzip on;
