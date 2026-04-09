@@ -3,11 +3,18 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 func OpenDB(dbPath string) (*sql.DB, error) {
+	if err := ensureParentDir(dbPath); err != nil {
+		return nil, err
+	}
+
 	dsn := dbPath + "?_loc=UTC&parseTime=true&_foreign_keys=on&_busy_timeout=5000&_journal_mode=WAL"
 
 	db, err := sql.Open("sqlite3", dsn)
@@ -30,4 +37,22 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+func ensureParentDir(dbPath string) error {
+	// Skip special SQLite DSNs that are not ordinary filesystem paths.
+	if dbPath == "" || dbPath == ":memory:" || strings.HasPrefix(dbPath, "file:") {
+		return nil
+	}
+
+	dir := filepath.Dir(dbPath)
+	if dir == "." || dir == "" {
+		return nil
+	}
+
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create database directory %s: %w", dir, err)
+	}
+
+	return nil
 }

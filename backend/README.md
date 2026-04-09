@@ -123,7 +123,8 @@ Use `STRIPE_TRIAL_DAYS=7` for the default 7-day trial, or `STRIPE_TRIAL_DAYS=0` 
 The intended production setup is:
 
 - the Go API runs as a `systemd` service
-- Nginx serves the frontend and reverse proxies `/api/*` to the Go app
+- Nginx listens on `127.0.0.1:80`, serves the frontend, and reverse proxies `/api/*` to the Go app
+- Cloudflare Tunnel publishes the public HTTPS hostname and forwards to local Nginx
 - frontend and backend share the same public domain
 - the server is Debian
 
@@ -131,8 +132,6 @@ The default production layout is intentionally simple and keeps everything under
 
 - `/srv/goinvoicer/goinvoicer`
 - `/srv/goinvoicer/goinvoicer.env`
-- `/srv/goinvoicer/certs/origin.crt`
-- `/srv/goinvoicer/certs/origin.key`
 - `/srv/goinvoicer/data/goinvoicer.db`
 - `/srv/goinvoicer/uploads`
 - `/srv/goinvoicer/releases`
@@ -143,13 +142,17 @@ Useful deployment files in this folder:
 - [deploy/goinvoicer.service](./deploy/goinvoicer.service): example `systemd` unit
 - [deploy/goinvoicer.env.example](./deploy/goinvoicer.env.example): example production env file
 - [deploy/nginx.conf.example](./deploy/nginx.conf.example): example same-origin Nginx config
+- [deploy/install-server.sh](./deploy/install-server.sh): installs the service and Nginx scaffolding on a Debian box
+- [deploy/bootstrap-invoiceandgo.sh](./deploy/bootstrap-invoiceandgo.sh): builds the app, renders a production env from `backend/.env`, and installs it
 
 ### Debian Server Setup
 
 These steps assume:
 
 - Debian 12 or another recent Debian release
-- a public domain already pointing at Cloudflare and proxied through Cloudflare
+- a public hostname of `invoiceandgo.app`
+- a Cloudflare Tunnel already installed on the box
+- the tunnel forwards `invoiceandgo.app` to `http://127.0.0.1:80`
 - SSH access to the machine
 
 ### 1. Install base packages
@@ -163,6 +166,13 @@ If you want to build the backend manually on the server instead of using GitHub 
 
 ```bash
 sudo apt install -y golang-go
+```
+
+If this server already has the repo checked out, Go installed, Node installed, Nginx installed, and a working sudo user, you can use the one-shot bootstrap script instead of running the rest of the steps by hand:
+
+```bash
+cd backend
+./deploy/bootstrap-invoiceandgo.sh
 ```
 
 ### 2. Create the application user and directories
@@ -189,9 +199,9 @@ sudo chmod 600 /srv/goinvoicer/goinvoicer.env
 Edit `/srv/goinvoicer/goinvoicer.env` and set:
 
 - `PORT=127.0.0.1:4206`
-- `APP_BASE_URL=https://your-domain`
-- `CORS_ORIGIN=https://your-domain`
-- `GOOGLE_REDIRECT_URL=https://your-domain/api/auth/google/callback`
+- `APP_BASE_URL=https://invoiceandgo.app`
+- `CORS_ORIGIN=https://invoiceandgo.app`
+- `GOOGLE_REDIRECT_URL=https://invoiceandgo.app/api/auth/google/callback`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `STRIPE_PUBLISHABLE_KEY`
@@ -214,46 +224,33 @@ sudo systemctl enable goinvoicer
 ### 5. Configure Nginx
 
 ```bash
-sudo cp backend/deploy/nginx.conf.example /etc/nginx/sites-available/goinvoicer.conf
-sudo ln -sfn /etc/nginx/sites-available/goinvoicer.conf /etc/nginx/sites-enabled/goinvoicer.conf
-sudo rm -f /etc/nginx/sites-enabled/default
+sudo cp backend/deploy/nginx.conf.example /etc/nginx/sites-available/invoiceandgo.app
+sudo ln -sfn /etc/nginx/sites-available/invoiceandgo.app /etc/nginx/sites-enabled/invoiceandgo.app
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Edit `/etc/nginx/sites-available/goinvoicer.conf` and replace `your-app.example.com` with your real domain.
+The example file is already written for the existing tunnel-backed Nginx pattern on this server:
 
-### 6. Add the Cloudflare origin certificate
+- Nginx listens only on `127.0.0.1:80`
+- `www.invoiceandgo.app` redirects to `invoiceandgo.app`
+- the frontend is served from `/srv/goinvoicer/current`
+- `/api/*` is proxied to `127.0.0.1:4206`
+- `CF-Connecting-IP` is trusted from the local tunnel process
+### 6. Confirm the Cloudflare Tunnel hostname
 
-From the Cloudflare dashboard, create an origin certificate for your domain and save the certificate and key on the server:
+This machine is already using a token-managed `cloudflared.service`, so there may be no local `/etc/cloudflared/config.yml` to edit.
 
-```bash
-sudo mkdir -p /srv/goinvoicer/certs
-sudo chmod 700 /srv/goinvoicer/certs
-sudo nano /srv/goinvoicer/certs/origin.crt
-sudo nano /srv/goinvoicer/certs/origin.key
-sudo chmod 600 /srv/goinvoicer/certs/origin.key
-```
+In the Cloudflare Zero Trust dashboard, confirm the tunnel has these public hostnames:
 
-The example Nginx config expects:
+- `invoiceandgo.app` -> `http://127.0.0.1:80`
+- `www.invoiceandgo.app` -> `http://127.0.0.1:80`
 
-- `/srv/goinvoicer/certs/origin.crt`
-- `/srv/goinvoicer/certs/origin.key`
-
-After saving the files:
-
-```bash
-sudo nginx -t
-sudo systemctl reload nginx
-```
+If the tunnel is already forwarding all hostnames to local Nginx, you only need to make sure the DNS hostname is attached to the tunnel.
 
 ### 7. Match the Cloudflare SSL mode
 
-In Cloudflare:
-
-- keep the DNS record proxied through Cloudflare
-- `Full` matches your current setup
-- if you install a Cloudflare origin certificate on the server, `Full (strict)` is the safer setting and is recommended
+In Cloudflare, keep the hostname proxied and use `Full` or `Full (strict)` at the edge. Nginx itself stays on loopback HTTP because Cloudflare Tunnel terminates the public HTTPS connection.
 
 ### 8. Put the first backend binary in place
 
@@ -283,11 +280,11 @@ sudo systemctl reload nginx
 
 Check that:
 
-- `https://your-domain` serves the frontend
-- `https://your-domain/api/auth/me` responds from the Go backend
-- Cloudflare is proxying the domain and the origin cert is installed on the server
-- Google OAuth callback URL matches your deployed domain
-- Stripe webhook URL is set to `https://your-domain/api/billing/stripe/webhook`
+- `https://invoiceandgo.app` serves the frontend
+- `https://invoiceandgo.app/api/auth/me` responds from the Go backend
+- Cloudflare Tunnel is forwarding the hostname to local Nginx
+- Google OAuth callback URL matches `https://invoiceandgo.app/api/auth/google/callback`
+- Stripe webhook URL is set to `https://invoiceandgo.app/api/billing/stripe/webhook`
 
 ### One-Time GitHub Deploy Setup
 
@@ -340,7 +337,7 @@ Recommended Debian values:
 `DEPLOY_KNOWN_HOSTS` can be generated with:
 
 ```bash
-ssh-keyscan -H your-app.example.com
+ssh-keyscan -H invoiceandgo.app
 ```
 
 ### Important Permission Note
