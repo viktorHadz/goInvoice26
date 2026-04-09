@@ -16,7 +16,7 @@ The intended production target for this repo is:
 
 - a Debian server
 - `systemd` for the Go backend service
-- Caddy for HTTPS, static frontend hosting, and reverse proxying `/api/*`
+- Nginx for HTTPS, static frontend hosting, and reverse proxying `/api/*`
 - same-origin hosting on one public domain
 
 ## What You Need
@@ -169,7 +169,7 @@ Two GitHub Actions workflows are included:
 The deploy workflow is designed around a Debian server with:
 
 - `systemd`
-- Caddy
+- Nginx
 - a writable backend directory such as `/opt/goinvoicer`
 - a frontend web root such as `/var/www/goinvoicer/current`
 

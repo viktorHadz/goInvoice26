@@ -123,7 +123,7 @@ Use `STRIPE_TRIAL_DAYS=7` for the default 7-day trial, or `STRIPE_TRIAL_DAYS=0` 
 The intended production setup is:
 
 - the Go API runs as a `systemd` service
-- Caddy serves the frontend and reverse proxies `/api/*` to the Go app
+- Nginx serves the frontend and reverse proxies `/api/*` to the Go app
 - frontend and backend share the same public domain
 - the server is Debian
 
@@ -131,7 +131,7 @@ Useful deployment files in this folder:
 
 - [deploy/goinvoicer.service](./deploy/goinvoicer.service): example `systemd` unit
 - [deploy/goinvoicer.env.example](./deploy/goinvoicer.env.example): example production env file
-- [deploy/Caddyfile.example](./deploy/Caddyfile.example): example same-origin Caddy config
+- [deploy/nginx.conf.example](./deploy/nginx.conf.example): example same-origin Nginx config
 
 ### Debian Server Setup
 
@@ -145,7 +145,7 @@ These steps assume:
 
 ```bash
 sudo apt update
-sudo apt install -y caddy curl
+sudo apt install -y nginx certbot python3-certbot-nginx curl
 ```
 
 If you want to build the backend manually on the server instead of using GitHub Actions, also install Go:
@@ -162,6 +162,7 @@ sudo useradd --system --home /opt/goinvoicer --shell /usr/sbin/nologin goinvoice
 sudo mkdir -p /opt/goinvoicer
 sudo mkdir -p /etc/goinvoicer
 sudo mkdir -p /var/lib/goinvoicer/data
+sudo mkdir -p /var/lib/goinvoicer/uploads
 sudo mkdir -p /var/www/goinvoicer/releases
 
 sudo chown -R goinvoicer:goinvoicer /opt/goinvoicer
@@ -179,6 +180,7 @@ sudo chmod 600 /etc/goinvoicer/goinvoicer.env
 
 Edit `/etc/goinvoicer/goinvoicer.env` and set:
 
+- `PORT=127.0.0.1:4206`
 - `APP_BASE_URL=https://your-domain`
 - `CORS_ORIGIN=https://your-domain`
 - `GOOGLE_REDIRECT_URL=https://your-domain/api/auth/google/callback`
@@ -201,21 +203,25 @@ sudo systemctl daemon-reload
 sudo systemctl enable goinvoicer
 ```
 
-### 5. Configure Caddy
+### 5. Configure Nginx
 
 ```bash
-sudo cp backend/deploy/Caddyfile.example /etc/caddy/Caddyfile
+sudo cp backend/deploy/nginx.conf.example /etc/nginx/sites-available/goinvoicer.conf
+sudo ln -sfn /etc/nginx/sites-available/goinvoicer.conf /etc/nginx/sites-enabled/goinvoicer.conf
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
-Edit `/etc/caddy/Caddyfile` and replace `your-app.example.com` with your real domain.
+Edit `/etc/nginx/sites-available/goinvoicer.conf` and replace `your-app.example.com` with your real domain.
 
-Then reload Caddy:
+### 6. Issue the TLS certificate
 
 ```bash
-sudo systemctl reload caddy
+sudo certbot --nginx -d your-app.example.com
 ```
 
-### 6. Put the first backend binary in place
+### 7. Put the first backend binary in place
 
 If you are doing the first deployment manually:
 
@@ -226,7 +232,7 @@ sudo install -m 755 dist/goinvoicer /opt/goinvoicer/goinvoicer
 sudo systemctl restart goinvoicer
 ```
 
-### 7. Put the first frontend build in place
+### 8. Put the first frontend build in place
 
 ```bash
 cd frontend
@@ -236,10 +242,10 @@ npm run build
 sudo mkdir -p /var/www/goinvoicer/releases/manual-first
 sudo cp -R dist/. /var/www/goinvoicer/releases/manual-first/
 sudo ln -sfn /var/www/goinvoicer/releases/manual-first /var/www/goinvoicer/current
-sudo systemctl reload caddy
+sudo systemctl reload nginx
 ```
 
-### 8. Verify the app
+### 9. Verify the app
 
 Check that:
 
@@ -256,7 +262,9 @@ After the Debian server is ready, configure GitHub so deployments can happen aut
 
 - backend binary: `/opt/goinvoicer/goinvoicer`
 - backend env file: `/etc/goinvoicer/goinvoicer.env`
+- backend working directory: `/var/lib/goinvoicer`
 - SQLite database: `/var/lib/goinvoicer/data/goinvoicer.db`
+- uploads directory: `/var/lib/goinvoicer/uploads`
 - frontend releases: `/var/www/goinvoicer/releases`
 - frontend current symlink: `/var/www/goinvoicer/current`
 
@@ -332,7 +340,7 @@ The current deploy workflow assumes:
 - Debian or another Linux distro with `systemd`
 - the backend binary should live at `/opt/goinvoicer/goinvoicer`
 - the frontend should be served from `/var/www/goinvoicer/current`
-- Caddy is already installed and configured
+- Nginx is already installed and configured
 - the SSH user can upload files and restart the backend service
 
 ## Recommended Verification
