@@ -86,11 +86,11 @@ The production frontend is built into `frontend/dist`.
 For deployment, the intended setup is:
 
 1. build the frontend with `npm run build`
-2. serve `frontend/dist` with Caddy
+2. serve `frontend/dist` with Nginx
 3. reverse proxy `/api/*` to the Go backend
 4. use SPA fallback so app routes such as `/app/invoice` still resolve to `index.html`
 
-A Caddy example lives at [backend/deploy/Caddyfile.example](../backend/deploy/Caddyfile.example).
+An Nginx example lives at [backend/deploy/nginx.conf.example](../backend/deploy/nginx.conf.example).
 
 ## Debian Production Notes
 
@@ -102,7 +102,7 @@ On Debian, the frontend is expected to end up here:
 /var/www/goinvoicer/current
 ```
 
-Caddy then serves that directory and forwards `/api/*` to the backend on `127.0.0.1:4206`.
+Nginx then serves that directory and forwards `/api/*` to the backend on `127.0.0.1:4206`.
 
 The GitHub deploy workflow updates the frontend by:
 
