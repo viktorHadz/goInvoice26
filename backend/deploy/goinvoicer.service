@@ -6,16 +6,16 @@ After=network.target
 Type=simple
 User=goinvoicer
 Group=goinvoicer
-WorkingDirectory=/var/lib/goinvoicer
-EnvironmentFile=/etc/goinvoicer/goinvoicer.env
-ExecStart=/opt/goinvoicer/goinvoicer
+WorkingDirectory=/srv/goinvoicer
+EnvironmentFile=/srv/goinvoicer/goinvoicer.env
+ExecStart=/srv/goinvoicer/goinvoicer
 Restart=always
 RestartSec=2
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/goinvoicer
+ReadWritePaths=/srv/goinvoicer
 
 [Install]
 WantedBy=multi-user.target

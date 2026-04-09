@@ -99,7 +99,7 @@ The production setup for this repo assumes a Debian server.
 On Debian, the frontend is expected to end up here:
 
 ```text
-/var/www/goinvoicer/current
+/srv/goinvoicer/current
 ```
 
 Nginx then serves that directory and forwards `/api/*` to the backend on `127.0.0.1:4206`.
@@ -109,7 +109,7 @@ The GitHub deploy workflow updates the frontend by:
 1. building `frontend/dist` in GitHub Actions
 2. uploading it to the Debian server
 3. extracting it into a release folder
-4. repointing `/var/www/goinvoicer/current` to the new release
+4. repointing `/srv/goinvoicer/current` to the new release
 
 ## Recommended Developer Workflow
 
