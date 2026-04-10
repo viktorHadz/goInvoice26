@@ -47,6 +47,7 @@ const receiptLabel = ref('')
 const receiptMetaDate = ref('')
 const receiptMetaLabel = ref('')
 const receiptError = ref('')
+const showSavedReceiptEditor = ref(false)
 
 async function generatePdfOnly() {
   const draftOrSavedInvoice = editStore.activeInvoice
@@ -280,6 +281,11 @@ async function saveReceiptMetadata() {
   }
 }
 
+function selectSavedReceipt(receiptNo: number) {
+  selectedReceiptNo.value = receiptNo
+  showSavedReceiptEditor.value = true
+}
+
 async function generateSelectedReceiptPdf() {
   if (!inv.value || !selectedReceipt.value || isGeneratingExport.value) return
 
@@ -318,10 +324,11 @@ async function confirmDeleteReceipt() {
   if (!inv.value || !selectedReceipt.value) return
 
   const confirmed = await requestConfirmation({
-    title: 'Delete receipt?',
-    message: `Delete ${receiptDisplayLabel.value}?`,
-    details: 'This removes the receipt from the selected revision only.',
-    confirmLabel: 'Delete receipt',
+    title: 'Delete payment receipt?',
+    message: `Delete ${receiptDisplayLabel.value} from this revision?`,
+    details:
+      'This action permanently removes the saved payment receipt and increases the remaining balance due.',
+    confirmLabel: 'Delete payment receipt',
     cancelLabel: 'Keep receipt',
     confirmVariant: 'danger',
   })
@@ -644,264 +651,95 @@ const menuOpts = computed<MenuOption[]>(() => [
         </div>
       </section>
 
-      <!-- Totals  -->
-      <section class="grid gap-4 md:grid-cols-2">
-        <section
-          class="overflow-clip rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
-        >
-          <div class="hdr-grid border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800">
-            <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
-            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">Balance overview</div>
-          </div>
-
-          <div
-            v-if="totals"
-            class="space-y-3 p-3 text-sm md:p-4"
-          >
-            <div class="grid grid-cols-[1fr_auto] items-center gap-3">
-              <div class="text-zinc-600 dark:text-zinc-400">Subtotal</div>
-              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
-                {{ fmtGBPMinor(totals.subtotalMinor) }}
-              </div>
-            </div>
-
-            <div
-              v-if="inv.discountType !== 'none'"
-              class="grid grid-cols-[1fr_auto] items-center gap-3"
-            >
-              <div class="text-zinc-600 dark:text-zinc-400">Discount</div>
-              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
-                -{{ fmtGBPMinor(totals.discountMinor) }}
-              </div>
-            </div>
-
-            <div
-              v-if="inv.vatRate > 0"
-              class="grid grid-cols-[1fr_auto] items-center gap-3"
-            >
-              <div class="text-zinc-600 dark:text-zinc-400">VAT</div>
-              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
-                {{ fmtGBPMinor(totals.vatMinor) }}
-              </div>
-            </div>
-
-            <div class="h-px bg-zinc-200 dark:bg-zinc-800" />
-
-            <div class="grid grid-cols-[1fr_auto] items-center gap-3">
-              <div class="font-semibold text-zinc-800 dark:text-zinc-100">Total</div>
-              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
-                {{ fmtGBPMinor(totals.totalMinor) }}
-              </div>
-            </div>
-
-            <div
-              v-if="inv.depositType !== 'none'"
-              class="grid grid-cols-[1fr_auto] items-center gap-3"
-            >
-              <div class="text-zinc-600 dark:text-zinc-400">Requested upfront</div>
-              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
-                {{ fmtGBPMinor(depositMinor) }}
-              </div>
-            </div>
-
-            <div
-              v-if="inv.paidMinor > 0"
-              class="grid grid-cols-[1fr_auto] items-center gap-3"
-            >
-              <div class="text-zinc-600 dark:text-zinc-400">Paid</div>
-              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
-                -{{ fmtGBPMinor(inv.paidMinor) }}
-              </div>
-            </div>
-
-            <div class="rounded-xl bg-zinc-50 px-4 py-3 dark:bg-zinc-900/40">
-              <div class="grid grid-cols-[1fr_auto] items-center gap-3">
-                <div class="font-semibold text-zinc-800 dark:text-zinc-100">Balance due</div>
-                <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
-                  {{ fmtGBPMinor(balanceDueMinor) }}
-                </div>
-              </div>
-              <p class="mt-2 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                Deposits stay informational. Saved payment receipts reduce the balance.
-              </p>
-            </div>
-          </div>
-
-          <div
-            v-else
-            class="p-3 text-sm text-zinc-600 dark:text-zinc-400"
-          >
-            No totals available.
-          </div>
-        </section>
-
+      <!-- Totals / receipts / note -->
+      <section class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(360px,1fr)]">
         <div class="space-y-4">
           <section
-            v-if="lifecycleStatus !== 'void'"
-            class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+            class="overflow-clip rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
           >
             <div class="hdr-grid border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800">
-              <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-                Payment receipts
+              <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
+              <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">Balance overview</div>
+            </div>
+
+            <div
+              v-if="totals"
+              class="space-y-3 p-3 text-sm md:p-4"
+            >
+              <div class="grid grid-cols-[1fr_auto] items-center gap-3">
+                <div class="text-zinc-600 dark:text-zinc-400">Subtotal</div>
+                <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                  {{ fmtGBPMinor(totals.subtotalMinor) }}
+                </div>
               </div>
-              <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
-                Save and manage receipts for this revision
+
+              <div
+                v-if="inv.discountType !== 'none'"
+                class="grid grid-cols-[1fr_auto] items-center gap-3"
+              >
+                <div class="text-zinc-600 dark:text-zinc-400">Discount</div>
+                <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                  -{{ fmtGBPMinor(totals.discountMinor) }}
+                </div>
+              </div>
+
+              <div
+                v-if="inv.vatRate > 0"
+                class="grid grid-cols-[1fr_auto] items-center gap-3"
+              >
+                <div class="text-zinc-600 dark:text-zinc-400">VAT</div>
+                <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                  {{ fmtGBPMinor(totals.vatMinor) }}
+                </div>
+              </div>
+
+              <div class="h-px bg-zinc-200 dark:bg-zinc-800" />
+
+              <div class="grid grid-cols-[1fr_auto] items-center gap-3">
+                <div class="font-semibold text-zinc-800 dark:text-zinc-100">Total</div>
+                <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                  {{ fmtGBPMinor(totals.totalMinor) }}
+                </div>
+              </div>
+
+              <div
+                v-if="inv.depositType !== 'none'"
+                class="grid grid-cols-[1fr_auto] items-center gap-3"
+              >
+                <div class="text-zinc-600 dark:text-zinc-400">Requested upfront</div>
+                <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                  {{ fmtGBPMinor(depositMinor) }}
+                </div>
+              </div>
+
+              <div
+                v-if="inv.paidMinor > 0"
+                class="grid grid-cols-[1fr_auto] items-center gap-3"
+              >
+                <div class="text-zinc-600 dark:text-zinc-400">Paid</div>
+                <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                  -{{ fmtGBPMinor(inv.paidMinor) }}
+                </div>
+              </div>
+
+              <div class="rounded-xl bg-zinc-50 px-4 py-3 dark:bg-zinc-900/40">
+                <div class="grid grid-cols-[1fr_auto] items-center gap-3">
+                  <div class="font-semibold text-zinc-800 dark:text-zinc-100">Balance due</div>
+                  <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                    {{ fmtGBPMinor(balanceDueMinor) }}
+                  </div>
+                </div>
+                <p class="mt-2 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                  Deposits stay informational. Saved payment receipts reduce the balance.
+                </p>
               </div>
             </div>
 
-            <div class="space-y-3 p-3 md:p-4">
-              <div
-                v-if="receipts.length"
-                class="rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/40"
-              >
-                <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                  Saved receipts
-                </div>
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <button
-                    v-for="receipt in receipts"
-                    :key="receipt.id"
-                    type="button"
-                    class="rounded-full border px-3 py-1 text-xs font-medium transition"
-                    :class="
-                      selectedReceipt?.receiptNo === receipt.receiptNo
-                        ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-emerald-400/20 dark:bg-emerald-950/40 dark:text-emerald-200'
-                        : 'border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'
-                    "
-                    @click="selectedReceiptNo = receipt.receiptNo"
-                  >
-                    {{
-                      formatPaymentReceiptLabel(
-                        invoicePrefix,
-                        inv.baseNumber,
-                        editStore.activeRevisionNo,
-                        receipt.receiptNo,
-                      )
-                    }}
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="selectedReceipt" class="grid gap-3">
-                <div class="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Receipt amount
-                    </div>
-                    <div
-                      class="rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm font-medium text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-                    >
-                      {{ fmtGBPMinor(selectedReceipt.amountMinor) }}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Payment date
-                    </div>
-                    <DateField v-model="receiptMetaDate" />
-                  </div>
-                </div>
-
-                <div>
-                  <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                    Payment note / Receipt note
-                  </div>
-                  <TheInput
-                    v-model="receiptMetaLabel"
-                    placeholder="Optional receipt note"
-                    inputClass="w-full py-1.5"
-                  />
-                </div>
-
-                <div class="flex flex-wrap gap-2">
-                  <TheButton
-                    :disabled="!canEditReceiptMetadata || isSavingReceipt"
-                    @click="saveReceiptMetadata"
-                  >
-                    {{ isSavingReceipt ? 'Saving...' : 'Save receipt details' }}
-                  </TheButton>
-                  <TheButton
-                    variant="secondary"
-                    :disabled="isGeneratingExport"
-                    @click="generateSelectedReceiptPdf"
-                  >
-                    Export PDF
-                  </TheButton>
-                  <TheButton
-                    variant="secondary"
-                    :disabled="isGeneratingExport"
-                    @click="generateSelectedReceiptDocx"
-                  >
-                    Export Docx
-                  </TheButton>
-                  <TheButton variant="danger" @click="confirmDeleteReceipt">Delete receipt</TheButton>
-                </div>
-              </div>
-
-              <div
-                v-else
-                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
-              >
-                No saved receipts for this revision yet.
-              </div>
-
-              <div v-if="canCreateReceipt" class="grid gap-3">
-                <div class="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Receipt amount
-                    </div>
-                    <TheInput
-                      v-model="receiptAmount"
-                      type="number"
-                      placeholder="0"
-                      inputClass="w-full py-1.5"
-                    />
-                  </div>
-
-                  <div>
-                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Payment date
-                    </div>
-                    <DateField v-model="receiptDate" />
-                  </div>
-                </div>
-
-                <div>
-                  <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                    Payment note / Receipt note
-                  </div>
-                  <TheInput
-                    v-model="receiptLabel"
-                    placeholder="Optional receipt note"
-                    inputClass="w-full py-1.5"
-                  />
-                </div>
-
-                <TheButton
-                  class="w-full"
-                  :disabled="!canCreateReceipt || isSavingReceipt"
-                  @click="createReceipt"
-                >
-                  {{ isSavingReceipt ? 'Saving...' : 'Record payment receipt' }}
-                </TheButton>
-              </div>
-
-              <div
-                v-else
-                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
-              >
-                This revision is fully settled. Additions are disabled once the balance reaches
-                zero.
-              </div>
-
-              <p
-                v-if="receiptError"
-                class="text-xs text-rose-600 dark:text-rose-400"
-              >
-                {{ receiptError }}
-              </p>
+            <div
+              v-else
+              class="p-3 text-sm text-zinc-600 dark:text-zinc-400"
+            >
+              No totals available.
             </div>
           </section>
 
@@ -925,10 +763,223 @@ const menuOpts = computed<MenuOption[]>(() => [
 
               <div
                 v-else
-                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/60 px-4 py-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
+                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/60 px-4 py-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
               >
                 No note added to this invoice.
               </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="space-y-4">
+          <section
+            v-if="lifecycleStatus !== 'void'"
+            class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+          >
+            <div class="hdr-grid border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800">
+              <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+                Payment receipts
+              </div>
+              <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
+                Save and manage receipts for this revision
+              </div>
+            </div>
+
+            <div class="space-y-4 p-3 md:p-4">
+              <div
+                v-if="receipts.length"
+                class="rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Saved receipts</div>
+                  <button
+                    type="button"
+                    class="text-xs font-medium text-sky-700 hover:text-sky-800 dark:text-emerald-300 dark:hover:text-emerald-200"
+                    @click="showSavedReceiptEditor = !showSavedReceiptEditor"
+                  >
+                    {{ showSavedReceiptEditor ? 'Hide details' : 'Show details' }}
+                  </button>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <button
+                    v-for="receipt in receipts"
+                    :key="receipt.id"
+                    type="button"
+                    class="rounded-full border px-3 py-1 text-xs font-medium transition"
+                    :class="
+                      selectedReceipt?.receiptNo === receipt.receiptNo
+                        ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-emerald-400/20 dark:bg-emerald-950/40 dark:text-emerald-200'
+                        : 'border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'
+                    "
+                    @click="selectSavedReceipt(receipt.receiptNo)"
+                  >
+                    {{
+                      formatPaymentReceiptLabel(
+                        invoicePrefix,
+                        inv.baseNumber,
+                        editStore.activeRevisionNo,
+                        receipt.receiptNo,
+                      )
+                    }}
+                  </button>
+                </div>
+              </div>
+
+              <div
+                v-if="selectedReceipt && showSavedReceiptEditor"
+                class="rounded-xl border border-zinc-300 bg-zinc-50/60 p-3 dark:border-zinc-800 dark:bg-zinc-900/30"
+              >
+                <div class="mb-3">
+                  <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    Edit saved receipt
+                  </div>
+                  <div class="text-xs text-zinc-600 dark:text-zinc-400">
+                    Update selected receipt
+                  </div>
+                </div>
+                <div class="grid gap-3">
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        Receipt amount
+                      </div>
+                      <div
+                        class="rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm font-medium text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+                      >
+                        {{ fmtGBPMinor(selectedReceipt.amountMinor) }}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        Payment date
+                      </div>
+                      <DateField v-model="receiptMetaDate" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Payment note
+                    </div>
+                    <TheInput
+                      v-model="receiptMetaLabel"
+                      placeholder="Optional receipt note"
+                      inputClass="w-full py-1.5"
+                    />
+                  </div>
+
+                  <div class="flex flex-wrap gap-2">
+                    <TheButton
+                      variant="secondary"
+                      :disabled="isGeneratingExport"
+                      class="flex-1 cursor-pointer"
+                      @click="generateSelectedReceiptPdf"
+                    >
+                      Export PDF
+                    </TheButton>
+                    <TheButton
+                      variant="secondary"
+                      :disabled="isGeneratingExport"
+                      class="flex-1 cursor-pointer"
+                      @click="generateSelectedReceiptDocx"
+                    >
+                      Export Docx
+                    </TheButton>
+                  </div>
+
+                     <div class="flex flex-col sm:flex-row flex-wrap gap-2">
+                    <TheButton
+                      variant="success"
+                      :disabled="!canEditReceiptMetadata || isSavingReceipt"
+                      class="flex-1 cursor-pointer"
+                      @click="saveReceiptMetadata"
+                    >
+                      {{ isSavingReceipt ? 'Saving...' : 'Save receipt details' }}
+                    </TheButton>
+                    <TheButton variant="danger" 
+                    class="flex-1 cursor-pointer"
+                    @click="confirmDeleteReceipt">Delete receipt</TheButton>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                v-if="!receipts.length"
+                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
+              >
+                No saved receipts for this revision yet.
+              </div>
+
+              <div
+                v-if="canCreateReceipt"
+                class="rounded-xl border border-zinc-300 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+              >
+                <div class="mb-3">
+                  <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    Create new payment receipt
+                  </div>
+                  <div class="text-xs text-zinc-600 dark:text-zinc-400">
+                   Reduces the invoice's due balance
+                  </div>
+                </div>
+                <div class="grid gap-3">
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        Receipt amount
+                      </div>
+                      <TheInput
+                        v-model="receiptAmount"
+                        type="number"
+                        placeholder="0"
+                        inputClass="w-full py-1.5"
+                      />
+                    </div>
+
+                    <div>
+                      <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        Payment date
+                      </div>
+                      <DateField v-model="receiptDate" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Payment note (optional)
+                    </div>
+                    <TheInput
+                      v-model="receiptLabel"
+                      placeholder="Displays on the exported receipt"
+                      inputClass="w-full py-1.5"
+                    />
+                  </div>
+
+                  <TheButton
+                    class="w-full"
+                    :disabled="!canCreateReceipt || isSavingReceipt"
+                    @click="createReceipt"
+                  >
+                    {{ isSavingReceipt ? 'Saving...' : 'Record payment receipt' }}
+                  </TheButton>
+                </div>
+              </div>
+
+              <div
+                v-else
+                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
+              >
+                This revision is fully settled. Additions are disabled once the balance reaches
+                zero.
+              </div>
+
+              <p
+                v-if="receiptError"
+                class="text-xs text-rose-600 dark:text-rose-400"
+              >
+                {{ receiptError }}
+              </p>
             </div>
           </section>
         </div>
