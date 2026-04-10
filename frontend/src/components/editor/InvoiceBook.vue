@@ -17,7 +17,7 @@ import {
   MagnifyingGlassIcon,
   UserCircleIcon,
 } from '@heroicons/vue/24/outline'
-import type { ActiveEditorNode, InvBookHistoryItem, InvBookInvoice } from './invBookTypes'
+import type { ActiveEditorNode, InvBookInvoice, InvBookRevision } from './invBookTypes'
 import DecorGradient from '@/components/UI/DecorGradient.vue'
 import TheButton from '@/components/UI/TheButton.vue'
 import TheTooltip from '../UI/TheTooltip.vue'
@@ -29,7 +29,6 @@ import { fmtStrDate } from '@/utils/dates'
 import {
   formatInvoiceBaseLabel,
   formatInvoiceDisplayLabel,
-  formatPaymentReceiptLabel,
 } from '@/utils/invoiceLabels'
 import { fmtGBPMinor } from '@/utils/money'
 import {
@@ -40,19 +39,14 @@ import {
 } from './invoiceBookFilters'
 import DetailsMenu, { type MenuOption } from './partials/DetailsMenu.vue'
 
-function historyForBookSublist(history: InvBookHistoryItem[]): InvBookHistoryItem[] {
-  return history
+function childRevisions(invoice: InvBookInvoice): InvBookRevision[] {
+  return invoice.revisions.filter((revision) => revision.revisionNo > 1)
 }
 
-function bookSublistHistoryBadge(history: InvBookHistoryItem[]): string {
-  const revisionCount = history.filter((entry) => entry.type === 'revision').length
-  const receiptCount = history.filter((entry) => entry.type === 'payment_receipt').length
-  const parts: string[] = []
-  if (revisionCount > 0)
-    parts.push(revisionCount === 1 ? '1 revision' : `${revisionCount} revisions`)
-  if (receiptCount > 0) parts.push(receiptCount === 1 ? '1 receipt' : `${receiptCount} receipts`)
-  if (parts.length === 0) return 'No history'
-  return parts.join(' • ')
+function bookSublistRevisionBadge(invoice: InvBookInvoice): string {
+  const revisionCount = childRevisions(invoice).length
+  if (revisionCount === 0) return 'No revisions'
+  return revisionCount === 1 ? '1 revision' : `${revisionCount} revisions`
 }
 
 const props = defineProps<{
@@ -168,9 +162,9 @@ function invoiceSummaryBits(invoice: InvBookInvoice): string[] {
 
   bits.push(invoiceBalanceLabel(invoice))
 
-  const historyBadge = bookSublistHistoryBadge(invoice.history)
-  if (historyBadge !== 'No history') {
-    bits.push(historyBadge)
+  const revisionBadge = bookSublistRevisionBadge(invoice)
+  if (revisionBadge !== 'No revisions') {
+    bits.push(revisionBadge)
   }
 
   return bits
@@ -197,7 +191,7 @@ function placePanel() {
 async function openDropdown() {
   isOpen.value = true
   await bookStore.fetchInvoiceBook(true)
-  if (props.activeNode?.type === 'revision' || props.activeNode?.type === 'paymentReceipt') {
+  if (props.activeNode?.type === 'revision') {
     openId.value = props.activeNode.invoiceId
   }
   await nextTick()
@@ -231,8 +225,7 @@ function selectInvoice(invoice: InvBookInvoice) {
   // closeDropdown() // might use at a later stage
 }
 
-function selectRevision(invoice: InvBookInvoice, revision: InvBookHistoryItem) {
-  if (revision.revisionNo == null) return
+function selectRevision(invoice: InvBookInvoice, revision: InvBookRevision) {
   openId.value = invoice.id
   emit('select', {
     type: 'revision',
@@ -245,29 +238,12 @@ function selectRevision(invoice: InvBookInvoice, revision: InvBookHistoryItem) {
   // closeDropdown() // might use at a later stage
 }
 
-function selectReceipt(invoice: InvBookInvoice, receipt: InvBookHistoryItem) {
-  if (receipt.receiptNo == null) return
-  openId.value = invoice.id
-  emit('select', {
-    type: 'paymentReceipt',
-    clientId: invoice.clientId,
-    id: receipt.id,
-    invoiceId: invoice.id,
-    baseNo: invoice.baseNo,
-    receiptNo: receipt.receiptNo,
-  })
-}
-
 function isActiveInvoice(invoice: InvBookInvoice) {
   return props.activeNode?.type === 'invoice' && props.activeNode.id === invoice.id
 }
 
-function isActiveRevision(rev: InvBookHistoryItem) {
+function isActiveRevision(rev: InvBookRevision) {
   return props.activeNode?.type === 'revision' && props.activeNode.id === rev.id
-}
-
-function isActiveReceipt(receipt: InvBookHistoryItem) {
-  return props.activeNode?.type === 'paymentReceipt' && props.activeNode.id === receipt.id
 }
 
 function rowClass(active: boolean) {
@@ -303,7 +279,7 @@ async function handleNextPage() {
 watch(
   () => props.activeNode,
   (node) => {
-    if (node?.type === 'revision' || node?.type === 'paymentReceipt') {
+    if (node?.type === 'revision') {
       openId.value = node.invoiceId
       return
     }
@@ -451,7 +427,7 @@ useEscape(() => closeDropdown())
                     </span>
                   </div>
                   <p class="mt-0.5 text-xs font-bold text-sky-600 dark:text-emerald-400">
-                    Browse saved invoices, revisions, and receipts
+                    Browse saved invoices and revisions
                   </p>
                 </div>
                 <DetailsMenu
@@ -469,7 +445,7 @@ useEscape(() => closeDropdown())
                   id="invo-book-search"
                   v-model="query"
                   type="text"
-                  placeholder="Search invoice, revision, or receipt…"
+                  placeholder="Search invoice or revision…"
                   class="input input-accent py-1 pl-9 dark:bg-zinc-900"
                 />
               </div>
@@ -529,17 +505,13 @@ useEscape(() => closeDropdown())
                       <button
                         type="button"
                         class="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-700 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-200"
-                        :disabled="!historyForBookSublist(invoice.history).length"
-                        @click="
-                          toggleInvoice(invoice.id, !!historyForBookSublist(invoice.history).length)
-                        "
+                        :disabled="!childRevisions(invoice).length"
+                        @click="toggleInvoice(invoice.id, !!childRevisions(invoice).length)"
                       >
                         <ChevronRightIcon
                           class="size-4 transition-transform"
                           :class="{
-                            'rotate-90':
-                              openId === invoice.id &&
-                              !!historyForBookSublist(invoice.history).length,
+                            'rotate-90': openId === invoice.id && !!childRevisions(invoice).length,
                           }"
                         />
                       </button>
@@ -627,72 +599,33 @@ useEscape(() => closeDropdown())
                         </button>
 
                         <div
-                          v-if="
-                            openId === invoice.id && historyForBookSublist(invoice.history).length
-                          "
+                          v-if="openId === invoice.id && childRevisions(invoice).length"
                           class="mt-2 space-y-2 pl-8"
                         >
                           <button
-                            v-for="entry in historyForBookSublist(invoice.history)"
-                            :key="`${entry.type}-${entry.id}`"
+                            v-for="entry in childRevisions(invoice)"
+                            :key="entry.id"
                             type="button"
-                            :class="
-                              rowClass(
-                                entry.type === 'revision'
-                                  ? isActiveRevision(entry)
-                                  : isActiveReceipt(entry),
-                              )
-                            "
-                            @click="
-                              entry.type === 'revision'
-                                ? selectRevision(invoice, entry)
-                                : selectReceipt(invoice, entry)
-                            "
+                            :class="rowClass(isActiveRevision(entry))"
+                            @click="selectRevision(invoice, entry)"
                           >
-                            <component
-                              :is="
-                                entry.type === 'revision' ? DocumentDuplicateIcon : BanknotesIcon
-                              "
+                            <DocumentDuplicateIcon
                               class="size-5 shrink-0"
                               :class="
-                                entry.type === 'revision'
-                                  ? isActiveRevision(entry)
-                                    ? 'text-sky-600 dark:text-emerald-400'
-                                    : 'text-zinc-400 dark:text-zinc-500'
-                                  : isActiveReceipt(entry)
-                                    ? 'text-sky-600 dark:text-emerald-400'
-                                    : 'text-zinc-400 dark:text-zinc-500'
+                                isActiveRevision(entry)
+                                  ? 'text-sky-600 dark:text-emerald-400'
+                                  : 'text-zinc-400 dark:text-zinc-500'
                               "
                             />
 
                             <div class="min-w-0 flex-1">
                               <div class="truncate text-sm font-medium">
-                                {{
-                                  entry.type === 'revision'
-                                    ? formatInvoiceDisplayLabel(
-                                        bookInvoicePrefix,
-                                        invoice.baseNo,
-                                        entry.revisionNo,
-                                      )
-                                    : formatPaymentReceiptLabel(
-                                        bookInvoicePrefix,
-                                        invoice.baseNo,
-                                        entry.receiptNo,
-                                      )
-                                }}
+                                {{ formatInvoiceDisplayLabel(bookInvoicePrefix, invoice.baseNo, entry.revisionNo) }}
                               </div>
                               <div
                                 class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-zinc-600 dark:text-zinc-400"
                               >
-                                <span v-if="entry.issueDate">
-                                  {{ fmtStrDate(entry.issueDate, dateFormat) }}
-                                </span>
-                                <span v-else-if="entry.paymentDate">
-                                  {{ fmtStrDate(entry.paymentDate, dateFormat) }}
-                                </span>
-                                <span v-if="entry.amountMinor != null">
-                                  {{ fmtGBPMinor(entry.amountMinor) }}
-                                </span>
+                                <span>{{ fmtStrDate(entry.issueDate, dateFormat) }}</span>
                               </div>
                             </div>
 
@@ -705,21 +638,9 @@ useEscape(() => closeDropdown())
                                   </div>
                                   <div>
                                     <span class="font-bold">Number:</span>
-                                    {{
-                                      entry.type === 'revision'
-                                        ? formatInvoiceDisplayLabel(
-                                            bookInvoicePrefix,
-                                            invoice.baseNo,
-                                            entry.revisionNo,
-                                          )
-                                        : formatPaymentReceiptLabel(
-                                            bookInvoicePrefix,
-                                            invoice.baseNo,
-                                            entry.receiptNo,
-                                          )
-                                    }}
+                                    {{ formatInvoiceDisplayLabel(bookInvoicePrefix, invoice.baseNo, entry.revisionNo) }}
                                   </div>
-                                  <span v-if="entry.issueDate">
+                                  <span>
                                     <span class="font-bold">Issued at:</span>
                                     {{ fmtStrDate(entry.issueDate, dateFormat) }}
                                   </span>
@@ -727,25 +648,13 @@ useEscape(() => closeDropdown())
                                     <span class="font-bold">Due by:</span>
                                     {{ fmtStrDate(entry.dueByDate, dateFormat) }}
                                   </span>
-                                  <span v-if="entry.paymentDate">
-                                    <span class="font-bold">Payment date:</span>
-                                    {{ fmtStrDate(entry.paymentDate, dateFormat) }}
-                                  </span>
-                                  <span v-if="entry.amountMinor != null">
-                                    <span class="font-bold">Amount:</span>
-                                    {{ fmtGBPMinor(entry.amountMinor) }}
-                                  </span>
-                                  <span v-if="entry.label">
-                                    <span class="font-bold">Label:</span>
-                                    {{ entry.label }}
-                                  </span>
                                 </div>
                               </template>
 
                               <span
                                 class="text-tiny shrink-0 rounded-full border border-zinc-300 bg-white/90 px-2 py-0.5 font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
                               >
-                                {{ entry.type === 'revision' ? 'Revision' : 'Receipt' }}
+                                Revision
                               </span>
                             </TheTooltip>
                           </button>

@@ -24,24 +24,28 @@ func GeneratePaymentReceiptPDFHandler(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
+		revisionNo, ok := params.ValidateParam(w, r, "revisionNo")
+		if !ok {
+			return
+		}
 		receiptNo, ok := params.ValidateParam(w, r, "receiptNo")
 		if !ok {
 			return
 		}
 
-		doc, err := pdf.BuildPaymentReceiptFromDB(r.Context(), a.DB, clientID, baseNumber, receiptNo)
+		doc, err := pdf.BuildPaymentReceiptFromDB(r.Context(), a.DB, clientID, baseNumber, revisionNo, receiptNo)
 		if err != nil {
-			handlePaymentReceiptDocumentBuildError(w, r, clientID, baseNumber, receiptNo, "pdf", err)
+			handlePaymentReceiptDocumentBuildError(w, r, clientID, baseNumber, revisionNo, receiptNo, "pdf", err)
 			return
 		}
 
 		fileBytes, err := pdf.RenderPDF(r.Context(), &pdf.MarotoRenderer{}, doc)
 		if err != nil {
-			handlePaymentReceiptDocumentRenderError(w, r, clientID, baseNumber, receiptNo, "PDF", err)
+			handlePaymentReceiptDocumentRenderError(w, r, clientID, baseNumber, revisionNo, receiptNo, "PDF", err)
 			return
 		}
 
-		writeGeneratedDocument(w, "application/pdf", buildPaymentReceiptFilename(baseNumber, receiptNo, "pdf"), fileBytes)
+		writeGeneratedDocument(w, "application/pdf", buildPaymentReceiptFilename(baseNumber, revisionNo, receiptNo, "pdf"), fileBytes)
 	}
 }
 
@@ -55,24 +59,28 @@ func GeneratePaymentReceiptDOCXHandler(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
+		revisionNo, ok := params.ValidateParam(w, r, "revisionNo")
+		if !ok {
+			return
+		}
 		receiptNo, ok := params.ValidateParam(w, r, "receiptNo")
 		if !ok {
 			return
 		}
 
-		doc, err := pdf.BuildPaymentReceiptFromDB(r.Context(), a.DB, clientID, baseNumber, receiptNo)
+		doc, err := pdf.BuildPaymentReceiptFromDB(r.Context(), a.DB, clientID, baseNumber, revisionNo, receiptNo)
 		if err != nil {
-			handlePaymentReceiptDocumentBuildError(w, r, clientID, baseNumber, receiptNo, "docx", err)
+			handlePaymentReceiptDocumentBuildError(w, r, clientID, baseNumber, revisionNo, receiptNo, "docx", err)
 			return
 		}
 
 		fileBytes, err := docx.RenderDOCX(doc)
 		if err != nil {
-			handlePaymentReceiptDocumentRenderError(w, r, clientID, baseNumber, receiptNo, "DOCX", err)
+			handlePaymentReceiptDocumentRenderError(w, r, clientID, baseNumber, revisionNo, receiptNo, "DOCX", err)
 			return
 		}
 
-		writeGeneratedDocument(w, docxContentType, buildPaymentReceiptFilename(baseNumber, receiptNo, "docx"), fileBytes)
+		writeGeneratedDocument(w, docxContentType, buildPaymentReceiptFilename(baseNumber, revisionNo, receiptNo, "docx"), fileBytes)
 	}
 }
 
@@ -81,6 +89,7 @@ func handlePaymentReceiptDocumentBuildError(
 	r *http.Request,
 	clientID int64,
 	baseNumber int64,
+	revisionNo int64,
 	receiptNo int64,
 	format string,
 	err error,
@@ -95,6 +104,7 @@ func handlePaymentReceiptDocumentBuildError(
 		"format", format,
 		"client_id", clientID,
 		"base_number", baseNumber,
+		"revision_no", revisionNo,
 		"receipt_no", receiptNo,
 		"err", err,
 	)
@@ -106,6 +116,7 @@ func handlePaymentReceiptDocumentRenderError(
 	r *http.Request,
 	clientID int64,
 	baseNumber int64,
+	revisionNo int64,
 	receiptNo int64,
 	formatUpper string,
 	err error,
@@ -115,6 +126,7 @@ func handlePaymentReceiptDocumentRenderError(
 		"format", formatUpper,
 		"client_id", clientID,
 		"base_number", baseNumber,
+		"revision_no", revisionNo,
 		"receipt_no", receiptNo,
 		"err", err,
 	)

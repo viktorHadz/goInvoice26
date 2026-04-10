@@ -127,10 +127,10 @@ func buildDocumentFilename(baseNumber int64, revisionNo int64, ext string) strin
 		return fmt.Sprintf("Invoice-%d.%s", baseNumber, ext)
 	}
 
-	return fmt.Sprintf("Invoice-%d-Rev-%d.%s", baseNumber, revisionNo-1, ext)
+	return fmt.Sprintf("Invoice-%d.%d.%s", baseNumber, revisionNo, ext)
 }
 
-func buildPaymentReceiptFilename(baseNumber int64, receiptNo int64, ext string) string {
+func buildPaymentReceiptFilename(baseNumber int64, revisionNo int64, receiptNo int64, ext string) string {
 	ext = strings.TrimPrefix(strings.TrimSpace(ext), ".")
 	if ext == "" {
 		ext = "bin"
@@ -140,8 +140,15 @@ func buildPaymentReceiptFilename(baseNumber int64, receiptNo int64, ext string) 
 		return "Payment-Receipt." + ext
 	}
 	if receiptNo < 1 {
-		return fmt.Sprintf("Invoice-%d-PR.%s", baseNumber, ext)
+		if revisionNo <= 1 {
+			return fmt.Sprintf("Invoice-%d-PR.%s", baseNumber, ext)
+		}
+		return fmt.Sprintf("Invoice-%d.%d-PR.%s", baseNumber, revisionNo, ext)
 	}
 
-	return fmt.Sprintf("Invoice-%d-PR-%d.%s", baseNumber, receiptNo, ext)
+	if revisionNo <= 1 {
+		return fmt.Sprintf("Invoice-%d-PR-%d.%s", baseNumber, receiptNo, ext)
+	}
+
+	return fmt.Sprintf("Invoice-%d.%d-PR-%d.%s", baseNumber, revisionNo, receiptNo, ext)
 }

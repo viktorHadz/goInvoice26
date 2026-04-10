@@ -1,4 +1,5 @@
 export type ConfirmationVariant = 'primary' | 'danger' | 'success'
+export type ConfirmationDecision = 'confirm' | 'cancel' | 'alternate'
 
 export type ConfirmationOptions = {
     title: string
@@ -6,7 +7,9 @@ export type ConfirmationOptions = {
     details?: string
     confirmLabel?: string
     cancelLabel?: string
+    alternateLabel?: string
     confirmVariant?: ConfirmationVariant
+    alternateVariant?: ConfirmationVariant
 }
 
 export type ConfirmationRequest = {
@@ -16,8 +19,10 @@ export type ConfirmationRequest = {
     details?: string
     confirmLabel: string
     cancelLabel: string
+    alternateLabel?: string
     confirmVariant: ConfirmationVariant
-    respond: (confirmed: boolean) => void
+    alternateVariant?: ConfirmationVariant
+    respond: (decision: ConfirmationDecision) => void
 }
 
 const CONFIRM_EVENT = 'app:confirm'
@@ -30,8 +35,10 @@ function createConfirmationId() {
     return `confirm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-export function requestConfirmation(options: ConfirmationOptions): Promise<boolean> {
-    if (typeof window === 'undefined') return Promise.resolve(false)
+export function requestConfirmationChoice(
+    options: ConfirmationOptions,
+): Promise<ConfirmationDecision> {
+    if (typeof window === 'undefined') return Promise.resolve('cancel')
 
     return new Promise((resolve) => {
         const payload: ConfirmationRequest = {
@@ -41,7 +48,9 @@ export function requestConfirmation(options: ConfirmationOptions): Promise<boole
             details: options.details,
             confirmLabel: options.confirmLabel ?? 'Confirm',
             cancelLabel: options.cancelLabel ?? 'Cancel',
+            alternateLabel: options.alternateLabel,
             confirmVariant: options.confirmVariant ?? 'primary',
+            alternateVariant: options.alternateVariant ?? 'success',
             respond: resolve,
         }
 
@@ -49,6 +58,10 @@ export function requestConfirmation(options: ConfirmationOptions): Promise<boole
             new CustomEvent<ConfirmationRequest>(CONFIRM_EVENT, { detail: payload }),
         )
     })
+}
+
+export function requestConfirmation(options: ConfirmationOptions): Promise<boolean> {
+    return requestConfirmationChoice(options).then((decision) => decision === 'confirm')
 }
 
 export function onConfirmationRequest(listener: (request: ConfirmationRequest) => void) {

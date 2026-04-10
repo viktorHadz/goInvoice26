@@ -10,7 +10,3 @@ export function resolveEditorExportRevisionNo(
 
     return activeRevisionNo > 0 ? activeRevisionNo : 1
 }
-
-export function isReceiptEditorNode(activeNode: ActiveEditorNode): boolean {
-    return activeNode?.type === 'paymentReceipt'
-}

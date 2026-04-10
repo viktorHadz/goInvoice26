@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import TheInput from '@/components/UI/TheInput.vue'
 import TheButton from '@/components/UI/TheButton.vue'
 import TheDropdown from '@/components/UI/TheDropdown.vue'
-import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import { ChevronUpDownIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { fromMinor } from '@/utils/money'
 import TheTooltip from '@/components/UI/TheTooltip.vue'
 import { useEditorStore } from '@/stores/editor'
@@ -178,11 +178,10 @@ function applyVat() {
 </script>
 
 <template>
-    <main class="min-w-0 divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
-        <!-- Discount -->
-        <section class="min-w-0 py-2 first:pt-0">
-            <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
-                <div class="font-medium text-zinc-800 dark:text-zinc-100">Discount</div>
+    <div class="space-y-2 divide-y divide-zinc-200 dark:divide-zinc-800">
+        <section class="py-4 first:pt-0">
+            <div class="mb-2 flex items-center justify-between gap-3">
+                <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Discount</div>
                 <TheTooltip
                     side="top"
                     align="center"
@@ -193,44 +192,40 @@ function applyVat() {
                 </TheTooltip>
             </div>
 
-            <div
-                class="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_5.5rem]"
-            >
-                <TheInput
-                    v-model="discount"
-                    type="number"
-                    placeholder="0"
-                    labelHidden
-                    :reserveErrorSpace="false"
-                    :disabled="discountMode === 'none'"
-                    :title="
-                        discountMode === 'none'
-                            ? 'select discount mode from dropdown first'
-                            : 'discount value'
-                    "
-                    inputClass="w-full py-1"
-                    :error="discountError"
-                />
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <div class="flex justify-between gap-2">
+                    <TheInput
+                        v-model="discount"
+                        type="number"
+                        placeholder="0"
+                        labelHidden
+                        :reserveErrorSpace="false"
+                        :disabled="discountMode === 'none'"
+                        :title="
+                            discountMode === 'none'
+                                ? 'select discount mode from dropdown first'
+                                : 'discount value'
+                        "
+                        inputClass="w-full py-1"
+                        :error="discountError"
+                    />
+                    <TheDropdown
+                        v-model="discountMode"
+                        input-class="py-1 min-w-32 sm:min-w-24"
+                        :right-icon="ChevronUpDownIcon"
+                        :options="['none', 'fixed', 'percent']"
+                    />
+                </div>
 
-                <TheDropdown
-                    v-model="discountMode"
-                    input-class="py-1"
-                    :options="['none', 'fixed', 'percent']"
-                />
-
-                <TheButton
-                    class="w-full py-1.5!"
-                    @click="applyDiscount"
-                >
+                <TheButton class="w-full sm:flex-1 py-1.5!" @click="applyDiscount">
                     Apply
                 </TheButton>
             </div>
         </section>
 
-        <!-- Deposit -->
-        <section class="min-w-0 py-3">
-            <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
-                <div class="font-medium text-zinc-800 dark:text-zinc-100">Deposit</div>
+        <section class="py-4">
+            <div class="mb-2 flex items-center justify-between gap-3">
+                <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Deposit</div>
                 <TheTooltip
                     text="Show the amount you want upfront. Deposits stay visible on the invoice but do not reduce the saved balance due."
                     class="hover:text-sky-600 dark:hover:text-emerald-400"
@@ -239,67 +234,41 @@ function applyVat() {
                 </TheTooltip>
             </div>
 
-            <div
-                class="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_5.5rem]"
-            >
-                <TheInput
-                    v-model="deposit"
-                    type="number"
-                    :placeholder="depositMode === 'percent' ? '10' : '0'"
-                    labelHidden
-                    :reserveErrorSpace="false"
-                    :disabled="depositMode === 'none'"
-                    :title="
-                        depositMode === 'none'
-                            ? 'select deposit mode from dropdown first'
-                            : 'deposit value'
-                    "
-                    inputClass="w-full py-1"
-                    :error="depositError"
-                />
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <div class="flex justify-between gap-2">
+                    <TheInput
+                        v-model="deposit"
+                        type="number"
+                        :placeholder="depositMode === 'percent' ? '10' : '0'"
+                        labelHidden
+                        :reserveErrorSpace="false"
+                        :disabled="depositMode === 'none'"
+                        :title="
+                            depositMode === 'none'
+                                ? 'select deposit mode from dropdown first'
+                                : 'deposit value'
+                        "
+                        inputClass="w-full py-1"
+                        :error="depositError"
+                    />
 
-                <TheDropdown
-                    v-model="depositMode"
-                    input-class="py-1"
-                    :options="['none', 'fixed', 'percent']"
-                />
+                    <TheDropdown
+                        v-model="depositMode"
+                        input-class="py-1 min-w-32 sm:min-w-24"
+                        :right-icon="ChevronUpDownIcon"
+                        :options="['none', 'fixed', 'percent']"
+                    />
+                </div>
 
-                <TheButton
-                    class="w-full py-1.5!"
-                    @click="applyDeposit"
-                >
+                <TheButton class="w-full sm:flex-1 py-1.5!" @click="applyDeposit">
                     Apply
                 </TheButton>
             </div>
         </section>
 
-        <!-- Revision workflow -->
-        <section class="min-w-0 py-3">
+        <section class="min-w-0 py-4">
             <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
-                <div class="font-medium text-zinc-800 dark:text-zinc-100">Revision workflow</div>
-                <TheTooltip
-                    text="Commercial edits save as invoice revisions. Payment receipts are recorded separately from the preview panel."
-                    side="top"
-                    align="center"
-                    class="hover:text-sky-600 dark:hover:text-emerald-400"
-                >
-                    <InformationCircleIcon class="size-5 cursor-help" />
-                </TheTooltip>
-            </div>
-
-            <div
-                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 px-3 py-3 text-xs leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
-            >
-                Saving here changes invoice content only. Draft invoices save in place, and issued
-                invoices save as commercial revisions. Payment receipts are recorded separately from
-                the preview panel so saved payments never depend on revision drafts.
-            </div>
-        </section>
-
-        <!-- VAT -->
-        <section class="min-w-0 py-3">
-            <div class="mb-2 flex min-w-0 items-center justify-between gap-3">
-                <div class="font-medium text-zinc-800 dark:text-zinc-100">VAT rate</div>
+                <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">VAT rate</div>
                 <TheTooltip
                     text="Set to 0% to exclude VAT from the invoice."
                     side="top"
@@ -310,9 +279,7 @@ function applyVat() {
                 </TheTooltip>
             </div>
 
-            <div
-                class="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem]"
-            >
+            <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem]">
                 <TheInput
                     v-model="vatPercent"
                     type="number"
@@ -323,13 +290,10 @@ function applyVat() {
                     :error="editStore.getFieldError('totals.vatRate')"
                 />
 
-                <TheButton
-                    class="w-full py-1.5!"
-                    @click="applyVat"
-                >
+                <TheButton class="w-full py-1.5!" @click="applyVat">
                     Apply
                 </TheButton>
             </div>
         </section>
-    </main>
+    </div>
 </template>

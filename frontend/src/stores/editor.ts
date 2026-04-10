@@ -5,15 +5,9 @@ import {
     deleteInvoice,
     getInvAndRevNums,
     getInvoice,
-    getPaymentReceipt,
     patchInvoiceStatus,
 } from '@/utils/editorHttpHandler'
-import type {
-    ActiveEditorNode,
-    InvBookHistoryItem,
-    InvBookInvoice,
-    InvoiceResponse,
-} from '@/components/editor/invBookTypes'
+import type { ActiveEditorNode, InvBookInvoice, InvoiceResponse } from '@/components/editor/invBookTypes'
 import {
     areInvoiceBookFiltersEqual,
     createDefaultInvoiceBookFilters,
@@ -61,6 +55,7 @@ import { flattenValidationErrors } from './pdf'
 import { NetworkError } from '@/utils/fetchHelper'
 import {
     createPaymentReceiptHandler,
+    deletePaymentReceiptHandler,
     newRevisionHandler,
     updateDraftInvoiceHandler,
     updatePaymentReceiptHandler,
@@ -70,7 +65,7 @@ import {
     formatInvoiceDisplayLabel,
     formatPaymentReceiptLabel,
 } from '@/utils/invoiceLabels'
-import { requestConfirmation } from '@/utils/confirm'
+import { requestConfirmation, requestConfirmationChoice } from '@/utils/confirm'
 
 function firstFieldErrorMessage(fields: Record<string, string>): string | null {
     for (const msg of Object.values(fields)) {
@@ -142,8 +137,7 @@ export const useEditorStore = defineStore('editorStore', () => {
 
     const bookError = ref('')
     const serverFieldErrors = ref<Record<string, string>>({})
-    const activeHistory = ref<InvBookHistoryItem[]>([])
-    const selectedReceipt = ref<InvoiceResponse['selectedReceipt'] | null>(null)
+    const activeReceipts = ref<InvoiceResponse['receipts']>([])
     const editBaselineSnapshot = ref('')
     const pendingInvoiceBookNode = ref<ActiveEditorNode>(null)
 
@@ -178,12 +172,6 @@ export const useEditorStore = defineStore('editorStore', () => {
     function ensureDraft(): Invoice {
         if (!draftInvoice.value) throw new Error('Invoice not initialised')
         return draftInvoice.value
-    }
-
-    function latestRevisionNoForBase(baseNo: number): number {
-        const row = invoiceBook.value.find((inv) => inv.baseNo === baseNo)
-        if (!row || row.revisions.length === 0) return 1
-        return row.revisions.reduce((max, rev) => Math.max(max, rev.revisionNo), 1)
     }
 
     function revisionPayloadSnapshot(inv: Invoice | null): string {
@@ -274,8 +262,7 @@ export const useEditorStore = defineStore('editorStore', () => {
             activeInvoice.value = formatted
             activeRevisionNo.value = revisionNumber
             draftInvoice.value = cloneInvoice(formatted)
-            activeHistory.value = data.history ?? []
-            selectedReceipt.value = data.selectedReceipt ?? null
+            activeReceipts.value = data.receipts ?? []
             refreshEditBaselineSnapshot()
 
             isEditing.value = false
@@ -289,52 +276,6 @@ export const useEditorStore = defineStore('editorStore', () => {
 
             handleActionError(error, {
                 toastTitle: 'Failed to fetch invoice',
-                supportMessage: 'Please contact support',
-                mapFields: false,
-            })
-        } finally {
-            if (requestId === lastInvoiceRequestId) {
-                isLoadingInvoice.value = false
-            }
-        }
-    }
-
-    async function fetchReceipt(baseNumber: number, receiptNo: number) {
-        const clientId = clientStore.selectedClient?.id
-        if (!clientId) {
-            clearActiveInvoice()
-            return
-        }
-
-        const requestId = ++lastInvoiceRequestId
-        isLoadingInvoice.value = true
-
-        try {
-            const data = await getPaymentReceipt(clientId, baseNumber, receiptNo)
-
-            if (requestId !== lastInvoiceRequestId) return
-            if (clientStore.selectedClient?.id !== clientId) return
-
-            const formatted = fmtActive(data, clientId)
-
-            activeInvoice.value = formatted
-            activeRevisionNo.value = data.selectedReceipt?.appliedRevisionNo ?? data.totals.revisionNo
-            draftInvoice.value = cloneInvoice(formatted)
-            activeHistory.value = data.history ?? []
-            selectedReceipt.value = data.selectedReceipt ?? null
-            refreshEditBaselineSnapshot()
-
-            isEditing.value = false
-            serverFieldErrors.value = {}
-            showAllValidation.value = false
-            clearVerifyState()
-        } catch (error) {
-            if (requestId !== lastInvoiceRequestId) return
-
-            clearActiveInvoice()
-
-            handleActionError(error, {
-                toastTitle: 'Failed to fetch payment receipt',
                 supportMessage: 'Please contact support',
                 mapFields: false,
             })
@@ -526,22 +467,16 @@ export const useEditorStore = defineStore('editorStore', () => {
     }): Promise<boolean> {
         const clientId = clientStore.selectedClient?.id
         const baseNumber = activeInvoice.value?.baseNumber
-        if (!clientId || !baseNumber) return false
+        const revisionNo = activeRevisionNo.value
+        if (!clientId || !baseNumber || revisionNo < 1) return false
 
         try {
-            const created = await createPaymentReceiptHandler(clientId, baseNumber, payload)
+            const created = await createPaymentReceiptHandler(clientId, baseNumber, revisionNo, payload)
             emitToastSuccess(
-                `${formatPaymentReceiptLabel(invoicePrefix.value, baseNumber, created.receiptNo)} recorded.`,
+                `${formatPaymentReceiptLabel(invoicePrefix.value, baseNumber, revisionNo, created.receiptNo)} recorded.`,
             )
             await fetchInvoiceBook()
-            activeNode.value = {
-                type: 'paymentReceipt',
-                clientId,
-                id: created.receiptId,
-                invoiceId: created.invoiceId,
-                baseNo: baseNumber,
-                receiptNo: created.receiptNo,
-            }
+            await refreshActiveInvoiceFromServer()
             return true
         } catch (error) {
             handleActionError(error, {
@@ -554,18 +489,22 @@ export const useEditorStore = defineStore('editorStore', () => {
     }
 
     async function updateSelectedReceiptMetadata(payload: {
+        receiptNo: number
         paymentDate: string
         label?: string
     }): Promise<boolean> {
         const clientId = clientStore.selectedClient?.id
         const baseNumber = activeInvoice.value?.baseNumber
-        const receiptNo = selectedReceipt.value?.receiptNo
-        if (!clientId || !baseNumber || !receiptNo) return false
+        const revisionNo = activeRevisionNo.value
+        if (!clientId || !baseNumber || revisionNo < 1 || !payload.receiptNo) return false
 
         try {
-            await updatePaymentReceiptHandler(clientId, baseNumber, receiptNo, payload)
+            await updatePaymentReceiptHandler(clientId, baseNumber, revisionNo, payload.receiptNo, {
+                paymentDate: payload.paymentDate,
+                ...(payload.label ? { label: payload.label } : {}),
+            })
             emitToastSuccess(
-                `${formatPaymentReceiptLabel(invoicePrefix.value, baseNumber, receiptNo)} updated.`,
+                `${formatPaymentReceiptLabel(invoicePrefix.value, baseNumber, revisionNo, payload.receiptNo)} updated.`,
             )
             await fetchInvoiceBook()
             await refreshActiveInvoiceFromServer()
@@ -578,6 +517,57 @@ export const useEditorStore = defineStore('editorStore', () => {
             })
             return false
         }
+    }
+
+    async function deleteReceipt(receiptNo: number): Promise<boolean> {
+        const clientId = clientStore.selectedClient?.id
+        const baseNumber = activeInvoice.value?.baseNumber
+        const revisionNo = activeRevisionNo.value
+        if (!clientId || !baseNumber || revisionNo < 1 || receiptNo < 1) return false
+
+        try {
+            await deletePaymentReceiptHandler(clientId, baseNumber, revisionNo, receiptNo)
+            emitToastSuccess(
+                `${formatPaymentReceiptLabel(invoicePrefix.value, baseNumber, revisionNo, receiptNo)} deleted.`,
+            )
+            await fetchInvoiceBook()
+            await refreshActiveInvoiceFromServer()
+            return true
+        } catch (error) {
+            handleActionError(error, {
+                toastTitle: 'Could not delete receipt',
+                supportMessage: 'Please try again or contact support',
+                mapFields: false,
+            })
+            return false
+        }
+    }
+
+    async function resolveUnsavedChangesBeforeProceed(actionLabel: string): Promise<boolean> {
+        if (!hasUnsavedChanges.value) return true
+
+        const decision = await requestConfirmationChoice({
+            title: 'Save your changes?',
+            message: `You have unsaved edits. Save them before you ${actionLabel}?`,
+            details:
+                'Save keeps your edits, Discard drops them, and Stay keeps you on the current draft.',
+            confirmLabel: 'Discard changes',
+            cancelLabel: 'Stay here',
+            alternateLabel: 'Save changes',
+            confirmVariant: 'danger',
+            alternateVariant: 'success',
+        })
+
+        if (decision === 'cancel') {
+            return false
+        }
+
+        if (decision === 'alternate') {
+            return await saveRevision(draftInvoice.value)
+        }
+
+        discardDraftChanges()
+        return true
     }
 
     // Helpers
@@ -627,7 +617,11 @@ export const useEditorStore = defineStore('editorStore', () => {
         await setInvoiceBookFilters(createDefaultInvoiceBookFilters())
     }
 
-    function selectInvoiceBookNode(node: ActiveEditorNode) {
+    async function selectInvoiceBookNode(node: ActiveEditorNode) {
+        if (!(await resolveUnsavedChangesBeforeProceed('switch invoices'))) {
+            return
+        }
+
         pendingInvoiceBookNode.value = null
 
         if (!node) {
@@ -659,8 +653,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         activeInvoice.value = null
         activeRevisionNo.value = 1
         draftInvoice.value = null
-        activeHistory.value = []
-        selectedReceipt.value = null
+        activeReceipts.value = []
         isEditing.value = false
         editBaselineSnapshot.value = ''
         serverFieldErrors.value = {}
@@ -672,12 +665,8 @@ export const useEditorStore = defineStore('editorStore', () => {
         const node = activeNode.value
         const clientId = clientStore.selectedClient?.id
         if (!node || !clientId) return
-        if (node.type === 'paymentReceipt') {
-            await fetchReceipt(node.baseNo, node.receiptNo)
-            return
-        }
         if (node.type === 'invoice') {
-            await fetchInvoice(node.baseNo, latestRevisionNoForBase(node.baseNo))
+            await fetchInvoice(node.baseNo, 1)
         } else {
             await fetchInvoice(node.baseNo, node.revisionNo)
         }
@@ -706,6 +695,9 @@ export const useEditorStore = defineStore('editorStore', () => {
     async function requestInvoiceLifecycleStatusChange(next: InvoiceStatus): Promise<boolean> {
         const current = (activeInvoice.value?.status ?? 'draft') as InvoiceStatus
         if (next === current) return true
+        if (!(await resolveUnsavedChangesBeforeProceed('change the invoice status'))) {
+            return false
+        }
 
         if (next === 'void') {
             const confirmed = await requestConfirmation({
@@ -752,7 +744,6 @@ export const useEditorStore = defineStore('editorStore', () => {
 
     function initEdit() {
         if (!activeInvoice.value) return
-        if (activeNode.value?.type === 'paymentReceipt') return
         const st = activeInvoice.value.status ?? 'draft'
         if (st === 'paid' || st === 'void') return
         clearVerifyState()
@@ -763,15 +754,24 @@ export const useEditorStore = defineStore('editorStore', () => {
         refreshEditBaselineSnapshot()
     }
 
-    function cancelEdit() {
+    function discardDraftChanges() {
         if (!activeInvoice.value) return
-
         draftInvoice.value = cloneInvoice(activeInvoice.value)
         serverFieldErrors.value = {}
         showAllValidation.value = false
         isEditing.value = false
         refreshEditBaselineSnapshot()
         clearVerifyState()
+    }
+
+    async function cancelEdit() {
+        if (!activeInvoice.value) return
+        if (!(await resolveUnsavedChangesBeforeProceed('cancel editing'))) {
+            return
+        }
+        if (isEditing.value) {
+            discardDraftChanges()
+        }
     }
 
     // * CRUD Operations
@@ -817,13 +817,30 @@ export const useEditorStore = defineStore('editorStore', () => {
             }
         },
     )
+
+    let restoringClientSelection = false
     watch(
         () => clientStore.selectedClient?.id,
         async (newClientId, oldClientId) => {
+            if (restoringClientSelection) {
+                restoringClientSelection = false
+                return
+            }
+
             const isInitialLoad = typeof oldClientId === 'undefined'
             const shouldRefreshBook = isInitialLoad || invoiceBookFilters.value.activeClientOnly
 
             if (newClientId === oldClientId && !shouldRefreshBook) return
+
+            if (
+                !isInitialLoad &&
+                oldClientId !== newClientId &&
+                !(await resolveUnsavedChangesBeforeProceed('switch clients'))
+            ) {
+                restoringClientSelection = true
+                clientStore.selectClientById(oldClientId ?? null)
+                return
+            }
 
             activeNode.value = null
             clearActiveInvoice()
@@ -850,13 +867,8 @@ export const useEditorStore = defineStore('editorStore', () => {
             return
         }
 
-        if (node.type === 'paymentReceipt') {
-            await fetchReceipt(node.baseNo, node.receiptNo)
-            return
-        }
-
         if (node.type === 'invoice') {
-            await fetchInvoice(node.baseNo, latestRevisionNoForBase(node.baseNo))
+            await fetchInvoice(node.baseNo, 1)
             return
         }
 
@@ -894,8 +906,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         prettyBaseNumber,
         canGoPrev,
         canGoNext,
-        activeHistory,
-        selectedReceipt,
+        activeReceipts,
         hasUnsavedChanges,
 
         fetchInvoiceBook,
@@ -903,6 +914,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         saveRevision,
         createPaymentReceipt,
         updateSelectedReceiptMetadata,
+        deleteReceipt,
         nextPage,
         prevPage,
         goToFirstPage,
@@ -920,6 +932,7 @@ export const useEditorStore = defineStore('editorStore', () => {
         requestInvoiceLifecycleStatusChange,
         refreshActiveInvoiceFromServer,
         cancelEdit,
+        resolveUnsavedChangesBeforeProceed,
         getFieldError,
         setNote,
         setIssueDate,

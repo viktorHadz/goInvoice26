@@ -133,8 +133,14 @@ func ensurePaymentReceiptNumberColumn(ctx context.Context, tx *sql.Tx) error {
 	}
 
 	if _, err := tx.ExecContext(ctx, `
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_invoice_receipt_no
-		ON payments(invoice_id, receipt_no);
+		DROP INDEX IF EXISTS idx_payments_invoice_receipt_no;
+	`); err != nil {
+		return fmt.Errorf("drop legacy payments receipt number index: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_revision_receipt_no
+		ON payments(applied_in_revision_id, receipt_no);
 	`); err != nil {
 		return fmt.Errorf("ensure payments receipt number index: %w", err)
 	}

@@ -12,17 +12,20 @@ import (
 )
 
 var (
-	ErrInvoiceDraftForReceipt = errors.New("invoice is draft; issue it before recording payment receipts")
+	ErrInvoiceDraftForReceipt = errors.New("invoice revision not found")
 	ErrInvoiceVoidForReceipt  = errors.New("invoice is void; payment receipts are not allowed")
-	ErrInvoicePaidForReceipt  = errors.New("invoice is already paid; no further payment receipts can be recorded")
+	ErrInvoicePaidForReceipt  = errors.New("invoice revision is already fully paid")
 	ErrPaymentReceiptNotFound = errors.New("payment receipt not found")
 )
 
 type paymentReceiptState struct {
 	InvoiceID         int64
-	Status            string
+	InvoiceStatus     string
 	CurrentRevisionID int64
+	RevisionID        int64
+	RevisionNo        int64
 	TotalMinor        int64
+	PaidMinor         int64
 }
 
 type PaymentReceiptRow struct {
@@ -33,7 +36,6 @@ type PaymentReceiptRow struct {
 	PaymentDate       string
 	AmountMinor       int64
 	Label             sql.NullString
-	CreatedAt         string
 	AppliedRevisionID int64
 	AppliedRevisionNo int64
 }
@@ -43,6 +45,7 @@ func CreatePaymentReceipt(
 	a *app.App,
 	clientID int64,
 	baseNumber int64,
+	revisionNo int64,
 	canonical *models.PaymentReceiptCreateIn,
 ) (invoiceID, paymentID, receiptNo int64, err error) {
 	tx, err := a.DB.BeginTx(ctx, &sql.TxOptions{})
@@ -51,19 +54,19 @@ func CreatePaymentReceipt(
 	}
 	defer tx.Rollback()
 
-	state, err := loadPaymentReceiptState(ctx, tx, clientID, baseNumber)
+	state, err := loadPaymentReceiptState(ctx, tx, clientID, baseNumber, revisionNo)
 	if err != nil {
 		return 0, 0, 0, err
 	}
-	if err := assertReceiptCreateAllowed(state.Status); err != nil {
+	if err := assertReceiptCreateAllowed(state.InvoiceStatus, state.TotalMinor, state.PaidMinor); err != nil {
 		return 0, 0, 0, err
 	}
 
 	if err := tx.QueryRowContext(ctx, `
 		SELECT COALESCE(MAX(receipt_no), 0) + 1
 		FROM payments
-		WHERE invoice_id = ?;
-	`, state.InvoiceID).Scan(&receiptNo); err != nil {
+		WHERE applied_in_revision_id = ?;
+	`, state.RevisionID).Scan(&receiptNo); err != nil {
 		return 0, 0, 0, fmt.Errorf("next receipt number: %w", err)
 	}
 
@@ -84,11 +87,11 @@ func CreatePaymentReceipt(
 		)
 		VALUES (?, ?, 'payment', ?, ?, ?, ?)
 		RETURNING id;
-	`, state.InvoiceID, receiptNo, canonical.AmountMinor, canonical.PaymentDate, state.CurrentRevisionID, label).Scan(&paymentID); err != nil {
+	`, state.InvoiceID, receiptNo, canonical.AmountMinor, canonical.PaymentDate, state.RevisionID, label).Scan(&paymentID); err != nil {
 		return 0, 0, 0, fmt.Errorf("insert payment receipt: %w", err)
 	}
 
-	if err := applyAutoPaidIfSettled(ctx, tx, state.InvoiceID, state.TotalMinor); err != nil {
+	if err := syncInvoiceStatusForCurrentRevision(ctx, tx, state.InvoiceID); err != nil {
 		return 0, 0, 0, err
 	}
 
@@ -104,6 +107,7 @@ func UpdatePaymentReceiptMetadata(
 	a *app.App,
 	clientID int64,
 	baseNumber int64,
+	revisionNo int64,
 	receiptNo int64,
 	canonical *models.PaymentReceiptUpdateIn,
 ) (paymentID int64, err error) {
@@ -113,11 +117,11 @@ func UpdatePaymentReceiptMetadata(
 	}
 	defer tx.Rollback()
 
-	state, err := loadPaymentReceiptState(ctx, tx, clientID, baseNumber)
+	state, err := loadPaymentReceiptState(ctx, tx, clientID, baseNumber, revisionNo)
 	if err != nil {
 		return 0, err
 	}
-	if err := assertReceiptMetadataUpdateAllowed(state.Status); err != nil {
+	if err := assertReceiptMutationAllowed(state.InvoiceStatus); err != nil {
 		return 0, err
 	}
 
@@ -129,11 +133,11 @@ func UpdatePaymentReceiptMetadata(
 	err = tx.QueryRowContext(ctx, `
 		UPDATE payments
 		SET payment_date = ?, label = ?
-		WHERE invoice_id = ?
+		WHERE applied_in_revision_id = ?
 		  AND receipt_no = ?
 		  AND payment_type = 'payment'
 		RETURNING id;
-	`, canonical.PaymentDate, label, state.InvoiceID, receiptNo).Scan(&paymentID)
+	`, canonical.PaymentDate, label, state.RevisionID, receiptNo).Scan(&paymentID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, ErrPaymentReceiptNotFound
 	}
@@ -148,11 +152,59 @@ func UpdatePaymentReceiptMetadata(
 	return paymentID, nil
 }
 
+func DeletePaymentReceipt(
+	ctx context.Context,
+	a *app.App,
+	clientID int64,
+	baseNumber int64,
+	revisionNo int64,
+	receiptNo int64,
+) (paymentID int64, err error) {
+	tx, err := a.DB.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	state, err := loadPaymentReceiptState(ctx, tx, clientID, baseNumber, revisionNo)
+	if err != nil {
+		return 0, err
+	}
+	if err := assertReceiptMutationAllowed(state.InvoiceStatus); err != nil {
+		return 0, err
+	}
+
+	err = tx.QueryRowContext(ctx, `
+		DELETE FROM payments
+		WHERE applied_in_revision_id = ?
+		  AND receipt_no = ?
+		  AND payment_type = 'payment'
+		RETURNING id;
+	`, state.RevisionID, receiptNo).Scan(&paymentID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrPaymentReceiptNotFound
+	}
+	if err != nil {
+		return 0, fmt.Errorf("delete payment receipt: %w", err)
+	}
+
+	if err := syncInvoiceStatusForCurrentRevision(ctx, tx, state.InvoiceID); err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit payment receipt delete: %w", err)
+	}
+
+	return paymentID, nil
+}
+
 func QueryPaymentReceiptByNumber(
 	ctx context.Context,
 	db *sql.DB,
 	clientID int64,
 	baseNumber int64,
+	revisionNo int64,
 	receiptNo int64,
 ) (*PaymentReceiptRow, error) {
 	accountID, err := accountscope.Require(ctx)
@@ -170,20 +222,20 @@ func QueryPaymentReceiptByNumber(
 			p.payment_date,
 			p.amount_minor,
 			p.label,
-			p.created_at,
 			p.applied_in_revision_id,
-			ap.revision_no
+			r.revision_no
 		FROM invoices i
+		JOIN invoice_revisions r
+			ON r.invoice_id = i.id
+		   AND r.revision_no = ?
 		JOIN payments p
-			ON p.invoice_id = i.id
-		JOIN invoice_revisions ap
-			ON ap.id = p.applied_in_revision_id
+			ON p.applied_in_revision_id = r.id
 		WHERE i.account_id = ?
 		  AND i.client_id = ?
 		  AND i.base_number = ?
 		  AND p.receipt_no = ?
 		  AND p.payment_type = 'payment'
-	`, accountID, clientID, baseNumber, receiptNo).Scan(
+	`, revisionNo, accountID, clientID, baseNumber, receiptNo).Scan(
 		&out.ID,
 		&out.InvoiceID,
 		&out.BaseNumber,
@@ -191,7 +243,6 @@ func QueryPaymentReceiptByNumber(
 		&out.PaymentDate,
 		&out.AmountMinor,
 		&out.Label,
-		&out.CreatedAt,
 		&out.AppliedRevisionID,
 		&out.AppliedRevisionNo,
 	)
@@ -210,6 +261,7 @@ func loadPaymentReceiptState(
 	tx *sql.Tx,
 	clientID int64,
 	baseNumber int64,
+	revisionNo int64,
 ) (paymentReceiptState, error) {
 	accountID, err := accountscope.Require(ctx)
 	if err != nil {
@@ -222,18 +274,29 @@ func loadPaymentReceiptState(
 			i.id,
 			i.status,
 			i.current_revision_id,
-			cur.total_minor
+			r.id,
+			r.revision_no,
+			r.total_minor,
+			COALESCE(SUM(p.amount_minor), 0) AS paid_minor
 		FROM invoices i
-		JOIN invoice_revisions cur
-			ON cur.id = i.current_revision_id
+		JOIN invoice_revisions r
+			ON r.invoice_id = i.id
+		   AND r.revision_no = ?
+		LEFT JOIN payments p
+			ON p.applied_in_revision_id = r.id
+		   AND p.payment_type = 'payment'
 		WHERE i.account_id = ?
 		  AND i.client_id = ?
-		  AND i.base_number = ?;
-	`, accountID, clientID, baseNumber).Scan(
+		  AND i.base_number = ?
+		GROUP BY i.id, i.status, i.current_revision_id, r.id, r.revision_no, r.total_minor;
+	`, revisionNo, accountID, clientID, baseNumber).Scan(
 		&state.InvoiceID,
-		&state.Status,
+		&state.InvoiceStatus,
 		&state.CurrentRevisionID,
+		&state.RevisionID,
+		&state.RevisionNo,
 		&state.TotalMinor,
+		&state.PaidMinor,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return paymentReceiptState{}, ErrInvoiceNotFound
@@ -245,30 +308,62 @@ func loadPaymentReceiptState(
 	return state, nil
 }
 
-func assertReceiptCreateAllowed(status string) error {
-	switch status {
-	case "draft":
-		return ErrInvoiceDraftForReceipt
-	case "void":
+func assertReceiptCreateAllowed(status string, totalMinor int64, paidMinor int64) error {
+	if status == "void" {
 		return ErrInvoiceVoidForReceipt
-	case "paid":
-		return ErrInvoicePaidForReceipt
-	case "issued":
-		return nil
-	default:
-		return fmt.Errorf("unexpected invoice status: %s", status)
 	}
+
+	if paidMinor >= totalMinor && totalMinor > 0 {
+		return ErrInvoicePaidForReceipt
+	}
+
+	return nil
 }
 
-func assertReceiptMetadataUpdateAllowed(status string) error {
-	switch status {
-	case "draft":
-		return ErrInvoiceDraftForReceipt
-	case "void":
+func assertReceiptMutationAllowed(status string) error {
+	if status == "void" {
 		return ErrInvoiceVoidForReceipt
-	case "issued", "paid":
-		return nil
-	default:
-		return fmt.Errorf("unexpected invoice status: %s", status)
 	}
+
+	return nil
+}
+
+func cloneReceiptSnapshot(
+	ctx context.Context,
+	tx *sql.Tx,
+	invoiceID int64,
+	sourceRevisionID int64,
+	targetRevisionID int64,
+) error {
+	if sourceRevisionID < 1 || targetRevisionID < 1 {
+		return nil
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO payments (
+			invoice_id,
+			receipt_no,
+			payment_type,
+			amount_minor,
+			payment_date,
+			applied_in_revision_id,
+			label
+		)
+		SELECT
+			?,
+			p.receipt_no,
+			p.payment_type,
+			p.amount_minor,
+			p.payment_date,
+			?,
+			p.label
+		FROM payments p
+		WHERE p.applied_in_revision_id = ?
+		  AND p.payment_type = 'payment'
+		ORDER BY p.receipt_no ASC, p.id ASC;
+	`, invoiceID, targetRevisionID, sourceRevisionID); err != nil {
+		return fmt.Errorf("clone payment receipt snapshot: %w", err)
+	}
+
+	return nil
 }

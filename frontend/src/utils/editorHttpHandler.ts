@@ -36,15 +36,6 @@ export async function getInvoice(
     return await request<InvoiceResponse>(url)
 }
 
-export async function getPaymentReceipt(
-    clientId: number,
-    baseNumber: number,
-    receiptNo: number,
-): Promise<InvoiceResponse> {
-    const url = `/api/clients/${clientId}/edits/get/${baseNumber}/receipts/${receiptNo}`
-    return await request<InvoiceResponse>(url)
-}
-
 export async function patchInvoiceStatus(
     clientId: number,
     baseNumber: number,

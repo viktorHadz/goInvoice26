@@ -56,11 +56,11 @@ type InvoiceOverviewTotals struct {
 	PaidMinor     int64
 }
 
-type PaymentRow struct {
+type ReceiptRow struct {
 	ID          int64
+	ReceiptNo   int64
 	AmountMinor int64
 	PaymentDate string
-	PaymentType string
 	Label       sql.NullString
 }
 
@@ -69,7 +69,7 @@ type PaymentRow struct {
 // The returned value is an internal backend shape.
 // Handlers should map it to an API response model before sending via res.JSON.
 //
-// PaidMinor is aggregated from the payments table.
+// PaidMinor is aggregated from the selected revision snapshot.
 func QueryInvoiceSummary(
 	ctx context.Context,
 	db *sql.DB,
@@ -109,10 +109,8 @@ func QueryInvoiceSummary(
 				(
 					SELECT SUM(p.amount_minor)
 					FROM payments p
-					JOIN invoice_revisions ap ON ap.id = p.applied_in_revision_id
-					WHERE p.invoice_id = i.id
+					WHERE p.applied_in_revision_id = r.id
 						AND p.payment_type = 'payment'
-						AND ap.revision_no <= r.revision_no
 				), 0
 			) AS paid_minor
 		FROM invoices i
@@ -140,13 +138,13 @@ func QueryInvoiceSummary(
 	return &o, nil
 }
 
-func QueryInvoicePaymentsForRevision(
+func QueryInvoiceReceiptsForRevision(
 	ctx context.Context,
 	db *sql.DB,
 	clientID int64,
 	baseNumber int64,
 	revisionNo int64,
-) ([]PaymentRow, error) {
+) ([]ReceiptRow, error) {
 	accountID, err := accountscope.Require(ctx)
 	if err != nil {
 		return nil, err
@@ -155,28 +153,25 @@ func QueryInvoicePaymentsForRevision(
 	query := `
 		SELECT
 			p.id,
+			p.receipt_no,
 			p.amount_minor,
 			p.payment_date,
-			p.payment_type,
 			p.label
 		FROM invoices i
 		JOIN invoice_revisions r
 			ON r.invoice_id = i.id AND r.revision_no = ?
 		JOIN payments p
-			ON p.invoice_id = i.id
-		JOIN invoice_revisions ap
-			ON ap.id = p.applied_in_revision_id
+			ON p.applied_in_revision_id = r.id
 		WHERE i.base_number = ? AND i.client_id = ?
 			AND i.account_id = ?
 			AND p.payment_type = 'payment'
-			AND ap.revision_no <= r.revision_no
-		ORDER BY p.payment_date ASC, p.id ASC
+		ORDER BY p.receipt_no ASC, p.id ASC
 	`
 
 	rows, err := db.QueryContext(ctx, query, revisionNo, baseNumber, clientID, accountID)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"QueryInvoicePaymentsForRevision()=> %w\nrevisionNumber: %v,\nbaseNumber: %v,\nclientID: %v,",
+			"QueryInvoiceReceiptsForRevision()=> %w\nrevisionNumber: %v,\nbaseNumber: %v,\nclientID: %v,",
 			err,
 			revisionNo,
 			baseNumber,
@@ -185,26 +180,26 @@ func QueryInvoicePaymentsForRevision(
 	}
 	defer rows.Close()
 
-	payments := make([]PaymentRow, 0)
+	receipts := make([]ReceiptRow, 0)
 	for rows.Next() {
-		var p PaymentRow
+		var p ReceiptRow
 		if err := rows.Scan(
 			&p.ID,
+			&p.ReceiptNo,
 			&p.AmountMinor,
 			&p.PaymentDate,
-			&p.PaymentType,
 			&p.Label,
 		); err != nil {
-			return nil, fmt.Errorf("scan payment row: %w", err)
+			return nil, fmt.Errorf("scan receipt row: %w", err)
 		}
-		payments = append(payments, p)
+		receipts = append(receipts, p)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("payment rows error: %w", err)
+		return nil, fmt.Errorf("receipt rows error: %w", err)
 	}
 
-	return payments, nil
+	return receipts, nil
 }
 
 // QueryInvoiceLines returns the DB/query rows for one invoice revision.

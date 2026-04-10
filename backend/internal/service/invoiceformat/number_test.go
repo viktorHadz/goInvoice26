@@ -18,18 +18,18 @@ func TestFormatInvoiceNumber(t *testing.T) {
 			want:       "INV-7",
 		},
 		{
-			name:       "first user-visible revision maps from db revision 2",
+			name:       "first saved revision keeps dotted suffix",
 			prefix:     "INV-",
 			baseNo:     7,
 			revisionNo: 2,
-			want:       "INV-7-Rev-1",
+			want:       "INV-7.2",
 		},
 		{
-			name:       "higher revision remains shifted",
+			name:       "higher revision stays dotted",
 			prefix:     "INV-",
 			baseNo:     7,
 			revisionNo: 4,
-			want:       "INV-7-Rev-3",
+			want:       "INV-7.4",
 		},
 		{
 			name:       "empty prefix uses default",
@@ -52,20 +52,21 @@ func TestFormatInvoiceNumber(t *testing.T) {
 
 func TestFormatPaymentReceiptNumber(t *testing.T) {
 	tests := []struct {
-		name      string
-		prefix    string
-		baseNo    int64
-		receiptNo int64
-		want      string
+		name       string
+		prefix     string
+		baseNo     int64
+		revisionNo int64
+		receiptNo  int64
+		want       string
 	}{
-		{name: "first receipt", prefix: "INV-", baseNo: 7, receiptNo: 1, want: "INV-7-PR-1"},
-		{name: "later receipt", prefix: "INV-", baseNo: 7, receiptNo: 4, want: "INV-7-PR-4"},
-		{name: "default prefix", prefix: "", baseNo: 7, receiptNo: 2, want: "INV-7-PR-2"},
+		{name: "base receipt", prefix: "INV-", baseNo: 7, revisionNo: 1, receiptNo: 1, want: "INV-7-PR-1"},
+		{name: "revision receipt", prefix: "INV-", baseNo: 7, revisionNo: 2, receiptNo: 4, want: "INV-7.2-PR-4"},
+		{name: "default prefix", prefix: "", baseNo: 7, revisionNo: 3, receiptNo: 2, want: "INV-7.3-PR-2"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := FormatPaymentReceiptNumber(tc.prefix, tc.baseNo, tc.receiptNo)
+			got := FormatPaymentReceiptNumber(tc.prefix, tc.baseNo, tc.revisionNo, tc.receiptNo)
 			if got != tc.want {
 				t.Fatalf("FormatPaymentReceiptNumber() = %q, want %q", got, tc.want)
 			}

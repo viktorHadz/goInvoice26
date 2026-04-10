@@ -64,7 +64,12 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 				i.status,
 				COUNT(DISTINCT rev.id) AS revision_count,
 				cur.total_minor,
-				COALESCE((SELECT SUM(p.amount_minor) FROM payments p WHERE p.invoice_id = i.id AND p.payment_type = 'payment'), 0) AS paid_minor
+				COALESCE((
+					SELECT SUM(p.amount_minor)
+					FROM payments p
+					WHERE p.applied_in_revision_id = i.current_revision_id
+					  AND p.payment_type = 'payment'
+				), 0) AS paid_minor
 			FROM invoices i
 			JOIN invoice_revisions cur
 				ON cur.id = i.current_revision_id

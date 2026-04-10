@@ -162,22 +162,38 @@ export const usePdfStore = defineStore('pdf', () => {
     async function generateSavedPaymentReceiptPdf(
         clientId: number,
         baseNumber: number,
+        revisionNumber: number,
         receiptNo: number,
         prefix = 'INV',
     ) {
         await handleFileGeneration('PDF', () =>
-            generatePaymentReceiptDownloadHandler(clientId, baseNumber, receiptNo, 'pdf', prefix),
+            generatePaymentReceiptDownloadHandler(
+                clientId,
+                baseNumber,
+                revisionNumber,
+                receiptNo,
+                'pdf',
+                prefix,
+            ),
         )
     }
 
     async function generateSavedPaymentReceiptDocx(
         clientId: number,
         baseNumber: number,
+        revisionNumber: number,
         receiptNo: number,
         prefix = 'INV',
     ) {
         await handleFileGeneration('DOCX', () =>
-            generatePaymentReceiptDownloadHandler(clientId, baseNumber, receiptNo, 'docx', prefix),
+            generatePaymentReceiptDownloadHandler(
+                clientId,
+                baseNumber,
+                revisionNumber,
+                receiptNo,
+                'docx',
+                prefix,
+            ),
         )
     }
 

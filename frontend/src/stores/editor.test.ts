@@ -8,9 +8,9 @@ const {
     deleteInvoiceMock,
     getInvAndRevNumsMock,
     getInvoiceMock,
-    getPaymentReceiptMock,
     newRevisionHandlerMock,
     createPaymentReceiptHandlerMock,
+    deletePaymentReceiptHandlerMock,
     updateDraftInvoiceHandlerMock,
     updatePaymentReceiptHandlerMock,
     emitToastErrorMock,
@@ -63,17 +63,15 @@ const {
                 sortOrder: 1,
             },
         ],
-        payments: [],
-        history: [],
-        selectedReceipt: undefined,
+        receipts: [],
     })),
-    getPaymentReceiptMock: vi.fn(),
     newRevisionHandlerMock: vi.fn(async () => ({
         invoiceId: 7,
         revisionId: 70,
         revisionNo: 2,
     })),
     createPaymentReceiptHandlerMock: vi.fn(),
+    deletePaymentReceiptHandlerMock: vi.fn(async () => undefined),
     updateDraftInvoiceHandlerMock: vi.fn(async () => ({
         invoiceId: 7,
         revisionId: 7,
@@ -106,12 +104,12 @@ vi.mock('@/utils/editorHttpHandler', () => ({
     deleteInvoice: deleteInvoiceMock,
     getInvAndRevNums: getInvAndRevNumsMock,
     getInvoice: getInvoiceMock,
-    getPaymentReceipt: getPaymentReceiptMock,
     patchInvoiceStatus: vi.fn(),
 }))
 
 vi.mock('@/utils/invoiceHttpHandler', () => ({
     createPaymentReceiptHandler: createPaymentReceiptHandlerMock,
+    deletePaymentReceiptHandler: deletePaymentReceiptHandlerMock,
     newRevisionHandler: newRevisionHandlerMock,
     updateDraftInvoiceHandler: updateDraftInvoiceHandlerMock,
     updatePaymentReceiptHandler: updatePaymentReceiptHandlerMock,
@@ -208,7 +206,6 @@ function makeBookInvoice(status: 'draft' | 'issued' | 'paid' | 'void' = 'issued'
         paidMinor: 0,
         balanceDueMinor: 10000,
         revisions: [],
-        history: [],
     }
 }
 
@@ -296,9 +293,7 @@ describe('editor store no-change save guard', () => {
                     sortOrder: 1,
                 },
             ],
-            payments: [],
-            history: [],
-            selectedReceipt: undefined,
+            receipts: [],
         })
         store.initEdit()
 
@@ -416,10 +411,10 @@ describe('editor store no-change save guard', () => {
         )
     })
 
-    it('queues a client switch when selecting an invoice from another client', () => {
+    it('queues a client switch when selecting an invoice from another client', async () => {
         const store = useEditorStore()
 
-        store.selectInvoiceBookNode({ type: 'invoice', clientId: 99, id: 7, baseNo: 101 })
+        await store.selectInvoiceBookNode({ type: 'invoice', clientId: 99, id: 7, baseNo: 101 })
 
         expect(selectClientByIdMock).toHaveBeenCalledWith(99)
         expect(store.activeNode).toBe(null)

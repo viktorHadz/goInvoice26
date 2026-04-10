@@ -22,16 +22,16 @@ func TestBuildPDFFilename(t *testing.T) {
 			want:       "Invoice-1.pdf",
 		},
 		{
-			name:       "first visible revision maps from db revision 2",
+			name:       "first child revision uses dotted suffix",
 			baseNumber: 1,
 			revisionNo: 2,
-			want:       "Invoice-1-Rev-1.pdf",
+			want:       "Invoice-1.2.pdf",
 		},
 		{
-			name:       "higher revision keeps shifted suffix",
+			name:       "higher revision keeps dotted suffix",
 			baseNumber: 9,
 			revisionNo: 5,
-			want:       "Invoice-9-Rev-4.pdf",
+			want:       "Invoice-9.5.pdf",
 		},
 	}
 

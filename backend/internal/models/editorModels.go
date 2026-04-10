@@ -1,12 +1,10 @@
 package models
 
 type InvoiceEditorResponse struct {
-	Status          string                     `json:"status"`
-	Totals          InvoiceEditorTotals        `json:"totals"`
-	Lines           []InvoiceEditorLine        `json:"lines"`
-	History         []InvoiceEditorHistoryItem `json:"history"`
-	SelectedReceipt *InvoiceEditorReceipt      `json:"selectedReceipt,omitempty"`
-	Payments []InvoiceEditorPayment `json:"payments"`
+	Status   string                 `json:"status"`
+	Totals   InvoiceEditorTotals    `json:"totals"`
+	Lines    []InvoiceEditorLine    `json:"lines"`
+	Receipts []InvoiceEditorReceipt `json:"receipts"`
 }
 
 type InvoiceEditorTotals struct {
@@ -46,33 +44,10 @@ type InvoiceEditorLine struct {
 	SortOrder     int64   `json:"sortOrder"`
 }
 
-type InvoiceEditorPayment struct {
-	ID          int64   `json:"id"`
-	AmountMinor int64   `json:"amountMinor"`
-	PaymentDate string  `json:"paymentDate"`
-	PaymentType string  `json:"paymentType"`
-	Label       *string `json:"label,omitempty"`
-}
-
-type InvoiceEditorHistoryItem struct {
-	ID          int64   `json:"id"`
-	Type        string  `json:"type"`
-	CreatedAt   string  `json:"createdAt"`
-	RevisionNo  *int64  `json:"revisionNo,omitempty"`
-	ReceiptNo   *int64  `json:"receiptNo,omitempty"`
-	IssueDate   *string `json:"issueDate,omitempty"`
-	DueByDate   *string `json:"dueByDate,omitempty"`
-	PaymentDate *string `json:"paymentDate,omitempty"`
-	AmountMinor *int64  `json:"amountMinor,omitempty"`
-	Label       *string `json:"label,omitempty"`
-}
-
 type InvoiceEditorReceipt struct {
-	ID               int64   `json:"id"`
-	ReceiptNo        int64   `json:"receiptNo"`
-	PaymentDate      string  `json:"paymentDate"`
-	AmountMinor      int64   `json:"amountMinor"`
-	Label            *string `json:"label,omitempty"`
-	AppliedRevisionNo int64  `json:"appliedRevisionNo"`
-	CreatedAt        string  `json:"createdAt"`
+	ID          int64   `json:"id"`
+	ReceiptNo   int64   `json:"receiptNo"`
+	PaymentDate string  `json:"paymentDate"`
+	AmountMinor int64   `json:"amountMinor"`
+	Label       *string `json:"label,omitempty"`
 }

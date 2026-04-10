@@ -1,7 +1,6 @@
 import {
     formatInvoiceBaseLabel,
     formatInvoiceDisplayLabel,
-    formatPaymentReceiptLabel,
 } from '@/utils/invoiceLabels'
 import type { InvBookInvoice } from './invBookTypes'
 
@@ -129,22 +128,17 @@ export function filterInvoiceBookByQuery(
 
             if (invoiceLabel.includes(query) || clientLabel.includes(query)) return invoice
 
-            const matchingHistory = invoice.history.filter((entry) => {
-                if (entry.type === 'revision') {
-                    return formatInvoiceDisplayLabel(prefix, invoice.baseNo, entry.revisionNo)
-                        .toLowerCase()
-                        .includes(query)
-                }
-                return formatPaymentReceiptLabel(prefix, invoice.baseNo, entry.receiptNo)
+            const matchingRevisions = invoice.revisions.filter((entry) =>
+                formatInvoiceDisplayLabel(prefix, invoice.baseNo, entry.revisionNo)
                     .toLowerCase()
-                    .includes(query)
-            })
+                    .includes(query),
+            )
 
-            if (matchingHistory.length === 0) return null
+            if (matchingRevisions.length === 0) return null
 
             return {
                 ...invoice,
-                history: matchingHistory,
+                revisions: matchingRevisions,
             }
         })
         .filter((invoice): invoice is InvBookInvoice => invoice !== null)

@@ -22,6 +22,10 @@ func CreatePaymentReceipt(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
+		revisionNo, ok := params.ValidateParam(w, r, "revisionNo")
+		if !ok {
+			return
+		}
 
 		var dto models.PaymentReceiptCreateIn
 		if ok := res.DecodeJSON(w, r, &dto); !ok {
@@ -34,17 +38,14 @@ func CreatePaymentReceipt(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		invoiceID, receiptID, receiptNo, err := invoiceTx.CreatePaymentReceipt(r.Context(), a, clientID, baseNumber, &valid)
+		invoiceID, receiptID, receiptNo, err := invoiceTx.CreatePaymentReceipt(r.Context(), a, clientID, baseNumber, revisionNo, &valid)
 		if err != nil {
 			switch {
 			case errors.Is(err, invoiceTx.ErrInvoiceNotFound):
-				res.Error(w, http.StatusNotFound, "NOT_FOUND", "Invoice not found")
-				return
-			case errors.Is(err, invoiceTx.ErrInvoiceDraftForReceipt):
-				res.Error(w, http.StatusConflict, "INVOICE_DRAFT", "Issue the invoice before recording a payment receipt")
+				res.Error(w, http.StatusNotFound, "NOT_FOUND", "Invoice revision not found")
 				return
 			case errors.Is(err, invoiceTx.ErrInvoicePaidForReceipt):
-				res.Error(w, http.StatusConflict, "INVOICE_PAID", "Invoice is already fully paid")
+				res.Error(w, http.StatusConflict, "REVISION_PAID", "This revision is already fully paid")
 				return
 			case errors.Is(err, invoiceTx.ErrInvoiceVoidForReceipt):
 				res.Error(w, http.StatusConflict, "INVOICE_VOID", "Invoice is void; payment receipts are not allowed")
@@ -55,6 +56,7 @@ func CreatePaymentReceipt(a *app.App) http.HandlerFunc {
 				"create payment receipt failed",
 				"client_id", clientID,
 				"base_number", baseNumber,
+				"revision_no", revisionNo,
 				"err", err,
 			)
 			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
@@ -79,6 +81,10 @@ func UpdatePaymentReceipt(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
+		revisionNo, ok := params.ValidateParam(w, r, "revisionNo")
+		if !ok {
+			return
+		}
 		receiptNo, ok := params.ValidateParam(w, r, "receiptNo")
 		if !ok {
 			return
@@ -95,14 +101,11 @@ func UpdatePaymentReceipt(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		receiptID, err := invoiceTx.UpdatePaymentReceiptMetadata(r.Context(), a, clientID, baseNumber, receiptNo, &valid)
+		receiptID, err := invoiceTx.UpdatePaymentReceiptMetadata(r.Context(), a, clientID, baseNumber, revisionNo, receiptNo, &valid)
 		if err != nil {
 			switch {
 			case errors.Is(err, invoiceTx.ErrInvoiceNotFound), errors.Is(err, invoiceTx.ErrPaymentReceiptNotFound):
 				res.Error(w, http.StatusNotFound, "NOT_FOUND", "Payment receipt not found")
-				return
-			case errors.Is(err, invoiceTx.ErrInvoiceDraftForReceipt):
-				res.Error(w, http.StatusConflict, "INVOICE_DRAFT", "Draft invoices do not support payment receipts")
 				return
 			case errors.Is(err, invoiceTx.ErrInvoiceVoidForReceipt):
 				res.Error(w, http.StatusConflict, "INVOICE_VOID", "Invoice is void; payment receipts are not editable")
@@ -113,6 +116,56 @@ func UpdatePaymentReceipt(a *app.App) http.HandlerFunc {
 				"update payment receipt failed",
 				"client_id", clientID,
 				"base_number", baseNumber,
+				"revision_no", revisionNo,
+				"receipt_no", receiptNo,
+				"err", err,
+			)
+			res.Error(w, http.StatusInternalServerError, "DATABASE_ERROR", "Database error")
+			return
+		}
+
+		res.JSON(w, http.StatusOK, map[string]any{
+			"receiptId": receiptID,
+			"receiptNo": receiptNo,
+		})
+	}
+}
+
+func DeletePaymentReceipt(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clientID, ok := params.ValidateParam(w, r, "clientID")
+		if !ok {
+			return
+		}
+		baseNumber, ok := params.ValidateParam(w, r, "baseNumber")
+		if !ok {
+			return
+		}
+		revisionNo, ok := params.ValidateParam(w, r, "revisionNo")
+		if !ok {
+			return
+		}
+		receiptNo, ok := params.ValidateParam(w, r, "receiptNo")
+		if !ok {
+			return
+		}
+
+		receiptID, err := invoiceTx.DeletePaymentReceipt(r.Context(), a, clientID, baseNumber, revisionNo, receiptNo)
+		if err != nil {
+			switch {
+			case errors.Is(err, invoiceTx.ErrInvoiceNotFound), errors.Is(err, invoiceTx.ErrPaymentReceiptNotFound):
+				res.Error(w, http.StatusNotFound, "NOT_FOUND", "Payment receipt not found")
+				return
+			case errors.Is(err, invoiceTx.ErrInvoiceVoidForReceipt):
+				res.Error(w, http.StatusConflict, "INVOICE_VOID", "Invoice is void; payment receipts are not editable")
+				return
+			}
+
+			slog.ErrorContext(r.Context(),
+				"delete payment receipt failed",
+				"client_id", clientID,
+				"base_number", baseNumber,
+				"revision_no", revisionNo,
 				"receipt_no", receiptNo,
 				"err", err,
 			)

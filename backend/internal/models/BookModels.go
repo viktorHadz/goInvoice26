@@ -8,19 +8,6 @@ type INVBookRevision struct {
 	UpdatedAt  *string `json:"updatedAt,omitempty"`
 }
 
-type INVBookHistoryItem struct {
-	ID          int64   `json:"id"`
-	Type        string  `json:"type"`
-	CreatedAt   string  `json:"createdAt"`
-	RevisionNo  *int    `json:"revisionNo,omitempty"`
-	ReceiptNo   *int    `json:"receiptNo,omitempty"`
-	IssueDate   *string `json:"issueDate,omitempty"`
-	DueByDate   *string `json:"dueByDate,omitempty"`
-	PaymentDate *string `json:"paymentDate,omitempty"`
-	AmountMinor *int64  `json:"amountMinor,omitempty"`
-	Label       *string `json:"label,omitempty"`
-}
-
 type INVBookInvoice struct {
 	ID                int64             `json:"id"`
 	ClientID          int64             `json:"clientId"`
@@ -36,7 +23,6 @@ type INVBookInvoice struct {
 	PaidMinor         int64             `json:"paidMinor"`
 	BalanceDueMinor   int64             `json:"balanceDueMinor"`
 	Revisions         []INVBookRevision `json:"revisions"`
-	History           []INVBookHistoryItem `json:"history"`
 }
 
 type INVBookOut struct {

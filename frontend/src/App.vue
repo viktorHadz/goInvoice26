@@ -6,10 +6,12 @@ import NavMain from './components/UI/NavMain.vue'
 import TheToast from './components/UI/TheToast.vue'
 import TheConfirmDialog from './components/UI/TheConfirmDialog.vue'
 import { useAuthStore } from './stores/auth'
+import { useEditorStore } from './stores/editor'
 import { useSettingsStore } from './stores/settings'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const editorStore = useEditorStore()
 const settingsStore = useSettingsStore()
 const showAppChrome = computed(() => route.meta.appChrome === true)
 const routeTransitionName = computed(() => (showAppChrome.value ? 'page' : 'public-page'))
@@ -62,14 +64,22 @@ function handleVisibilityChange() {
     }
 }
 
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+    if (!editorStore.hasUnsavedChanges) return
+    event.preventDefault()
+    event.returnValue = ''
+}
+
 onMounted(() => {
     window.addEventListener('focus', handleWindowFocus)
+    window.addEventListener('beforeunload', handleBeforeUnload)
     document.addEventListener('visibilitychange', handleVisibilityChange)
     restartSettingsSync()
 })
 
 onBeforeUnmount(() => {
     clearSettingsSyncTimer()
+    window.removeEventListener('beforeunload', handleBeforeUnload)
     window.removeEventListener('focus', handleWindowFocus)
     document.removeEventListener('visibilitychange', handleVisibilityChange)
 })

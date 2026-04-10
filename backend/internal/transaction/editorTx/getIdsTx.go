@@ -2,14 +2,12 @@ package editorTx
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 
 	"github.com/viktorHadz/goInvoice26/internal/accountscope"
 	"github.com/viktorHadz/goInvoice26/internal/app"
 	"github.com/viktorHadz/goInvoice26/internal/models"
-	"github.com/viktorHadz/goInvoice26/internal/transaction/invoiceTx"
 )
 
 type InvoiceBookPageFilters struct {
@@ -88,11 +86,11 @@ func invoiceBookBaseCTE(accountID int64, filters InvoiceBookPageFilters) (string
 	baseCTE := fmt.Sprintf(`
 		WITH paid_totals AS (
 			SELECT
-				p.invoice_id,
+				p.applied_in_revision_id,
 				COALESCE(SUM(p.amount_minor), 0) AS paid_minor
 			FROM payments p
 			WHERE p.payment_type = 'payment'
-			GROUP BY p.invoice_id
+			GROUP BY p.applied_in_revision_id
 		),
 		invoice_page_rows AS (
 			SELECT
@@ -117,7 +115,7 @@ func invoiceBookBaseCTE(accountID int64, filters InvoiceBookPageFilters) (string
 			JOIN invoice_revisions cur
 				ON cur.id = i.current_revision_id
 			LEFT JOIN paid_totals pt
-				ON pt.invoice_id = i.id
+				ON pt.applied_in_revision_id = cur.id
 			%s
 		)
 	`, clientWhere)
@@ -215,7 +213,6 @@ func QueryInvoiceBookPage(
 		}
 
 		item.Revisions = make([]models.INVBookRevision, 0, 2)
-		item.History = make([]models.INVBookHistoryItem, 0, 4)
 
 		itemIndexByInvoiceID[item.ID] = len(items)
 		invoiceIDs = append(invoiceIDs, item.ID)
@@ -258,6 +255,7 @@ func QueryInvoiceBookPage(
 			r.updated_at
 		FROM invoice_revisions r
 		WHERE r.invoice_id IN (%s)
+		  AND r.revision_no > 1
 		ORDER BY r.invoice_id DESC, r.revision_no ASC;
 	`, strings.Join(placeholders, ","))
 
@@ -296,19 +294,6 @@ func QueryInvoiceBookPage(
 		return models.INVBookOut{}, fmt.Errorf("iterate invoice revision rows: %w", err)
 	}
 
-	historyRows, err := invoiceTx.QueryInvoiceHistoryForInvoices(ctx, a.DB, invoiceIDs)
-	if err != nil {
-		return models.INVBookOut{}, fmt.Errorf("query invoice history for page: %w", err)
-	}
-	for _, history := range historyRows {
-		idx, ok := itemIndexByInvoiceID[history.InvoiceID]
-		if !ok {
-			return models.INVBookOut{}, fmt.Errorf("history references unexpected invoice_id: %d", history.InvoiceID)
-		}
-
-		items[idx].History = append(items[idx].History, toInvoiceBookHistoryItem(history))
-	}
-
 	count := len(items)
 
 	return models.INVBookOut{
@@ -319,49 +304,4 @@ func QueryInvoiceBookPage(
 		Total:   total,
 		HasMore: offset+count < total,
 	}, nil
-}
-
-func toInvoiceBookHistoryItem(row invoiceTx.InvoiceHistoryRow) models.INVBookHistoryItem {
-	item := models.INVBookHistoryItem{
-		ID:        row.ID,
-		Type:      row.Type,
-		CreatedAt: row.CreatedAt,
-		Label:     optionalStringPtr(row.Label),
-	}
-
-	if row.RevisionNo.Valid {
-		revisionNo := int(row.RevisionNo.Int64)
-		item.RevisionNo = &revisionNo
-	}
-	if row.ReceiptNo.Valid {
-		receiptNo := int(row.ReceiptNo.Int64)
-		item.ReceiptNo = &receiptNo
-	}
-	if row.IssueDate.Valid {
-		issueDate := row.IssueDate.String
-		item.IssueDate = &issueDate
-	}
-	if row.DueByDate.Valid {
-		dueByDate := row.DueByDate.String
-		item.DueByDate = &dueByDate
-	}
-	if row.PaymentDate.Valid {
-		paymentDate := row.PaymentDate.String
-		item.PaymentDate = &paymentDate
-	}
-	if row.AmountMinor.Valid {
-		amountMinor := row.AmountMinor.Int64
-		item.AmountMinor = &amountMinor
-	}
-
-	return item
-}
-
-func optionalStringPtr(value sql.NullString) *string {
-	if !value.Valid {
-		return nil
-	}
-
-	out := value.String
-	return &out
 }

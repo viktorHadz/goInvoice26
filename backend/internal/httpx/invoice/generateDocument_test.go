@@ -42,7 +42,7 @@ func TestBuildDocumentFilename(t *testing.T) {
 			baseNumber: 12,
 			revisionNo: 4,
 			ext:        ".pdf",
-			want:       "Invoice-12-Rev-3.pdf",
+			want:       "Invoice-12.4.pdf",
 		},
 		{
 			name:       "blank extension falls back",

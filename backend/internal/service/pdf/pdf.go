@@ -82,9 +82,10 @@ func BuildPaymentReceiptFromDB(
 	db *sql.DB,
 	clientID int64,
 	baseNo int64,
+	revisionNo int64,
 	receiptNo int64,
 ) (models.InvoicePDFData, error) {
-	receipt, err := invoiceTx.QueryPaymentReceiptByNumber(ctx, db, clientID, baseNo, receiptNo)
+	receipt, err := invoiceTx.QueryPaymentReceiptByNumber(ctx, db, clientID, baseNo, revisionNo, receiptNo)
 	if err != nil {
 		return models.InvoicePDFData{}, fmt.Errorf("get payment receipt: %w", err)
 	}
@@ -108,10 +109,10 @@ func BuildPaymentReceiptFromDB(
 	if err := db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(amount_minor), 0)
 		FROM payments
-		WHERE invoice_id = ?
+		WHERE applied_in_revision_id = ?
 		  AND payment_type = 'payment'
 		  AND receipt_no <= ?;
-	`, receipt.InvoiceID, receipt.ReceiptNo).Scan(&paidUpToReceipt); err != nil {
+	`, receipt.AppliedRevisionID, receipt.ReceiptNo).Scan(&paidUpToReceipt); err != nil {
 		return models.InvoicePDFData{}, fmt.Errorf("sum payment receipts to receipt number: %w", err)
 	}
 
@@ -276,7 +277,7 @@ func buildPaymentReceiptPDFData(
 	s models.Settings,
 ) models.InvoicePDFData {
 	referenceNumberLabel := invoiceformat.FormatInvoiceNumber(s.InvoicePrefix, o.BaseNumber, receipt.AppliedRevisionNo)
-	receiptNumberLabel := invoiceformat.FormatPaymentReceiptNumber(s.InvoicePrefix, o.BaseNumber, receipt.ReceiptNo)
+	receiptNumberLabel := invoiceformat.FormatPaymentReceiptNumber(s.InvoicePrefix, o.BaseNumber, receipt.AppliedRevisionNo, receipt.ReceiptNo)
 
 	balanceDue := o.TotalMinor - paidUpToReceipt
 	if balanceDue < 0 {

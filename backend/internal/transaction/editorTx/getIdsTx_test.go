@@ -200,8 +200,8 @@ func TestQueryInvoiceBookPage_FiltersUnpaidAndSortsByOutstanding(t *testing.T) {
 	if got.Items[0].LatestRevisionNo != 2 {
 		t.Fatalf("latest revision = %d, want 2", got.Items[0].LatestRevisionNo)
 	}
-	if got.Items[1].BaseNo != 103 || got.Items[1].BalanceDueMinor != 2000 {
-		t.Fatalf("second item = %+v, want base 103 with balance 2000", got.Items[1])
+	if got.Items[1].BaseNo != 103 || got.Items[1].BalanceDueMinor != 3000 {
+		t.Fatalf("second item = %+v, want base 103 with balance 3000", got.Items[1])
 	}
 }
 

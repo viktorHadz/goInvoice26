@@ -137,16 +137,17 @@ function fallbackInvoiceFilename(
 
     const displayRevisionNo = toDisplayRevisionNo(revisionNumber)
     if (displayRevisionNo == null) return `Invoice-${baseNumber}.${format}`
-    return `Invoice-${baseNumber}-Rev-${displayRevisionNo}.${format}`
+    return `Invoice-${baseNumber}.${displayRevisionNo}.${format}`
 }
 
 function fallbackReceiptFilename(
     prefix: string,
     baseNumber: number,
+    revisionNumber: number,
     receiptNo: number,
     format: InvoiceDownloadFormat,
 ): string {
-    const label = formatPaymentReceiptLabel(prefix, baseNumber, receiptNo)
+    const label = formatPaymentReceiptLabel(prefix, baseNumber, revisionNumber, receiptNo)
     if (!label) return `Invoice-Receipt.${format}`
     return `${label}.${format}`
 }
@@ -233,6 +234,7 @@ export async function generateDocxHandler(
 export async function createPaymentReceiptHandler(
     clientId: number,
     baseNumber: number,
+    revisionNumber: number,
     payload: {
         amountMinor: number
         paymentDate: string
@@ -240,7 +242,7 @@ export async function createPaymentReceiptHandler(
     },
 ) {
     return await request<CreatePaymentReceiptResponse>(
-        `/api/clients/${clientId}/invoice/${baseNumber}/receipts`,
+        `/api/clients/${clientId}/invoice/${baseNumber}/revisions/${revisionNumber}/receipts`,
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -252,6 +254,7 @@ export async function createPaymentReceiptHandler(
 export async function updatePaymentReceiptHandler(
     clientId: number,
     baseNumber: number,
+    revisionNumber: number,
     receiptNo: number,
     payload: {
         paymentDate: string
@@ -259,7 +262,7 @@ export async function updatePaymentReceiptHandler(
     },
 ) {
     return await request<CreatePaymentReceiptResponse>(
-        `/api/clients/${clientId}/invoice/${baseNumber}/receipts/${receiptNo}`,
+        `/api/clients/${clientId}/invoice/${baseNumber}/revisions/${revisionNumber}/receipts/${receiptNo}`,
         {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -268,14 +271,29 @@ export async function updatePaymentReceiptHandler(
     )
 }
 
+export async function deletePaymentReceiptHandler(
+    clientId: number,
+    baseNumber: number,
+    revisionNumber: number,
+    receiptNo: number,
+) {
+    return await request<void>(
+        `/api/clients/${clientId}/invoice/${baseNumber}/revisions/${revisionNumber}/receipts/${receiptNo}`,
+        {
+            method: 'DELETE',
+        },
+    )
+}
+
 export async function generatePaymentReceiptDownloadHandler(
     clientId: number,
     baseNumber: number,
+    revisionNumber: number,
     receiptNo: number,
     format: InvoiceDownloadFormat,
     prefix = 'INV',
 ) {
-    const url = `/api/clients/${clientId}/invoice/${baseNumber}/receipts/${receiptNo}/${format}`
+    const url = `/api/clients/${clientId}/invoice/${baseNumber}/revisions/${revisionNumber}/receipts/${receiptNo}/${format}`
 
     let res: Response
     try {
@@ -295,5 +313,8 @@ export async function generatePaymentReceiptDownloadHandler(
 
     const blob = await res.blob()
     const serverFilename = filenameFromContentDisposition(res.headers.get('content-disposition'))
-    downloadBlob(blob, serverFilename ?? fallbackReceiptFilename(prefix, baseNumber, receiptNo, format))
+    downloadBlob(
+        blob,
+        serverFilename ?? fallbackReceiptFilename(prefix, baseNumber, revisionNumber, receiptNo, format),
+    )
 }

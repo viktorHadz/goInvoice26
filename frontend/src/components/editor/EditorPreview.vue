@@ -30,7 +30,7 @@ import {
 } from '@/utils/invoiceStatusOptions'
 import { requestConfirmation } from '@/utils/confirm'
 import InvoiceStatusTooltip from '@/components/editor/partials/InvoiceStatusTooltip.vue'
-import { isReceiptEditorNode, resolveEditorExportRevisionNo } from '@/utils/editorExport'
+import { resolveEditorExportRevisionNo } from '@/utils/editorExport'
 import TheInput from '@/components/UI/TheInput.vue'
 import TheButton from '@/components/UI/TheButton.vue'
 import DateField from '@/components/invoice/DateField.vue'
@@ -52,21 +52,6 @@ async function generatePdfOnly() {
   const draftOrSavedInvoice = editStore.activeInvoice
   if (!draftOrSavedInvoice || isGeneratingExport.value) return
 
-  if (isReceiptNode.value && selectedReceipt.value) {
-    isGeneratingExport.value = true
-    try {
-      await pdfStore.generateSavedPaymentReceiptPdf(
-        draftOrSavedInvoice.clientId,
-        draftOrSavedInvoice.baseNumber,
-        selectedReceipt.value.receiptNo,
-        invoicePrefix.value || 'INV',
-      )
-    } finally {
-      isGeneratingExport.value = false
-    }
-    return
-  }
-
   const selectedRevisionNo = resolveEditorExportRevisionNo(
     editStore.activeNode,
     editStore.activeRevisionNo,
@@ -83,21 +68,6 @@ async function generatePdfOnly() {
 async function generateDocxOnly() {
   const draftOrSavedInvoice = editStore.activeInvoice
   if (!draftOrSavedInvoice || isGeneratingExport.value) return
-
-  if (isReceiptNode.value && selectedReceipt.value) {
-    isGeneratingExport.value = true
-    try {
-      await pdfStore.generateSavedPaymentReceiptDocx(
-        draftOrSavedInvoice.clientId,
-        draftOrSavedInvoice.baseNumber,
-        selectedReceipt.value.receiptNo,
-        invoicePrefix.value || 'INV',
-      )
-    } finally {
-      isGeneratingExport.value = false
-    }
-    return
-  }
 
   const selectedRevisionNo = resolveEditorExportRevisionNo(
     editStore.activeNode,
@@ -178,12 +148,21 @@ const invoiceDisplayLabel = computed(() => {
 const lifecycleStatus = computed(
   () => (editStore.activeInvoice?.status ?? inv.value?.status ?? 'draft') as InvoiceStatus,
 )
-const isReceiptNode = computed(() => isReceiptEditorNode(editStore.activeNode))
-const selectedReceipt = computed(() => editStore.selectedReceipt ?? null)
+const receipts = computed(() => editStore.activeReceipts ?? [])
+const selectedReceiptNo = ref<number | null>(null)
+const selectedReceipt = computed(() => {
+  if (!receipts.value.length) return null
+  return (
+    receipts.value.find((receipt) => receipt.receiptNo === selectedReceiptNo.value) ??
+    receipts.value[0] ??
+    null
+  )
+})
 const receiptDisplayLabel = computed(() =>
   formatPaymentReceiptLabel(
     invoicePrefix.value,
     inv.value?.baseNumber,
+    editStore.activeRevisionNo,
     selectedReceipt.value?.receiptNo,
   ),
 )
@@ -191,22 +170,16 @@ const receiptDisplayLabel = computed(() =>
 const revisionCount = computed(() => {
   const baseNumber = editStore.activeInvoice?.baseNumber ?? inv.value?.baseNumber
   if (!baseNumber) return 1
-  return editStore.invoiceBook.find((entry) => entry.baseNo === baseNumber)?.revisions.length ?? 1
+  return editStore.invoiceBook.find((entry) => entry.baseNo === baseNumber)?.latestRevisionNo ?? 1
 })
 
-const canStartEdit = computed(() => !isReceiptNode.value && canEditInvoice(lifecycleStatus.value))
+const canStartEdit = computed(() => canEditInvoice(lifecycleStatus.value))
 const canRemoveInvoice = computed(() => canDeleteInvoice(lifecycleStatus.value))
 const canCreateReceipt = computed(
-  () =>
-    editStore.activeNode?.type === 'invoice' &&
-    lifecycleStatus.value === 'issued' &&
-    balanceDueMinor.value > 0,
+  () => lifecycleStatus.value !== 'void' && balanceDueMinor.value > 0,
 )
 const canEditReceiptMetadata = computed(
-  () =>
-    isReceiptNode.value &&
-    !!selectedReceipt.value &&
-    (lifecycleStatus.value === 'issued' || lifecycleStatus.value === 'paid'),
+  () => !!selectedReceipt.value && lifecycleStatus.value !== 'void',
 )
 
 const statusOptions = computed(() =>
@@ -225,6 +198,20 @@ const selectedStatus = computed({
     void editStore.requestInvoiceLifecycleStatusChange(next)
   },
 })
+
+watch(
+  receipts,
+  (nextReceipts) => {
+    if (!nextReceipts.length) {
+      selectedReceiptNo.value = null
+      return
+    }
+    if (!nextReceipts.some((receipt) => receipt.receiptNo === selectedReceiptNo.value)) {
+      selectedReceiptNo.value = nextReceipts[0]?.receiptNo ?? null
+    }
+  },
+  { immediate: true },
+)
 
 watch(
   selectedReceipt,
@@ -283,6 +270,7 @@ async function saveReceiptMetadata() {
   isSavingReceipt.value = true
   try {
     await editStore.updateSelectedReceiptMetadata({
+      receiptNo: selectedReceipt.value.receiptNo,
       paymentDate: receiptMetaDate.value,
       ...(receiptMetaLabel.value.trim() ? { label: receiptMetaLabel.value.trim() } : {}),
     })
@@ -290,6 +278,57 @@ async function saveReceiptMetadata() {
   } finally {
     isSavingReceipt.value = false
   }
+}
+
+async function generateSelectedReceiptPdf() {
+  if (!inv.value || !selectedReceipt.value || isGeneratingExport.value) return
+
+  isGeneratingExport.value = true
+  try {
+    await pdfStore.generateSavedPaymentReceiptPdf(
+      inv.value.clientId,
+      inv.value.baseNumber,
+      editStore.activeRevisionNo,
+      selectedReceipt.value.receiptNo,
+      invoicePrefix.value || 'INV',
+    )
+  } finally {
+    isGeneratingExport.value = false
+  }
+}
+
+async function generateSelectedReceiptDocx() {
+  if (!inv.value || !selectedReceipt.value || isGeneratingExport.value) return
+
+  isGeneratingExport.value = true
+  try {
+    await pdfStore.generateSavedPaymentReceiptDocx(
+      inv.value.clientId,
+      inv.value.baseNumber,
+      editStore.activeRevisionNo,
+      selectedReceipt.value.receiptNo,
+      invoicePrefix.value || 'INV',
+    )
+  } finally {
+    isGeneratingExport.value = false
+  }
+}
+
+async function confirmDeleteReceipt() {
+  if (!inv.value || !selectedReceipt.value) return
+
+  const confirmed = await requestConfirmation({
+    title: 'Delete receipt?',
+    message: `Delete ${receiptDisplayLabel.value}?`,
+    details: 'This removes the receipt from the selected revision only.',
+    confirmLabel: 'Delete receipt',
+    cancelLabel: 'Keep receipt',
+    confirmVariant: 'danger',
+  })
+
+  if (!confirmed) return
+
+  await editStore.deleteReceipt(selectedReceipt.value.receiptNo)
 }
 
 async function confirmDeleteInvoice() {
@@ -316,11 +355,9 @@ async function confirmDeleteInvoice() {
 const menuOpts = computed<MenuOption[]>(() => [
   {
     id: 1,
-    name: isReceiptNode.value ? 'Edit invoice unavailable' : 'Edit invoice',
+    name: 'Edit invoice',
     disabled: !canStartEdit.value,
-    disabledReason: isReceiptNode.value
-      ? 'Payment receipts do not open the invoice edit surface.'
-      : 'Only draft and issued invoices can be edited.',
+    disabledReason: 'Only draft and issued invoices can be edited.',
     effect: () => editStore.initEdit(),
     icon: PencilSquareIcon,
   },
@@ -334,7 +371,7 @@ const menuOpts = computed<MenuOption[]>(() => [
   },
   {
     id: 3,
-    name: isReceiptNode.value ? 'Generate receipt PDF' : 'Generate PDF',
+    name: 'Generate PDF',
     disabled: isGeneratingExport.value,
     disabledReason: 'Processing invoice generation please try again later. ',
     effect: generatePdfOnly,
@@ -342,7 +379,7 @@ const menuOpts = computed<MenuOption[]>(() => [
   },
   {
     id: 4,
-    name: isReceiptNode.value ? 'Generate receipt Docx' : 'Generate Docx',
+    name: 'Generate Docx',
     disabled: isGeneratingExport.value,
     disabledReason: 'Processing invoice generation please try again later. ',
     effect: generateDocxOnly,
@@ -708,77 +745,109 @@ const menuOpts = computed<MenuOption[]>(() => [
                 Payment receipts
               </div>
               <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
-                {{
-                  isReceiptNode
-                    ? 'Receipt details and metadata'
-                    : 'Saved payments live separately from revisions'
-                }}
+                Save and manage receipts for this revision
               </div>
             </div>
 
             <div class="space-y-3 p-3 md:p-4">
-              <template v-if="isReceiptNode && selectedReceipt">
-                <div
-                  class="rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/40"
-                >
-                  <div class="font-semibold text-zinc-900 dark:text-zinc-100">
-                    {{ receiptDisplayLabel }}
-                  </div>
-                  <div class="mt-2 grid gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-                    <div>
-                      Amount:
-                      <span class="font-medium text-zinc-900 dark:text-zinc-100">
-                        {{ fmtGBPMinor(selectedReceipt.amountMinor) }}
-                      </span>
-                    </div>
-                    <div>
-                      Applied revision:
-                      <span class="font-medium text-zinc-900 dark:text-zinc-100">
-                        {{
-                          formatInvoiceDisplayLabel(
-                            invoicePrefix,
-                            inv.baseNumber,
-                            selectedReceipt.appliedRevisionNo,
-                          )
-                        }}
-                      </span>
-                    </div>
-                  </div>
+              <div
+                v-if="receipts.length"
+                class="rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+              >
+                <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  Saved receipts
                 </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    v-for="receipt in receipts"
+                    :key="receipt.id"
+                    type="button"
+                    class="rounded-full border px-3 py-1 text-xs font-medium transition"
+                    :class="
+                      selectedReceipt?.receiptNo === receipt.receiptNo
+                        ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-emerald-400/20 dark:bg-emerald-950/40 dark:text-emerald-200'
+                        : 'border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'
+                    "
+                    @click="selectedReceiptNo = receipt.receiptNo"
+                  >
+                    {{
+                      formatPaymentReceiptLabel(
+                        invoicePrefix,
+                        inv.baseNumber,
+                        editStore.activeRevisionNo,
+                        receipt.receiptNo,
+                      )
+                    }}
+                  </button>
+                </div>
+              </div>
 
-                <div class="grid gap-3">
+              <div v-if="selectedReceipt" class="grid gap-3">
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Receipt amount
+                    </div>
+                    <div
+                      class="rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm font-medium text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+                    >
+                      {{ fmtGBPMinor(selectedReceipt.amountMinor) }}
+                    </div>
+                  </div>
+
                   <div>
                     <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                       Payment date
                     </div>
                     <DateField v-model="receiptMetaDate" />
                   </div>
+                </div>
 
-                  <div>
-                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Payment Note
-                    </div>
-                    <TheInput
-                      v-model="receiptMetaLabel"
-                      placeholder="Optional receipt note"
-                      inputClass="w-full py-1.5"
-                    />
+                <div>
+                  <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    Payment note / Receipt note
                   </div>
+                  <TheInput
+                    v-model="receiptMetaLabel"
+                    placeholder="Optional receipt note"
+                    inputClass="w-full py-1.5"
+                  />
+                </div>
 
+                <div class="flex flex-wrap gap-2">
                   <TheButton
-                    class="w-full"
                     :disabled="!canEditReceiptMetadata || isSavingReceipt"
                     @click="saveReceiptMetadata"
                   >
                     {{ isSavingReceipt ? 'Saving...' : 'Save receipt details' }}
                   </TheButton>
+                  <TheButton
+                    variant="secondary"
+                    :disabled="isGeneratingExport"
+                    @click="generateSelectedReceiptPdf"
+                  >
+                    Export PDF
+                  </TheButton>
+                  <TheButton
+                    variant="secondary"
+                    :disabled="isGeneratingExport"
+                    @click="generateSelectedReceiptDocx"
+                  >
+                    Export Docx
+                  </TheButton>
+                  <TheButton variant="danger" @click="confirmDeleteReceipt">Delete receipt</TheButton>
                 </div>
-              </template>
+              </div>
 
-              <template
-                v-else-if="editStore.activeNode?.type === 'invoice' && lifecycleStatus === 'issued'"
+              <div
+                v-else
+                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
               >
-                <div class="grid gap-3">
+                No saved receipts for this revision yet.
+              </div>
+
+              <div v-if="canCreateReceipt" class="grid gap-3">
+                <div class="grid gap-3 sm:grid-cols-2">
                   <div>
                     <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                       Receipt amount
@@ -797,49 +866,34 @@ const menuOpts = computed<MenuOption[]>(() => [
                     </div>
                     <DateField v-model="receiptDate" />
                   </div>
-
-                  <div>
-                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Payment Note
-                    </div>
-                    <TheInput
-                      v-model="receiptLabel"
-                      placeholder="Optional receipt note"
-                      inputClass="w-full py-1.5"
-                    />
-                  </div>
-
-                  <TheButton
-                    class="w-full"
-                    :disabled="!canCreateReceipt || isSavingReceipt"
-                    @click="createReceipt"
-                  >
-                    {{ isSavingReceipt ? 'Saving...' : 'Record payment receipt' }}
-                  </TheButton>
                 </div>
-              </template>
 
-              <div
-                v-else-if="lifecycleStatus === 'issued'"
-                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
-              >
-                Select the current invoice row in the invoice book to record a new payment receipt.
-                Historical revision views stay read-only.
-              </div>
+                <div>
+                  <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    Payment note / Receipt note
+                  </div>
+                  <TheInput
+                    v-model="receiptLabel"
+                    placeholder="Optional receipt note"
+                    inputClass="w-full py-1.5"
+                  />
+                </div>
 
-              <div
-                v-else-if="lifecycleStatus === 'paid'"
-                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
-              >
-                This invoice is already fully paid. Select a receipt in the invoice book to edit its
-                metadata or export it again.
+                <TheButton
+                  class="w-full"
+                  :disabled="!canCreateReceipt || isSavingReceipt"
+                  @click="createReceipt"
+                >
+                  {{ isSavingReceipt ? 'Saving...' : 'Record payment receipt' }}
+                </TheButton>
               </div>
 
               <div
                 v-else
                 class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
               >
-                Issue the invoice before recording payments.
+                This revision is fully settled. Additions are disabled once the balance reaches
+                zero.
               </div>
 
               <p

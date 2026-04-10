@@ -55,33 +55,71 @@ func sumPaymentsVisibleUpToRevision(
 	return existing, nil
 }
 
-// applyAutoPaidIfSettled sets status to paid when balance due is zero and invoice is issued.
-func applyAutoPaidIfSettled(ctx context.Context, tx *sql.Tx, invoiceID int64, totalMinor int64) error {
-	var paidSum int64
+func sumPaymentsByRevision(ctx context.Context, tx *sql.Tx, revisionID int64) (int64, error) {
+	var existing int64
 	if err := tx.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(amount_minor), 0)
 		FROM payments
-		WHERE invoice_id = ?
+		WHERE applied_in_revision_id = ?
 		  AND payment_type = 'payment'
-	`, invoiceID).Scan(&paidSum); err != nil {
-		return fmt.Errorf("sum payments for auto-paid: %w", err)
+	`, revisionID).Scan(&existing); err != nil {
+		return 0, fmt.Errorf("sum payments by revision: %w", err)
+	}
+	return existing, nil
+}
+
+// applyAutoPaidIfSettled syncs the invoice status against the current revision snapshot.
+func applyAutoPaidIfSettled(ctx context.Context, tx *sql.Tx, invoiceID int64, _ int64) error {
+	return syncInvoiceStatusForCurrentRevision(ctx, tx, invoiceID)
+}
+
+func syncInvoiceStatusForCurrentRevision(ctx context.Context, tx *sql.Tx, invoiceID int64) error {
+	var (
+		status            string
+		currentRevisionID sql.NullInt64
+		totalMinor        sql.NullInt64
+	)
+	if err := tx.QueryRowContext(ctx, `
+		SELECT
+			i.status,
+			i.current_revision_id,
+			r.total_minor
+		FROM invoices i
+		LEFT JOIN invoice_revisions r
+			ON r.id = i.current_revision_id
+		WHERE i.id = ?;
+	`, invoiceID).Scan(&status, &currentRevisionID, &totalMinor); err != nil {
+		return fmt.Errorf("load invoice status sync state: %w", err)
 	}
 
-	balance := totalMinor - paidSum
-	if balance < 0 {
-		balance = 0
-	}
-	if balance > 0 {
+	if status == "void" || !currentRevisionID.Valid || !totalMinor.Valid {
 		return nil
 	}
 
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE invoices
-		SET status = 'paid'
-		WHERE id = ? AND status = 'issued'
-	`, invoiceID); err != nil {
-		return fmt.Errorf("auto-paid status: %w", err)
+	paidMinor, err := sumPaymentsByRevision(ctx, tx, currentRevisionID.Int64)
+	if err != nil {
+		return err
 	}
+
+	switch {
+	case status == "issued" && paidMinor >= totalMinor.Int64:
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE invoices
+			SET status = 'paid'
+			WHERE id = ?;
+		`, invoiceID); err != nil {
+			return fmt.Errorf("set invoice paid: %w", err)
+		}
+	case status == "paid" && paidMinor < totalMinor.Int64:
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE invoices
+			SET status = 'issued'
+			WHERE id = ?;
+		`, invoiceID); err != nil {
+			return fmt.Errorf("reopen invoice to issued: %w", err)
+		}
+	}
+
 	return nil
 }
 

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useClientStore } from '@/stores/clients'
+import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 import { emitToastError } from '@/utils/toast'
 import { getApiErrorMessage, isApiError } from '@/utils/apiErrors'
@@ -108,7 +109,16 @@ const router = createRouter({
 router.beforeEach(async (to) => {
     const authStore = useAuthStore()
     const clientStore = useClientStore()
+    const editorStore = useEditorStore()
     const settingsStore = useSettingsStore()
+
+    if (to.name !== 'editor' && editorStore.hasUnsavedChanges) {
+        const shouldContinue = await editorStore.resolveUnsavedChangesBeforeProceed('leave the editor')
+        if (!shouldContinue) {
+            return false
+        }
+    }
+
     const needsAuthStatus = to.meta.appChrome || to.name === 'login' || to.name === 'signup'
 
     if (needsAuthStatus) {

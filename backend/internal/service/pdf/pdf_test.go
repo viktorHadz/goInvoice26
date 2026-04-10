@@ -34,8 +34,8 @@ func TestBuildInvoicePDFData_InvoiceNumberLabelUsesDisplayMapping(t *testing.T) 
 
 	overview.RevisionNo = 2
 	firstRevisionDoc := buildInvoicePDFData(overview, nil, settings)
-	if firstRevisionDoc.InvoiceNumberLabel != "INV-7-Rev-1" {
-		t.Fatalf("first revision label = %q, want %q", firstRevisionDoc.InvoiceNumberLabel, "INV-7-Rev-1")
+	if firstRevisionDoc.InvoiceNumberLabel != "INV-7.2" {
+		t.Fatalf("first revision label = %q, want %q", firstRevisionDoc.InvoiceNumberLabel, "INV-7.2")
 	}
 }
 

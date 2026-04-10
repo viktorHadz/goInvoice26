@@ -20,7 +20,7 @@ const lifecycleStatus = computed(
 const revisionCount = computed(() => {
   const baseNumber = editStore.activeInvoice?.baseNumber ?? inv.value?.baseNumber
   if (!baseNumber) return 1
-  return editStore.invoiceBook.find((entry) => entry.baseNo === baseNumber)?.revisions.length ?? 1
+  return editStore.invoiceBook.find((entry) => entry.baseNo === baseNumber)?.latestRevisionNo ?? 1
 })
 
 const statusSelectOptions = computed(() =>
@@ -130,7 +130,7 @@ const dueByDate = computed<string | null>({
 
       <!-- Right: client card -->
       <section
-        class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+        class="min-w-0 rounded-2xl border border-zinc-300 bg-white p-3 sm:mt-2 dark:border-zinc-800 dark:bg-zinc-900/40"
       >
         <div class="mb-2 flex items-center justify-between">
           <div class="font-semibold">To</div>

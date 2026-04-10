@@ -2,7 +2,6 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import TheButton from './TheButton.vue'
-import DecorGradient from './DecorGradient.vue'
 import { useEscape } from '@/composables/keyHandlers'
 import { onConfirmationRequest, type ConfirmationRequest } from '@/utils/confirm'
 
@@ -13,7 +12,7 @@ const activeRequest = computed(() => queue.value[0] ?? null)
 
 function settleCurrent(confirmed: boolean) {
     const request = queue.value.shift()
-    request?.respond(confirmed)
+    request?.respond(confirmed ? 'confirm' : 'cancel')
 }
 
 function cancelCurrent() {
@@ -22,6 +21,11 @@ function cancelCurrent() {
 
 function confirmCurrent() {
     settleCurrent(true)
+}
+
+function alternateCurrent() {
+    const request = queue.value.shift()
+    request?.respond('alternate')
 }
 
 watch(activeRequest, async (request) => {
@@ -148,6 +152,15 @@ useEscape(cancelCurrent, {
                         @click="cancelCurrent"
                     >
                         {{ activeRequest.cancelLabel }}
+                    </TheButton>
+                    <TheButton
+                        v-if="activeRequest.alternateLabel"
+                        type="button"
+                        :variant="activeRequest.alternateVariant ?? 'success'"
+                        class="cursor-pointer"
+                        @click="alternateCurrent"
+                    >
+                        {{ activeRequest.alternateLabel }}
                     </TheButton>
                     <TheButton
                         type="button"

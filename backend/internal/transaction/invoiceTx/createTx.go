@@ -135,6 +135,31 @@ func CreateRevision(ctx context.Context, a *app.App, canonical *models.FEInvoice
 		return 0, 0, 0, ErrSourceRevisionInvalid
 	}
 
+	var sourceRevisionID int64
+	if err := tx.QueryRowContext(ctx, `
+		SELECT id
+		FROM invoice_revisions
+		WHERE invoice_id = ?
+		  AND revision_no = ?;
+	`, invoiceID, sourceRevisionNo).Scan(&sourceRevisionID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, 0, 0, ErrSourceRevisionInvalid
+		}
+		return 0, 0, 0, fmt.Errorf("load source revision: %w", err)
+	}
+
+	sourcePaid, err := sumPaymentsByRevision(ctx, tx, sourceRevisionID)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if canonical.Totals.PaidMinor != sourcePaid {
+		return 0, 0, 0, ErrPaymentStateMismatch
+	}
+
+	if err := cloneReceiptSnapshot(ctx, tx, invoiceID, sourceRevisionID, revisionID); err != nil {
+		return 0, 0, 0, err
+	}
+
 	if err := applyAutoPaidIfSettled(ctx, tx, invoiceID, canonical.Totals.TotalMinor); err != nil {
 		return 0, 0, 0, err
 	}

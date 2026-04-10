@@ -35,7 +35,7 @@ func ListAll(a *app.App, ctx context.Context, clientID int64) ([]models.Product,
 	}
 	defer rows.Close()
 	// rows scan
-	var out []models.Product
+	out := make([]models.Product, 0)
 	for rows.Next() {
 		var p models.Product
 		if err := rows.Scan(
@@ -53,6 +53,10 @@ func ListAll(a *app.App, ctx context.Context, clientID int64) ([]models.Product,
 			return nil, err
 		}
 		out = append(out, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return out, nil

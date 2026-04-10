@@ -304,4 +304,23 @@ func TestProducts_BulkInsertTx_RollsBackOnError(t *testing.T) {
 	}
 }
 
+func TestProducts_ListAll_ReturnsEmptySliceForClientWithoutProducts(t *testing.T) {
+	ctx := accountscope.WithAccountID(context.Background(), accountscope.DefaultAccountID)
+	a, cleanup := newTestApp(t)
+	defer cleanup()
+
+	clientID := insertClient(t, a)
+
+	listed, err := productsTx.ListAll(a, ctx, clientID)
+	if err != nil {
+		t.Fatalf("ListAll: %v", err)
+	}
+	if listed == nil {
+		t.Fatal("ListAll returned nil slice, want empty slice")
+	}
+	if len(listed) != 0 {
+		t.Fatalf("listed len = %d, want 0", len(listed))
+	}
+}
+
 func ptrI64(v int64) *int64 { return &v }

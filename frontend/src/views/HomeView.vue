@@ -14,6 +14,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import TheTooltip from '@/components/UI/TheTooltip.vue'
 import { useProductStore } from '@/stores/products'
+import { supportContact } from '@/config/supportContact'
 
 // The idea is to disable invoice and editor if no client is selected
 const clientStore = useClientStore()
@@ -178,6 +179,14 @@ const features = [
                   editor
                 </TheButton>
               </RouterLink>
+            </div>
+
+            <div
+              class="mt-4 rounded-2xl border border-zinc-300 bg-zinc-50/70 px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-300"
+            >
+              <div class="font-semibold text-zinc-900 dark:text-zinc-100">Need help?</div>
+              <div class="mt-1">{{ supportContact.email }}</div>
+              <div>{{ supportContact.phone }}</div>
             </div>
           </div>
         </Transition>
