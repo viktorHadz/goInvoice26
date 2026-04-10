@@ -23,6 +23,11 @@ func insertRevisionWithItems(
 		dueBy = *ov.DueByDate
 	}
 
+	var supplyDate interface{}
+	if ov.SupplyDate != nil {
+		supplyDate = *ov.SupplyDate
+	}
+
 	var note interface{}
 	if ov.Note != nil {
 		note = *ov.Note
@@ -31,17 +36,17 @@ func insertRevisionWithItems(
 	if err := tx.QueryRowContext(ctx, `
 		INSERT INTO invoice_revisions (
 			invoice_id, revision_no,
-			issue_date, due_by_date,
+			issue_date, supply_date, due_by_date,
 			client_name, client_company_name, client_address, client_email, note,
 			vat_rate,
 			discount_type, discount_rate, discount_minor,
 			deposit_type, deposit_rate, deposit_minor,
 			subtotal_minor, vat_amount_minor, total_minor
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id;
 	`,
 		invoiceID, revisionNo,
-		ov.IssueDate, dueBy,
+		ov.IssueDate, supplyDate, dueBy,
 		ov.ClientName, ov.ClientCompanyName, ov.ClientAddress, ov.ClientEmail, note,
 		tot.VATRate,
 		tot.DiscountType, tot.DiscountRate, tot.DiscountMinor,

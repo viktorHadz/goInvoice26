@@ -15,6 +15,7 @@ func ensurePostRebuildIndexes(ctx context.Context, db *sql.DB) error {
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_id_account_client ON invoices(id, account_id, client_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_invoices_client_base ON invoices(account_id, client_id, base_number DESC);`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_invoice_revisions_id_invoice ON invoice_revisions(id, invoice_id);`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_invoice_receipt_no ON payments(invoice_id, receipt_no);`,
 		`CREATE INDEX IF NOT EXISTS idx_products_account_client ON products(account_id, client_id);`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_products_account_client_id ON products(account_id, client_id, id);`,
 	}

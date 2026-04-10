@@ -60,8 +60,8 @@ export function calcDepositMinor(inv: Invoice, totalMinor: MoneyMinor): MoneyMin
 }
 export function calcBalanceDueMinor(
     totalMinor: MoneyMinor,
-    depositMinor: MoneyMinor,
+    _depositMinor: MoneyMinor,
     paidMinor: MoneyMinor,
 ): MoneyMinor {
-    return Math.max(0, totalMinor - depositMinor - asNum(paidMinor, 0)) as MoneyMinor
+    return Math.max(0, totalMinor - asNum(paidMinor, 0)) as MoneyMinor
 }

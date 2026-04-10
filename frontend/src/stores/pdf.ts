@@ -2,7 +2,11 @@ import type { Invoice } from '@/components/invoice/invoiceTypes'
 import { isApiError } from '@/utils/apiErrors'
 import { NetworkError } from '@/utils/fetchHelper'
 import { validateInvoicePayload } from '@/utils/frontendValidation'
-import { generateDocxHandler, generatePdfHandler } from '@/utils/invoiceHttpHandler'
+import {
+    generateDocxHandler,
+    generatePaymentReceiptDownloadHandler,
+    generatePdfHandler,
+} from '@/utils/invoiceHttpHandler'
 import { emitToastError, emitToastSuccess } from '@/utils/toast'
 import { defineStore } from 'pinia'
 import { apiDTO } from '@/utils/invoiceDto'
@@ -155,10 +159,34 @@ export const usePdfStore = defineStore('pdf', () => {
         )
     }
 
+    async function generateSavedPaymentReceiptPdf(
+        clientId: number,
+        baseNumber: number,
+        receiptNo: number,
+        prefix = 'INV',
+    ) {
+        await handleFileGeneration('PDF', () =>
+            generatePaymentReceiptDownloadHandler(clientId, baseNumber, receiptNo, 'pdf', prefix),
+        )
+    }
+
+    async function generateSavedPaymentReceiptDocx(
+        clientId: number,
+        baseNumber: number,
+        receiptNo: number,
+        prefix = 'INV',
+    ) {
+        await handleFileGeneration('DOCX', () =>
+            generatePaymentReceiptDownloadHandler(clientId, baseNumber, receiptNo, 'docx', prefix),
+        )
+    }
+
     return {
         generateAndPersistPdf,
         generateAndPersistDocx,
         quickGeneratePDF,
         quickGenerateDocx,
+        generateSavedPaymentReceiptPdf,
+        generateSavedPaymentReceiptDocx,
     }
 })

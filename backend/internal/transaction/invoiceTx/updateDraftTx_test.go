@@ -13,6 +13,7 @@ import (
 
 func draftUpdatePayload(clientID, baseNumber int64, totalMinor int64, paidMinor int64, lineName string) *models.FEInvoiceIn {
 	dueBy := "2026-04-15"
+	supplyDate := "2026-03-31"
 	note := "Updated draft note"
 
 	return &models.FEInvoiceIn{
@@ -20,6 +21,7 @@ func draftUpdatePayload(clientID, baseNumber int64, totalMinor int64, paidMinor 
 			ClientID:          clientID,
 			BaseNumber:        baseNumber,
 			IssueDate:         "2026-03-30",
+			SupplyDate:        &supplyDate,
 			DueByDate:         &dueBy,
 			ClientName:        "Updated Client",
 			ClientCompanyName: "Acme Co",
@@ -53,12 +55,6 @@ func draftUpdatePayload(clientID, baseNumber int64, totalMinor int64, paidMinor 
 			TotalMinor:        totalMinor,
 			BalanceDue:        totalMinor - paidMinor,
 		},
-		Payments: []models.PaymentCreateIn{
-			{
-				AmountMinor: 50,
-				PaymentDate: "2026-03-31",
-			},
-		},
 	}
 }
 
@@ -75,7 +71,7 @@ func TestUpdateDraft_ReplacesBaseRevisionInPlace(t *testing.T) {
 		t.Fatalf("load current revision id: %v", err)
 	}
 
-	gotInvoiceID, gotRevisionID, err := invoiceTx.UpdateDraft(ctx, a, draftUpdatePayload(clientID, 101, 150, 150, "Updated service line"))
+	gotInvoiceID, gotRevisionID, err := invoiceTx.UpdateDraft(ctx, a, draftUpdatePayload(clientID, 101, 150, 100, "Updated service line"))
 	if err != nil {
 		t.Fatalf("UpdateDraft: %v", err)
 	}
@@ -91,18 +87,22 @@ func TestUpdateDraft_ReplacesBaseRevisionInPlace(t *testing.T) {
 	}
 
 	var (
-		issueDate string
-		note      sql.NullString
+		issueDate  string
+		supplyDate sql.NullString
+		note       sql.NullString
 	)
 	if err := a.DB.QueryRow(`
-		SELECT issue_date, note
+		SELECT issue_date, supply_date, note
 		FROM invoice_revisions
 		WHERE id = ?
-	`, gotRevisionID).Scan(&issueDate, &note); err != nil {
+	`, gotRevisionID).Scan(&issueDate, &supplyDate, &note); err != nil {
 		t.Fatalf("load updated revision: %v", err)
 	}
 	if issueDate != "2026-03-30" {
 		t.Fatalf("issue date = %q, want 2026-03-30", issueDate)
+	}
+	if !supplyDate.Valid || supplyDate.String != "2026-03-31" {
+		t.Fatalf("supply date = %#v, want 2026-03-31", supplyDate)
 	}
 	if !note.Valid || note.String != "Updated draft note" {
 		t.Fatalf("note = %#v, want Updated draft note", note)
@@ -120,8 +120,8 @@ func TestUpdateDraft_ReplacesBaseRevisionInPlace(t *testing.T) {
 		t.Fatalf("item name = %q, want Updated service line", itemName)
 	}
 
-	if count := countRows(t, a, "payments", invoiceID); count != 2 {
-		t.Fatalf("payment count = %d, want 2", count)
+	if count := countRows(t, a, "payments", invoiceID); count != 1 {
+		t.Fatalf("payment count = %d, want 1", count)
 	}
 
 	var status string
@@ -179,7 +179,7 @@ func TestUpdateDraft_RejectsDraftWithMultipleRevisions(t *testing.T) {
 		t.Fatalf("update current revision: %v", err)
 	}
 
-	_, _, err = invoiceTx.UpdateDraft(ctx, a, draftUpdatePayload(clientID, 102, 1200, 150, "Ignored"))
+	_, _, err = invoiceTx.UpdateDraft(ctx, a, draftUpdatePayload(clientID, 102, 1200, 100, "Ignored"))
 	if !errors.Is(err, invoiceTx.ErrDraftInvoiceHasRevisions) {
 		t.Fatalf("UpdateDraft() error = %v, want %v", err, invoiceTx.ErrDraftInvoiceHasRevisions)
 	}
@@ -222,7 +222,7 @@ func TestCreateRevision_AutoMarksIssuedInvoicePaidWhenSettled(t *testing.T) {
 	clientID := insertClient(t, a)
 	invoiceID := insertInvoiceGraph(t, a, clientID, 160, "issued")
 
-	_, _, _, err := invoiceTx.CreateRevision(ctx, a, draftUpdatePayload(clientID, 160, 150, 150, "Issued revision line"))
+	_, _, _, err := invoiceTx.CreateRevision(ctx, a, draftUpdatePayload(clientID, 160, 100, 100, "Issued revision line"))
 	if err != nil {
 		t.Fatalf("CreateRevision: %v", err)
 	}

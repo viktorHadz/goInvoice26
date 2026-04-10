@@ -3,6 +3,7 @@ import {
     formatActiveEditorNodeLabel,
     formatInvoiceBaseLabel,
     formatInvoiceDisplayLabel,
+    formatPaymentReceiptLabel,
     toDisplayRevisionNo,
 } from '@/utils/invoiceLabels'
 
@@ -14,11 +15,12 @@ describe('invoiceLabels display mapping', () => {
         expect(toDisplayRevisionNo(3)).toBe(2)
     })
 
-    it('formats base and display labels with shifted revision suffix', () => {
-        expect(formatInvoiceBaseLabel('INV-', 7)).toBe('INV - 7')
-        expect(formatInvoiceDisplayLabel('INV-', 7, 1)).toBe('INV - 7')
-        expect(formatInvoiceDisplayLabel('INV-', 7, 2)).toBe('INV - 7.1')
-        expect(formatInvoiceDisplayLabel('INV-', 7, 3)).toBe('INV - 7.2')
+    it('formats base, revision, and receipt labels with explicit suffixes', () => {
+        expect(formatInvoiceBaseLabel('INV-', 7)).toBe('INV-7')
+        expect(formatInvoiceDisplayLabel('INV-', 7, 1)).toBe('INV-7')
+        expect(formatInvoiceDisplayLabel('INV-', 7, 2)).toBe('INV-7-Rev-1')
+        expect(formatInvoiceDisplayLabel('INV-', 7, 3)).toBe('INV-7-Rev-2')
+        expect(formatPaymentReceiptLabel('INV-', 7, 1)).toBe('INV-7-PR-1')
     })
 
     it('formats active editor node labels through shared mapping', () => {
@@ -29,7 +31,7 @@ describe('invoiceLabels display mapping', () => {
                 id: 10,
                 baseNo: 7,
             }),
-        ).toBe('INV - 7')
+        ).toBe('INV-7')
 
         expect(
             formatActiveEditorNodeLabel('INV-', {
@@ -40,6 +42,17 @@ describe('invoiceLabels display mapping', () => {
                 baseNo: 7,
                 revisionNo: 2,
             }),
-        ).toBe('INV - 7.1')
+        ).toBe('INV-7-Rev-1')
+
+        expect(
+            formatActiveEditorNodeLabel('INV-', {
+                type: 'paymentReceipt',
+                clientId: 1,
+                id: 30,
+                invoiceId: 10,
+                baseNo: 7,
+                receiptNo: 2,
+            }),
+        ).toBe('INV-7-PR-2')
     })
 })

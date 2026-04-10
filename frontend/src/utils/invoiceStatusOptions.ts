@@ -1,5 +1,5 @@
 import type { Invoice, InvoiceStatus } from '@/components/invoice/invoiceTypes'
-import { calcDepositMinor, calcTotals } from '@/utils/money'
+import { calcTotals } from '@/utils/money'
 
 export type InvoiceStatusContext = {
     canReturnIssuedToDraft?: boolean
@@ -18,8 +18,7 @@ export function buildInvoiceStatusContext(
     }
 
     const totals = calcTotals(invoice)
-    const depositMinor = calcDepositMinor(invoice, totals.totalMinor)
-    const expectedPaidMinor = Math.max(0, totals.totalMinor - depositMinor)
+    const expectedPaidMinor = Math.max(0, totals.totalMinor)
 
     return {
         canReturnIssuedToDraft: revisionCount <= 1,

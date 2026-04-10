@@ -90,6 +90,7 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 					r.Route("/edits", func(r chi.Router) {
 						r.Get("/", editor.HandleINVBookData(a))
 						r.Get("/get/{baseNo}/{revNo}", editor.GetInvoice(a))
+						r.Get("/get/{baseNo}/receipts/{receiptNo}", editor.GetPaymentReceipt(a))
 					})
 
 					// /api/clients/{clientID}/products/...
@@ -117,6 +118,10 @@ func RegisterAllRouters(r chi.Router, a *app.App) {
 							r.Patch("/status", invoice.PatchInvoiceStatus(a))
 							r.Post("/verify", invoice.VerifyInvoice())
 							r.With(midware.LimitInvoiceRevisionCreateByUser()).Post("/revisions", invoice.CreateRevision(a))
+							r.Post("/receipts", invoice.CreatePaymentReceipt(a))
+							r.Patch("/receipts/{receiptNo}", invoice.UpdatePaymentReceipt(a))
+							r.Get("/receipts/{receiptNo}/pdf", invoice.GeneratePaymentReceiptPDFHandler(a))
+							r.Get("/receipts/{receiptNo}/docx", invoice.GeneratePaymentReceiptDOCXHandler(a))
 							r.Get("/{revisionNo}/pdf", invoice.GeneratePDFHandler(a))
 							r.Post("/{revisionNo}/pdf/quick", invoice.QuickPDFHandler(a))
 							r.Get("/{revisionNo}/docx", invoice.GenerateDOCXHandler(a))

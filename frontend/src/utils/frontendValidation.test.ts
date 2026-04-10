@@ -6,6 +6,7 @@ function basePayload() {
         overview: {
             sourceRevisionNo: undefined as number | undefined,
             issueDate: '2026-03-23',
+            supplyDate: undefined as string | undefined,
             dueByDate: '2026-04-06',
             clientName: 'Client Name',
             clientCompanyName: 'Company',
@@ -41,33 +42,27 @@ function basePayload() {
             totalMinor: 12000,
             balanceDueMinor: 7000,
         },
-        payments: [
-            {
-                amountMinor: 5000,
-                paymentDate: '2026-03-23',
-            },
-        ],
     }
 }
 
-describe('validateInvoicePayload payments', () => {
-    it('accepts valid staged payment rows', () => {
+describe('validateInvoicePayload invoice rules', () => {
+    it('accepts valid invoice payloads without staged payments', () => {
         const errors = validateInvoicePayload(basePayload())
         expect(errors).toEqual({})
     })
 
-    it('rejects invalid payment date', () => {
+    it('rejects invalid supply date', () => {
         const payload = basePayload()
-        payload.payments[0]!.paymentDate = '23/03/2026'
+        payload.overview.supplyDate = '23/03/2026'
         const errors = validateInvoicePayload(payload)
-        expect(errors['payments[0].paymentDate']).toContain('YYYY-MM-DD')
+        expect(errors.supplyDate).toContain('YYYY-MM-DD')
     })
 
-    it('rejects paidMinor lower than staged payment sum', () => {
+    it('rejects paidMinor above the invoice total', () => {
         const payload = basePayload()
-        payload.totals.paidMinor = 4900
+        payload.totals.paidMinor = 12_100
         const errors = validateInvoicePayload(payload)
-        expect(errors['totals.paidMinor']).toContain('staged payments')
+        expect(errors['totals.paidMinor']).toContain('invoice total')
     })
 
     it('rejects non-positive sourceRevisionNo when present', () => {
@@ -75,13 +70,6 @@ describe('validateInvoicePayload payments', () => {
         payload.overview.sourceRevisionNo = 0
         const errors = validateInvoicePayload(payload)
         expect(errors.sourceRevisionNo).toContain('positive integer')
-    })
-
-    it('returns human-readable payment date guidance', () => {
-        const payload = basePayload()
-        payload.payments[0]!.paymentDate = ''
-        const errors = validateInvoicePayload(payload)
-        expect(errors['payments[0].paymentDate']).toBe('Choose a payment date.')
     })
 
     it('rejects sortOrder values below one', () => {

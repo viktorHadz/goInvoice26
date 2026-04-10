@@ -75,8 +75,8 @@ func UpdateInvoice(a *app.App) http.HandlerFunc {
 			case errors.Is(err, invoiceTx.ErrDraftInvoiceHasRevisions):
 				res.Error(w, http.StatusConflict, "DRAFT_HAS_REVISIONS", "Draft invoice has revisions and can no longer be updated in place")
 				return
-			case errors.Is(err, invoiceTx.ErrPaymentTotalsMismatch):
-				res.Validation(w, res.Invalid("totals.paidMinor", "must match visible payments plus staged payments"))
+			case errors.Is(err, invoiceTx.ErrPaymentStateMismatch):
+				res.Validation(w, res.Invalid("totals.paidMinor", "saved payments changed; refresh invoice before saving"))
 				return
 			}
 

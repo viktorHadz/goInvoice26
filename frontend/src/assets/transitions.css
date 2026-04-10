@@ -98,7 +98,7 @@
     }
     35% {
         transform: translateY(-1px);
-        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+        box-shadow: 0 0 0 3px rgba(14, 164, 233, 0.232);
     }
     100% {
         transform: translateY(0);

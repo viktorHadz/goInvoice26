@@ -71,6 +71,10 @@ export function removeInvoiceLine(inv: Invoice, sortOrder: number): void {
 export function setInvoiceIssueDate(inv: Invoice, v: string): void {
     inv.issueDate = String(v ?? '').trim()
 }
+export function setInvoiceSupplyDate(inv: Invoice, v: string): void {
+    const next = String(v ?? '').trim()
+    inv.supplyDate = next ? next : undefined
+}
 export function setInvoiceDueByDate(inv: Invoice, v: string): void {
     const next = String(v ?? '').trim()
     inv.dueByDate = next ? next : undefined
@@ -150,8 +154,5 @@ export function clearInvoiceDeposit(inv: Invoice): void {
 }
 
 //*---------------------------------
-// * Payments Logic
+// * Payments are recorded as saved receipts on issued invoices.
 //*---------------------------------
-export function setInvoicePayment(inv: Invoice, amount: number): void {
-    inv.paidMinor = Math.max(0, toMinor(amount))
-}

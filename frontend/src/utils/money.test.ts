@@ -135,8 +135,8 @@ describe('calcDepositMinor', () => {
 })
 
 describe('calcBalanceDueMinor', () => {
-    it('is total minus deposit minus paid, floored at 0', () => {
-        expect(calcBalanceDueMinor(10_000, 2000, 3000)).toBe(5000)
+    it('is total minus paid, floored at 0', () => {
+        expect(calcBalanceDueMinor(10_000, 2000, 3000)).toBe(7000)
         expect(calcBalanceDueMinor(10_000, 0, 10_000)).toBe(0)
         expect(calcBalanceDueMinor(10_000, 0, 12_000)).toBe(0)
     })

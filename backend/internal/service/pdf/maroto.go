@@ -83,6 +83,7 @@ func renderHeader(mr core.Maroto, doc models.InvoicePDFData) {
 	}
 
 	issueDate := clean(doc.IssueAt)
+	supplyDate := cleanPtr(doc.SupplyDate)
 	dueDate := cleanPtr(doc.DueDate)
 	logoPath, hasLogo := resolveLocalLogoPath(doc.Issuer.LogoPath)
 
@@ -105,6 +106,9 @@ func renderHeader(mr core.Maroto, doc models.InvoicePDFData) {
 	}
 
 	renderHeaderMetaRow(mr, hasLogo, headerMetaValue("Issued", issueDate))
+	if supplyDate != "" {
+		renderHeaderMetaRow(mr, hasLogo, headerMetaValue("Supply", supplyDate))
+	}
 	renderHeaderMetaRow(mr, hasLogo, headerMetaValue("Due", dueDate))
 
 	mr.AddRow(invoiceTheme.space.lg)
@@ -308,6 +312,26 @@ func buildNoteRows(note *string) []styledTextLine {
 }
 
 func buildTotalRows(doc models.InvoicePDFData) []totalLine {
+	if doc.DocumentKind == "payment_receipt" {
+		rows := []totalLine{
+			newTotalLine("Payment Amount", formatMoney(doc.ReceiptAmountMinor, doc.Currency)),
+			newTotalLine("Invoice Total", formatMoney(doc.Totals.TotalMinor, doc.Currency)),
+		}
+		if doc.Totals.DepositMinor > 0 {
+			rows = append(rows, newTotalLine("Requested Deposit", formatMoney(doc.Totals.DepositMinor, doc.Currency)))
+		}
+		rows = append(rows, newTotalLine("Total Paid", formatMoney(doc.Totals.PaidMinor, doc.Currency)))
+		rows = append(rows, totalLine{
+			label:      "Balance Due",
+			value:      formatMoney(doc.Totals.BalanceDue, doc.Currency),
+			labelStyle: invoiceTheme.balanceLabelText(),
+			valueStyle: invoiceTheme.balanceValueText(),
+			cellStyle:  invoiceTheme.cell.balance,
+			ruleAbove:  true,
+		})
+		return rows
+	}
+
 	rows := []totalLine{
 		newTotalLine("Subtotal", formatMoney(doc.Totals.SubtotalMinor, doc.Currency)),
 	}
@@ -322,7 +346,7 @@ func buildTotalRows(doc models.InvoicePDFData) []totalLine {
 	)
 
 	if doc.Totals.DepositMinor > 0 {
-		rows = append(rows, newTotalLine("Deposit", formatMoney(-doc.Totals.DepositMinor, doc.Currency)))
+		rows = append(rows, newTotalLine("Requested Deposit", formatMoney(doc.Totals.DepositMinor, doc.Currency)))
 	}
 	if doc.Totals.PaidMinor > 0 {
 		rows = append(rows, newTotalLine("Paid", formatMoney(-doc.Totals.PaidMinor, doc.Currency)))

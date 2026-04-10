@@ -50,7 +50,7 @@ describe('findNewInvoiceValidationMessage', () => {
         const after = cloneInvoice(before)
         setInvoiceDiscountPercent(after, 10)
 
-        const message = findNewInvoiceValidationMessage(before, after, [], [
+        const message = findNewInvoiceValidationMessage(before, after, [
             'totals.discountRate',
             'totals.discountMinor',
             'totals.paidMinor',
@@ -59,19 +59,19 @@ describe('findNewInvoiceValidationMessage', () => {
         expect(message).toBeNull()
     })
 
-    it('returns the new paid error when a deposit would overrun the amount owing', () => {
+    it('returns the new paid error when a commercial edit drops the invoice total below paid', () => {
         const before = makeInvoice({
             paidMinor: 5_000,
         })
         const after = cloneInvoice(before)
-        setInvoiceDepositFixedGBP(after, 80)
+        setInvoiceDiscountPercent(after, 60)
 
-        const message = findNewInvoiceValidationMessage(before, after, [], [
-            'totals.depositRate',
-            'totals.depositMinor',
+        const message = findNewInvoiceValidationMessage(before, after, [
+            'totals.discountRate',
+            'totals.discountMinor',
             'totals.paidMinor',
         ])
 
-        expect(message).toBe('Paid amount cannot exceed the balance after deposit.')
+        expect(message).toBe('Paid amount cannot exceed the invoice total.')
     })
 })

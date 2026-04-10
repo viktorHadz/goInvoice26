@@ -77,6 +77,47 @@ func BuildInvoiceFromDB(
 	return buildInvoicePDFData(overview, lines, settings), nil
 }
 
+func BuildPaymentReceiptFromDB(
+	ctx context.Context,
+	db *sql.DB,
+	clientID int64,
+	baseNo int64,
+	receiptNo int64,
+) (models.InvoicePDFData, error) {
+	receipt, err := invoiceTx.QueryPaymentReceiptByNumber(ctx, db, clientID, baseNo, receiptNo)
+	if err != nil {
+		return models.InvoicePDFData{}, fmt.Errorf("get payment receipt: %w", err)
+	}
+
+	overview, err := invoiceTx.QueryInvoiceSummary(ctx, db, clientID, baseNo, receipt.AppliedRevisionNo)
+	if err != nil {
+		return models.InvoicePDFData{}, fmt.Errorf("get payment receipt invoice summary: %w", err)
+	}
+
+	accountID, err := accountscope.Require(ctx)
+	if err != nil {
+		return models.InvoicePDFData{}, fmt.Errorf("get account scope: %w", err)
+	}
+
+	settings, err := settingsTx.Get(ctx, db, accountID)
+	if err != nil {
+		return models.InvoicePDFData{}, fmt.Errorf("get settings: %w", err)
+	}
+
+	var paidUpToReceipt int64
+	if err := db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(amount_minor), 0)
+		FROM payments
+		WHERE invoice_id = ?
+		  AND payment_type = 'payment'
+		  AND receipt_no <= ?;
+	`, receipt.InvoiceID, receipt.ReceiptNo).Scan(&paidUpToReceipt); err != nil {
+		return models.InvoicePDFData{}, fmt.Errorf("sum payment receipts to receipt number: %w", err)
+	}
+
+	return buildPaymentReceiptPDFData(overview, receipt, paidUpToReceipt, settings), nil
+}
+
 // BuildQuickInvoice builds a PDF from in-memory invoice data without saving to DB.
 func BuildQuickInvoice(
 	invoice models.FEInvoiceIn,
@@ -124,6 +165,7 @@ func BuildQuickInvoice(
 		BaseNumber:        invoice.Overview.BaseNumber,
 		RevisionNo:        revisionNo,
 		IssueDate:         invoice.Overview.IssueDate,
+		SupplyDate:        nullStringFromPointer(invoice.Overview.SupplyDate),
 		DueByDate:         dueByDate,
 		ClientName:        invoice.Overview.ClientName,
 		ClientCompanyName: invoice.Overview.ClientCompanyName,
@@ -157,6 +199,11 @@ func buildInvoicePDFData(
 		v := formatDate(o.DueByDate.String, s.DateFormat)
 		dueDate = &v
 	}
+	var supplyDate *string
+	if o.SupplyDate.Valid {
+		v := formatDate(o.SupplyDate.String, s.DateFormat)
+		supplyDate = &v
+	}
 
 	var note *string
 	if o.Note.Valid {
@@ -165,7 +212,7 @@ func buildInvoicePDFData(
 	}
 
 	subtotalAfterDisc := o.SubtotalMinor - o.DiscountMinor
-	balanceDue := o.TotalMinor - o.DepositMinor - o.PaidMinor
+	balanceDue := o.TotalMinor - o.PaidMinor
 	if balanceDue < 0 {
 		balanceDue = 0
 	}
@@ -176,14 +223,16 @@ func buildInvoicePDFData(
 	}
 
 	return models.InvoicePDFData{
+		DocumentKind:        "invoice",
 		Title:               "Invoice",
 		InvoiceNumberLabel:  invoiceformat.FormatInvoiceNumber(s.InvoicePrefix, o.BaseNumber, o.RevisionNo),
 		Currency:            fallbackCurrency(s.Currency),
 		ShowItemTypeHeaders: s.ShowItemTypeHeaders,
 
-		IssueAt: formatDate(o.IssueDate, s.DateFormat),
-		DueDate: dueDate,
-		Note:    note,
+		IssueAt:    formatDate(o.IssueDate, s.DateFormat),
+		SupplyDate: supplyDate,
+		DueDate:    dueDate,
+		Note:       note,
 
 		Issuer: models.InvoicePDFIssuer{
 			CompanyName:    s.CompanyName,
@@ -217,6 +266,98 @@ func buildInvoicePDFData(
 		PaymentTerms:   s.PaymentTerms,
 		PaymentDetails: s.PaymentDetails,
 		NotesFooter:    s.NotesFooter,
+	}
+}
+
+func buildPaymentReceiptPDFData(
+	o *invoiceTx.InvoiceOverviewTotals,
+	receipt *invoiceTx.PaymentReceiptRow,
+	paidUpToReceipt int64,
+	s models.Settings,
+) models.InvoicePDFData {
+	referenceNumberLabel := invoiceformat.FormatInvoiceNumber(s.InvoicePrefix, o.BaseNumber, receipt.AppliedRevisionNo)
+	receiptNumberLabel := invoiceformat.FormatPaymentReceiptNumber(s.InvoicePrefix, o.BaseNumber, receipt.ReceiptNo)
+
+	balanceDue := o.TotalMinor - paidUpToReceipt
+	if balanceDue < 0 {
+		balanceDue = 0
+	}
+
+	logoPath := ""
+	if s.LogoStorageKey != "" {
+		logoPath = storage.NewLocalStore(storage.DefaultRootDir).Path(s.LogoStorageKey)
+	}
+
+	lines := []models.InvoicePDFItem{
+		{
+			Name:      fmt.Sprintf("Payment received for %s", referenceNumberLabel),
+			LineType:  "custom",
+			Quantity:  "1",
+			ItemPrice: formatMoney(receipt.AmountMinor, s.Currency),
+			ItemTotal: formatMoney(receipt.AmountMinor, s.Currency),
+			SortOrder: 1,
+		},
+	}
+
+	var note *string
+	if receipt.Label.Valid && receipt.Label.String != "" {
+		value := receipt.Label.String
+		note = &value
+	}
+
+	paymentDetails := fmt.Sprintf("Reference invoice: %s", referenceNumberLabel)
+	if note != nil {
+		paymentDetails += "\nReceipt note: " + *note
+	}
+
+	return models.InvoicePDFData{
+		DocumentKind:         "payment_receipt",
+		Title:                "Payment Receipt",
+		InvoiceNumberLabel:   receiptNumberLabel,
+		ReferenceNumberLabel: referenceNumberLabel,
+		ReceiptAmountMinor:   receipt.AmountMinor,
+		Currency:             fallbackCurrency(s.Currency),
+		ShowItemTypeHeaders:  false,
+
+		IssueAt: formatDate(receipt.PaymentDate, s.DateFormat),
+		Note:    note,
+
+		Issuer: models.InvoicePDFIssuer{
+			CompanyName:    s.CompanyName,
+			Email:          s.Email,
+			Phone:          s.Phone,
+			CompanyAddress: s.CompanyAddress,
+			LogoPath:       logoPath,
+		},
+		Client: models.CreateClient{
+			Name:        o.ClientName,
+			CompanyName: o.ClientCompanyName,
+			Address:     o.ClientAddress,
+			Email:       o.ClientEmail,
+		},
+		Lines: lines,
+		Totals: models.TotalsCreateIn{
+			DepositType:   o.DepositType,
+			DepositRate:   o.DepositRate,
+			DepositMinor:  o.DepositMinor,
+			PaidMinor:     paidUpToReceipt,
+			SubtotalMinor: receipt.AmountMinor,
+			TotalMinor:    o.TotalMinor,
+			BalanceDue:    balanceDue,
+		},
+		PaymentDetails: paymentDetails,
+		NotesFooter:    s.NotesFooter,
+	}
+}
+
+func nullStringFromPointer(value *string) sql.NullString {
+	if value == nil || *value == "" {
+		return sql.NullString{}
+	}
+
+	return sql.NullString{
+		String: *value,
+		Valid:  true,
 	}
 }
 

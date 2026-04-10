@@ -6,7 +6,7 @@ describe('flattenValidationErrors', () => {
         const message = flattenValidationErrors({
             'lines[0].lineTotalMinor': 'Line total does not match quantity and unit price.',
             'payments[1].paymentDate': 'Choose a payment date.',
-            'totals.paidMinor': 'Paid amount must include all staged payments.',
+            'totals.paidMinor': 'Paid amount cannot exceed the invoice total.',
         })
 
         expect(message).toContain('Line 1 lineTotalMinor:')

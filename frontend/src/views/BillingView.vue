@@ -589,6 +589,19 @@ function isPlanAvailable(plan: BillingPlan) {
           finish setup.
         </div>
 
+        <div
+          class="rounded-3xl border border-zinc-300 bg-white/80 px-4 py-3 text-sm leading-6 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-300"
+        >
+          Need setup help? Email
+          <a
+            href="mailto:invoiceandgo@gmail.com"
+            class="font-semibold text-zinc-900 underline decoration-zinc-400 underline-offset-2 dark:text-zinc-100 dark:decoration-zinc-600"
+          >
+            invoiceandgo@gmail.com
+          </a>
+          and we will help you finish billing.
+        </div>
+
         <article
           v-if="showPromoForm"
           class="rounded-3xl border border-zinc-300 bg-white/85 p-5 dark:border-zinc-800 dark:bg-zinc-950"

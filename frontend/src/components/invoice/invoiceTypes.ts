@@ -36,6 +36,7 @@ export type Invoice = {
     status?: InvoiceStatus
 
     issueDate: string
+    supplyDate?: string
     dueByDate?: string
 
     clientSnapshot: {

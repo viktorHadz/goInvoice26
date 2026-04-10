@@ -32,6 +32,11 @@ function makeInvoices(): InvBookInvoice[] {
                 { id: 10, revisionNo: 1, issueDate: '2026-03-20', dueByDate: '2026-03-30' },
                 { id: 11, revisionNo: 2, issueDate: '2026-03-21', dueByDate: '2026-03-31' },
             ],
+            history: [
+                { id: 10, type: 'revision', createdAt: '2026-03-20T10:00:00Z', revisionNo: 1, issueDate: '2026-03-20', dueByDate: '2026-03-30' },
+                { id: 11, type: 'revision', createdAt: '2026-03-21T10:00:00Z', revisionNo: 2, issueDate: '2026-03-21', dueByDate: '2026-03-31' },
+                { id: 12, type: 'payment_receipt', createdAt: '2026-03-22T10:00:00Z', receiptNo: 1, paymentDate: '2026-03-22', amountMinor: 2000 },
+            ],
         },
         {
             id: 2,
@@ -49,6 +54,10 @@ function makeInvoices(): InvBookInvoice[] {
             balanceDueMinor: 0,
             revisions: [
                 { id: 20, revisionNo: 1, issueDate: '2026-03-22', dueByDate: '2026-04-01' },
+            ],
+            history: [
+                { id: 20, type: 'revision', createdAt: '2026-03-22T10:00:00Z', revisionNo: 1, issueDate: '2026-03-22', dueByDate: '2026-04-01' },
+                { id: 21, type: 'payment_receipt', createdAt: '2026-03-23T10:00:00Z', receiptNo: 1, paymentDate: '2026-03-23', amountMinor: 8000 },
             ],
         },
     ]
@@ -105,17 +114,21 @@ describe('invoiceBookFilters', () => {
     it('filters invoice rows by invoice and revision labels without mutating the originals', () => {
         const invoices = makeInvoices()
 
-        expect(filterInvoiceBookByQuery(invoices, 'INV - 101', 'INV')).toHaveLength(1)
+        expect(filterInvoiceBookByQuery(invoices, 'INV-101', 'INV')).toHaveLength(1)
         expect(filterInvoiceBookByQuery(invoices, 'Acme', 'INV')).toHaveLength(1)
 
-        const revisionMatch = filterInvoiceBookByQuery(invoices, '101.1', 'INV')
+        const revisionMatch = filterInvoiceBookByQuery(invoices, 'INV-101-Rev-1', 'INV')
         expect(revisionMatch).toHaveLength(1)
         const [matchedInvoice] = revisionMatch
         expect(matchedInvoice).toBeDefined()
-        expect(matchedInvoice?.revisions).toHaveLength(1)
-        expect(matchedInvoice?.revisions[0]?.revisionNo).toBe(2)
+        expect(matchedInvoice?.history).toHaveLength(1)
+        expect(matchedInvoice?.history[0]?.revisionNo).toBe(2)
 
-        expect(invoices[0]?.revisions).toHaveLength(2)
+        const receiptMatch = filterInvoiceBookByQuery(invoices, 'INV-101-PR-1', 'INV')
+        expect(receiptMatch).toHaveLength(1)
+        expect(receiptMatch[0]?.history[0]?.receiptNo).toBe(1)
+
+        expect(invoices[0]?.history).toHaveLength(3)
     })
 
     it('formats compact labels for the active sort and payment filter', () => {

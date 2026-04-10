@@ -7,11 +7,13 @@ import (
 )
 
 func validInvoiceInput() models.FEInvoiceIn {
+	supplyDate := "2026-03-24"
 	return models.FEInvoiceIn{
 		Overview: models.InvoiceCreateIn{
 			ClientID:          1,
 			BaseNumber:        1,
 			IssueDate:         "2026-03-23",
+			SupplyDate:        &supplyDate,
 			DueByDate:         nil,
 			ClientName:        "Client",
 			ClientCompanyName: "Company",
@@ -47,30 +49,37 @@ func validInvoiceInput() models.FEInvoiceIn {
 			TotalMinor:       12000,
 			BalanceDue:       10000,
 		},
-		Payments: []models.PaymentCreateIn{
-			{
-				AmountMinor: 2000,
-				PaymentDate: "2026-03-23",
-			},
-		},
 	}
 }
 
-func TestValidateInvoiceCreate_PaymentDateValidation(t *testing.T) {
+func TestValidateInvoiceCreate_NormalizesSupplyDateMatchingIssueDate(t *testing.T) {
 	in := validInvoiceInput()
-	in.Payments[0].PaymentDate = "03/23/2026"
+	in.Overview.SupplyDate = &in.Overview.IssueDate
 
-	_, errs := ValidateInvoiceCreate(in)
+	got, errs := ValidateInvoiceCreate(in)
+	if len(errs) > 0 {
+		t.Fatalf("ValidateInvoiceCreate() errors = %v, want none", errs)
+	}
+	if got.Overview.SupplyDate != nil {
+		t.Fatalf("SupplyDate = %v, want nil when it matches issue date", *got.Overview.SupplyDate)
+	}
+}
+
+func TestValidatePaymentReceiptCreate_PaymentDateValidation(t *testing.T) {
+	_, errs := ValidatePaymentReceiptCreate(models.PaymentReceiptCreateIn{
+		AmountMinor: 2000,
+		PaymentDate: "03/23/2026",
+	})
 	if len(errs) == 0 {
 		t.Fatalf("expected validation error for invalid payment date")
 	}
 }
 
-func TestValidateInvoiceCreate_PaymentAmountValidation(t *testing.T) {
-	in := validInvoiceInput()
-	in.Payments[0].AmountMinor = 0
-
-	_, errs := ValidateInvoiceCreate(in)
+func TestValidatePaymentReceiptCreate_PaymentAmountValidation(t *testing.T) {
+	_, errs := ValidatePaymentReceiptCreate(models.PaymentReceiptCreateIn{
+		AmountMinor: 0,
+		PaymentDate: "2026-03-23",
+	})
 	if len(errs) == 0 {
 		t.Fatalf("expected validation error for non-positive payment amount")
 	}
@@ -80,10 +89,19 @@ func TestValidatePaidVsDepositTotal(t *testing.T) {
 	errs := ValidatePaidVsDepositTotal(models.TotalsCreateIn{
 		TotalMinor:   1000,
 		DepositMinor: 200,
-		PaidMinor:    801,
+		PaidMinor:    1001,
 	})
 	if len(errs) == 0 {
-		t.Fatalf("expected paid vs deposit validation error")
+		t.Fatalf("expected paid vs total validation error")
+	}
+
+	okErrs := ValidatePaidVsDepositTotal(models.TotalsCreateIn{
+		TotalMinor:   1000,
+		DepositMinor: 200,
+		PaidMinor:    900,
+	})
+	if len(okErrs) > 0 {
+		t.Fatalf("ValidatePaidVsDepositTotal() errors = %v, want none", okErrs)
 	}
 }
 

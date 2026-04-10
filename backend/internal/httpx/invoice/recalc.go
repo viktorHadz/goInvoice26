@@ -74,7 +74,7 @@ func RecalcInvoice(inv models.FEInvoiceIn) models.FEInvoiceIn {
 	}
 	depositMinor = clamp(depositMinor, 0, totalMinor)
 
-	balanceDue := max(totalMinor-depositMinor-paidMinor, 0)
+	balanceDue := max(totalMinor-paidMinor, 0)
 
 	// !CRITICAL: This logic must stay identical to the frontend invoice recalculation.
 	// Any change here MUST be mirrored in the frontend to avoid total drift.

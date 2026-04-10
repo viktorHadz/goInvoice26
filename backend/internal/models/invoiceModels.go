@@ -4,7 +4,6 @@ type FEInvoiceIn struct {
 	Overview InvoiceCreateIn
 	Lines    []LineCreateIn
 	Totals   TotalsCreateIn
-	Payments []PaymentCreateIn `json:"payments"`
 }
 
 type InvoiceCreateIn struct {
@@ -12,6 +11,7 @@ type InvoiceCreateIn struct {
 	BaseNumber        int64   `json:"baseNumber"`
 	SourceRevisionNo  *int64  `json:"sourceRevisionNo,omitempty"`
 	IssueDate         string  `json:"issueDate"`
+	SupplyDate        *string `json:"supplyDate,omitempty"`
 	DueByDate         *string `json:"dueByDate"`
 	ClientName        string  `json:"clientName"`
 	ClientCompanyName string  `json:"clientCompanyName"`
@@ -58,6 +58,17 @@ type PaymentCreateIn struct {
 	Label       *string `json:"label,omitempty"`
 }
 
+type PaymentReceiptCreateIn struct {
+	AmountMinor int64   `json:"amountMinor"`
+	PaymentDate string  `json:"paymentDate"`
+	Label       *string `json:"label,omitempty"`
+}
+
+type PaymentReceiptUpdateIn struct {
+	PaymentDate string  `json:"paymentDate"`
+	Label       *string `json:"label,omitempty"`
+}
+
 type InvoicePDFIssuer struct {
 	CompanyName    string
 	Email          string
@@ -78,14 +89,18 @@ type InvoicePDFItem struct {
 }
 
 type InvoicePDFData struct {
-	Title               string
-	InvoiceNumberLabel  string
-	Currency            string
-	ShowItemTypeHeaders bool
+	DocumentKind         string
+	Title                string
+	InvoiceNumberLabel   string
+	ReferenceNumberLabel string
+	ReceiptAmountMinor   int64
+	Currency             string
+	ShowItemTypeHeaders  bool
 
-	IssueAt string
-	DueDate *string
-	Note    *string
+	IssueAt    string
+	SupplyDate *string
+	DueDate    *string
+	Note       *string
 
 	Issuer InvoicePDFIssuer
 	Client CreateClient

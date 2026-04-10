@@ -1,5 +1,5 @@
 import type { Invoice } from '@/components/invoice/invoiceTypes'
-import { apiDTO, type DraftPaymentInput } from '@/utils/invoiceDto'
+import { apiDTO } from '@/utils/invoiceDto'
 import { validateInvoicePayload } from '@/utils/frontendValidation'
 
 /**
@@ -9,11 +9,10 @@ import { validateInvoicePayload } from '@/utils/frontendValidation'
 export function findNewInvoiceValidationMessage(
     beforeInvoice: Invoice,
     afterInvoice: Invoice,
-    payments: DraftPaymentInput[],
     watchedFields: string[],
 ): string | null {
-    const beforeErrors = validateInvoicePayload(apiDTO(beforeInvoice, payments))
-    const afterErrors = validateInvoicePayload(apiDTO(afterInvoice, payments))
+    const beforeErrors = validateInvoicePayload(apiDTO(beforeInvoice))
+    const afterErrors = validateInvoicePayload(apiDTO(afterInvoice))
 
     for (const field of watchedFields) {
         const afterMessage = afterErrors[field]

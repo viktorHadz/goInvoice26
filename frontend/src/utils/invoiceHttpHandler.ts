@@ -1,6 +1,6 @@
 import { NetworkError, request } from './fetchHelper'
 import { parseApiError } from './apiErrors'
-import { toDisplayRevisionNo } from './invoiceLabels'
+import { formatPaymentReceiptLabel, toDisplayRevisionNo } from './invoiceLabels'
 
 export type CreateInvoiceResponse = {
     invoiceId: number
@@ -9,6 +9,12 @@ export type CreateInvoiceResponse = {
 
 export type CreateRevisionResponse = CreateInvoiceResponse & {
     revisionNo: number
+}
+
+export type CreatePaymentReceiptResponse = {
+    invoiceId: number
+    receiptId: number
+    receiptNo: number
 }
 
 export async function getNewInvoiceNumber(clientId: number): Promise<number> {
@@ -134,6 +140,17 @@ function fallbackInvoiceFilename(
     return `Invoice-${baseNumber}-Rev-${displayRevisionNo}.${format}`
 }
 
+function fallbackReceiptFilename(
+    prefix: string,
+    baseNumber: number,
+    receiptNo: number,
+    format: InvoiceDownloadFormat,
+): string {
+    const label = formatPaymentReceiptLabel(prefix, baseNumber, receiptNo)
+    if (!label) return `Invoice-Receipt.${format}`
+    return `${label}.${format}`
+}
+
 async function generateInvoiceDownloadHandler(
     clientId: number,
     baseNumber: number,
@@ -211,4 +228,72 @@ export async function generateDocxHandler(
         revisionNumber,
         invoicePayload,
     )
+}
+
+export async function createPaymentReceiptHandler(
+    clientId: number,
+    baseNumber: number,
+    payload: {
+        amountMinor: number
+        paymentDate: string
+        label?: string
+    },
+) {
+    return await request<CreatePaymentReceiptResponse>(
+        `/api/clients/${clientId}/invoice/${baseNumber}/receipts`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        },
+    )
+}
+
+export async function updatePaymentReceiptHandler(
+    clientId: number,
+    baseNumber: number,
+    receiptNo: number,
+    payload: {
+        paymentDate: string
+        label?: string
+    },
+) {
+    return await request<CreatePaymentReceiptResponse>(
+        `/api/clients/${clientId}/invoice/${baseNumber}/receipts/${receiptNo}`,
+        {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        },
+    )
+}
+
+export async function generatePaymentReceiptDownloadHandler(
+    clientId: number,
+    baseNumber: number,
+    receiptNo: number,
+    format: InvoiceDownloadFormat,
+    prefix = 'INV',
+) {
+    const url = `/api/clients/${clientId}/invoice/${baseNumber}/receipts/${receiptNo}/${format}`
+
+    let res: Response
+    try {
+        res = await fetch(url)
+    } catch (err) {
+        const name = (err as any)?.name
+        if (name === 'AbortError') {
+            throw new NetworkError('Request aborted', err)
+        }
+        throw new NetworkError('Network request failed', err)
+    }
+
+    if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw parseApiError(res.status, text)
+    }
+
+    const blob = await res.blob()
+    const serverFilename = filenameFromContentDisposition(res.headers.get('content-disposition'))
+    downloadBlob(blob, serverFilename ?? fallbackReceiptFilename(prefix, baseNumber, receiptNo, format))
 }

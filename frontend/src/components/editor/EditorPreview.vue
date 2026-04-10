@@ -1,88 +1,133 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
-    ChevronUpDownIcon,
-    DocumentArrowDownIcon,
-    PencilSquareIcon,
-    TrashIcon,
+  ChevronUpDownIcon,
+  DocumentArrowDownIcon,
+  PencilSquareIcon,
+  TrashIcon,
 } from '@heroicons/vue/24/outline'
 
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 import { fmtGBPMinor, calcTotals, calcDepositMinor, calcBalanceDueMinor } from '@/utils/money'
-import { fmtStrDate } from '@/utils/dates'
+import { fmtStrDate, todayISO } from '@/utils/dates'
 import { editorPreviewLineTotalMinor, formatEditorPreviewLineMeta } from '@/utils/editorPreview'
-import { formatActiveEditorNodeLabel, formatInvoiceBaseLabel } from '@/utils/invoiceLabels'
+import {
+  formatActiveEditorNodeLabel,
+  formatInvoiceBaseLabel,
+  formatInvoiceDisplayLabel,
+  formatPaymentReceiptLabel,
+} from '@/utils/invoiceLabels'
 import TheDropdown from '@/components/UI/TheDropdown.vue'
 import DetailsMenu, { type MenuOption } from '@/components/editor/partials/DetailsMenu.vue'
 import { usePdfStore } from '@/stores/pdf'
 import type { InvoiceStatus } from '@/components/invoice/invoiceTypes'
 import {
-    buildInvoiceStatusContext,
-    canDeleteInvoice,
-    canEditInvoice,
-    reachableStatuses,
+  buildInvoiceStatusContext,
+  canDeleteInvoice,
+  canEditInvoice,
+  reachableStatuses,
 } from '@/utils/invoiceStatusOptions'
 import { requestConfirmation } from '@/utils/confirm'
 import InvoiceStatusTooltip from '@/components/editor/partials/InvoiceStatusTooltip.vue'
-import { resolveEditorExportRevisionNo } from '@/utils/editorExport'
+import { isReceiptEditorNode, resolveEditorExportRevisionNo } from '@/utils/editorExport'
+import TheInput from '@/components/UI/TheInput.vue'
+import TheButton from '@/components/UI/TheButton.vue'
+import DateField from '@/components/invoice/DateField.vue'
 
 const editStore = useEditorStore()
 const setsStore = useSettingsStore()
 const pdfStore = usePdfStore()
 
 const isGeneratingExport = ref(false)
+const isSavingReceipt = ref(false)
+const receiptAmount = ref<number | null>(0)
+const receiptDate = ref(todayISO())
+const receiptLabel = ref('')
+const receiptMetaDate = ref('')
+const receiptMetaLabel = ref('')
+const receiptError = ref('')
 
 async function generatePdfOnly() {
-    const draftOrSavedInvoice = editStore.activeInvoice
-    if (!draftOrSavedInvoice || isGeneratingExport.value) return
+  const draftOrSavedInvoice = editStore.activeInvoice
+  if (!draftOrSavedInvoice || isGeneratingExport.value) return
 
-    const selectedRevisionNo = resolveEditorExportRevisionNo(
-        editStore.activeNode,
-        editStore.activeRevisionNo,
-    )
-
+  if (isReceiptNode.value && selectedReceipt.value) {
     isGeneratingExport.value = true
     try {
-        await pdfStore.quickGeneratePDF(draftOrSavedInvoice, selectedRevisionNo)
+      await pdfStore.generateSavedPaymentReceiptPdf(
+        draftOrSavedInvoice.clientId,
+        draftOrSavedInvoice.baseNumber,
+        selectedReceipt.value.receiptNo,
+        invoicePrefix.value || 'INV',
+      )
     } finally {
-        isGeneratingExport.value = false
+      isGeneratingExport.value = false
     }
+    return
+  }
+
+  const selectedRevisionNo = resolveEditorExportRevisionNo(
+    editStore.activeNode,
+    editStore.activeRevisionNo,
+  )
+
+  isGeneratingExport.value = true
+  try {
+    await pdfStore.quickGeneratePDF(draftOrSavedInvoice, selectedRevisionNo)
+  } finally {
+    isGeneratingExport.value = false
+  }
 }
 
 async function generateDocxOnly() {
-    const draftOrSavedInvoice = editStore.activeInvoice
-    if (!draftOrSavedInvoice || isGeneratingExport.value) return
+  const draftOrSavedInvoice = editStore.activeInvoice
+  if (!draftOrSavedInvoice || isGeneratingExport.value) return
 
-    const selectedRevisionNo = resolveEditorExportRevisionNo(
-        editStore.activeNode,
-        editStore.activeRevisionNo,
-    )
-
+  if (isReceiptNode.value && selectedReceipt.value) {
     isGeneratingExport.value = true
     try {
-        await pdfStore.quickGenerateDocx(draftOrSavedInvoice, selectedRevisionNo)
+      await pdfStore.generateSavedPaymentReceiptDocx(
+        draftOrSavedInvoice.clientId,
+        draftOrSavedInvoice.baseNumber,
+        selectedReceipt.value.receiptNo,
+        invoicePrefix.value || 'INV',
+      )
     } finally {
-        isGeneratingExport.value = false
+      isGeneratingExport.value = false
     }
+    return
+  }
+
+  const selectedRevisionNo = resolveEditorExportRevisionNo(
+    editStore.activeNode,
+    editStore.activeRevisionNo,
+  )
+
+  isGeneratingExport.value = true
+  try {
+    await pdfStore.quickGenerateDocx(draftOrSavedInvoice, selectedRevisionNo)
+  } finally {
+    isGeneratingExport.value = false
+  }
 }
 
 /** Draft when present (edit), else last saved invoice — keeps preview aligned with working copy. */
 const inv = computed(() => editStore.draftInvoice ?? editStore.activeInvoice)
 
 const totals = computed(() => {
-    if (!inv.value) return null
-    return calcTotals(inv.value)
+  if (!inv.value) return null
+  return calcTotals(inv.value)
 })
 
 const depositMinor = computed(() => {
-    if (!inv.value || !totals.value) return 0
-    return calcDepositMinor(inv.value, totals.value.totalMinor)
+  if (!inv.value || !totals.value) return 0
+  return calcDepositMinor(inv.value, totals.value.totalMinor)
 })
 
 const balanceDueMinor = computed(() => {
-    if (!inv.value || !totals.value) return 0
-    return calcBalanceDueMinor(totals.value.totalMinor, depositMinor.value, inv.value.paidMinor)
+  if (!inv.value || !totals.value) return 0
+  return calcBalanceDueMinor(totals.value.totalMinor, depositMinor.value, inv.value.paidMinor)
 })
 
 const invoicePrefix = computed(() => setsStore.settings?.invoicePrefix ?? '')
@@ -90,545 +135,750 @@ const dateFormat = computed(() => setsStore.settings?.dateFormat ?? 'dd/mm/yyyy'
 const showItemTypeHeaders = computed(() => setsStore.settings?.showItemTypeHeaders !== false)
 
 type LineGroup = {
-    title: string
-    lines: NonNullable<typeof inv.value>['lines']
+  title: string
+  lines: NonNullable<typeof inv.value>['lines']
 }
 
 const groupedLines = computed<LineGroup[]>(() => {
-    const lines = inv.value?.lines ?? []
-    const sorted = [...lines].sort((a, b) => a.sortOrder - b.sortOrder)
-    const groups: LineGroup[] = [
-        { title: 'Styles', lines: [] },
-        { title: 'Samples', lines: [] },
-        { title: 'Other Items', lines: [] },
-    ]
-    const styleGroup = groups[0]
-    const sampleGroup = groups[1]
-    const otherGroup = groups[2]
-    if (!styleGroup || !sampleGroup || !otherGroup) return []
+  const lines = inv.value?.lines ?? []
+  const sorted = [...lines].sort((a, b) => a.sortOrder - b.sortOrder)
+  const groups: LineGroup[] = [
+    { title: 'Styles', lines: [] },
+    { title: 'Samples', lines: [] },
+    { title: 'Other Items', lines: [] },
+  ]
+  const styleGroup = groups[0]
+  const sampleGroup = groups[1]
+  const otherGroup = groups[2]
+  if (!styleGroup || !sampleGroup || !otherGroup) return []
 
-    for (const line of sorted) {
-        if (line.lineType === 'style') {
-            styleGroup.lines.push(line)
-            continue
-        }
-        if (line.lineType === 'sample') {
-            sampleGroup.lines.push(line)
-            continue
-        }
-        otherGroup.lines.push(line)
+  for (const line of sorted) {
+    if (line.lineType === 'style') {
+      styleGroup.lines.push(line)
+      continue
     }
+    if (line.lineType === 'sample') {
+      sampleGroup.lines.push(line)
+      continue
+    }
+    otherGroup.lines.push(line)
+  }
 
-    return groups.filter((group) => group.lines.length > 0)
+  return groups.filter((group) => group.lines.length > 0)
 })
 
 const invoiceDisplayLabel = computed(() => {
-    const i = inv.value
-    if (!i) return ''
-    const node = editStore.activeNode
-    if (node) return formatActiveEditorNodeLabel(invoicePrefix.value, node)
-    return formatInvoiceBaseLabel(invoicePrefix.value, i.baseNumber)
+  const i = inv.value
+  if (!i) return ''
+  const node = editStore.activeNode
+  if (node) return formatActiveEditorNodeLabel(invoicePrefix.value, node)
+  return formatInvoiceBaseLabel(invoicePrefix.value, i.baseNumber)
 })
 
 const lifecycleStatus = computed(
-    () => (editStore.activeInvoice?.status ?? inv.value?.status ?? 'draft') as InvoiceStatus,
+  () => (editStore.activeInvoice?.status ?? inv.value?.status ?? 'draft') as InvoiceStatus,
+)
+const isReceiptNode = computed(() => isReceiptEditorNode(editStore.activeNode))
+const selectedReceipt = computed(() => editStore.selectedReceipt ?? null)
+const receiptDisplayLabel = computed(() =>
+  formatPaymentReceiptLabel(
+    invoicePrefix.value,
+    inv.value?.baseNumber,
+    selectedReceipt.value?.receiptNo,
+  ),
 )
 
 const revisionCount = computed(() => {
-    const baseNumber = editStore.activeInvoice?.baseNumber ?? inv.value?.baseNumber
-    if (!baseNumber) return 1
-    return editStore.invoiceBook.find((entry) => entry.baseNo === baseNumber)?.revisions.length ?? 1
+  const baseNumber = editStore.activeInvoice?.baseNumber ?? inv.value?.baseNumber
+  if (!baseNumber) return 1
+  return editStore.invoiceBook.find((entry) => entry.baseNo === baseNumber)?.revisions.length ?? 1
 })
 
-const canStartEdit = computed(() => canEditInvoice(lifecycleStatus.value))
+const canStartEdit = computed(() => !isReceiptNode.value && canEditInvoice(lifecycleStatus.value))
 const canRemoveInvoice = computed(() => canDeleteInvoice(lifecycleStatus.value))
+const canCreateReceipt = computed(
+  () =>
+    editStore.activeNode?.type === 'invoice' &&
+    lifecycleStatus.value === 'issued' &&
+    balanceDueMinor.value > 0,
+)
+const canEditReceiptMetadata = computed(
+  () =>
+    isReceiptNode.value &&
+    !!selectedReceipt.value &&
+    (lifecycleStatus.value === 'issued' || lifecycleStatus.value === 'paid'),
+)
 
 const statusOptions = computed(() =>
-    reachableStatuses(
-        lifecycleStatus.value,
-        buildInvoiceStatusContext(editStore.activeInvoice, revisionCount.value),
-    ),
+  reachableStatuses(
+    lifecycleStatus.value,
+    buildInvoiceStatusContext(editStore.activeInvoice, revisionCount.value),
+  ),
 )
 
 const selectedStatus = computed({
-    get(): InvoiceStatus {
-        return lifecycleStatus.value
-    },
-    set(next: InvoiceStatus | null) {
-        if (next == null || next === lifecycleStatus.value) return
-        void editStore.requestInvoiceLifecycleStatusChange(next)
-    },
+  get(): InvoiceStatus {
+    return lifecycleStatus.value
+  },
+  set(next: InvoiceStatus | null) {
+    if (next == null || next === lifecycleStatus.value) return
+    void editStore.requestInvoiceLifecycleStatusChange(next)
+  },
 })
 
-async function confirmDeleteInvoice() {
-    const invoice = editStore.activeInvoice
-    if (!invoice) return
+watch(
+  selectedReceipt,
+  (receipt) => {
+    receiptMetaDate.value = receipt?.paymentDate ?? ''
+    receiptMetaLabel.value = receipt?.label ?? ''
+    receiptError.value = ''
+  },
+  { immediate: true },
+)
 
-    const invoiceLabel = formatInvoiceBaseLabel(invoicePrefix.value, invoice.baseNumber)
+async function createReceipt() {
+  if (!inv.value || !canCreateReceipt.value || isSavingReceipt.value) return
 
-    const confirmed = await requestConfirmation({
-        title: 'Delete invoice?',
-        message: `Delete ${invoiceLabel} from the invoice book?`,
-        details:
-            'This permanently removes the invoice, all saved revisions, and any recorded payments for it.',
-        confirmLabel: 'Delete invoice',
-        cancelLabel: 'Keep invoice',
-        confirmVariant: 'danger',
+  receiptError.value = ''
+  const amountMinor = Math.round(Number(receiptAmount.value ?? 0) * 100)
+
+  if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
+    receiptError.value = 'Enter a receipt amount greater than zero.'
+    return
+  }
+  if (amountMinor > balanceDueMinor.value) {
+    receiptError.value = 'Receipt amount cannot exceed the current balance due.'
+    return
+  }
+  if (!receiptDate.value) {
+    receiptError.value = 'Choose a payment date.'
+    return
+  }
+
+  isSavingReceipt.value = true
+  try {
+    const ok = await editStore.createPaymentReceipt({
+      amountMinor,
+      paymentDate: receiptDate.value,
+      ...(receiptLabel.value.trim() ? { label: receiptLabel.value.trim() } : {}),
     })
+    if (!ok) return
 
-    if (!confirmed) return
+    receiptAmount.value = 0
+    receiptDate.value = todayISO()
+    receiptLabel.value = ''
+    receiptError.value = ''
+  } finally {
+    isSavingReceipt.value = false
+  }
+}
 
-    await editStore.deleteActiveInvoice()
+async function saveReceiptMetadata() {
+  if (!selectedReceipt.value || !canEditReceiptMetadata.value || isSavingReceipt.value) return
+  if (!receiptMetaDate.value) {
+    receiptError.value = 'Choose a payment date.'
+    return
+  }
+
+  isSavingReceipt.value = true
+  try {
+    await editStore.updateSelectedReceiptMetadata({
+      paymentDate: receiptMetaDate.value,
+      ...(receiptMetaLabel.value.trim() ? { label: receiptMetaLabel.value.trim() } : {}),
+    })
+    receiptError.value = ''
+  } finally {
+    isSavingReceipt.value = false
+  }
+}
+
+async function confirmDeleteInvoice() {
+  const invoice = editStore.activeInvoice
+  if (!invoice) return
+
+  const invoiceLabel = formatInvoiceBaseLabel(invoicePrefix.value, invoice.baseNumber)
+
+  const confirmed = await requestConfirmation({
+    title: 'Delete invoice?',
+    message: `Delete ${invoiceLabel} from the invoice book?`,
+    details:
+      'This permanently removes the invoice, all saved revisions, and any recorded payments for it.',
+    confirmLabel: 'Delete invoice',
+    cancelLabel: 'Keep invoice',
+    confirmVariant: 'danger',
+  })
+
+  if (!confirmed) return
+
+  await editStore.deleteActiveInvoice()
 }
 
 const menuOpts = computed<MenuOption[]>(() => [
-    {
-        id: 1,
-        name: 'Edit invoice',
-        disabled: !canStartEdit.value,
-        disabledReason: 'Only draft and issued invoices can be edited.',
-        effect: () => editStore.initEdit(),
-        icon: PencilSquareIcon,
-    },
-    {
-        id: 2,
-        name: 'Delete invoice',
-        disabled: !canRemoveInvoice.value,
-        disabledReason: 'Void invoices are final records and cannot be deleted.',
-        effect: confirmDeleteInvoice,
-        icon: TrashIcon,
-    },
-    {
-        id: 3,
-        name: 'Generate PDF',
-        disabled: isGeneratingExport.value,
-        disabledReason: 'Processing invoice generation please try again later. ',
-        effect: generatePdfOnly,
-        icon: DocumentArrowDownIcon,
-    },
-    {
-        id: 4,
-        name: 'Generate Docx',
-        disabled: isGeneratingExport.value,
-        disabledReason: 'Processing invoice generation please try again later. ',
-        effect: generateDocxOnly,
-        icon: DocumentArrowDownIcon,
-    },
+  {
+    id: 1,
+    name: isReceiptNode.value ? 'Edit invoice unavailable' : 'Edit invoice',
+    disabled: !canStartEdit.value,
+    disabledReason: isReceiptNode.value
+      ? 'Payment receipts do not open the invoice edit surface.'
+      : 'Only draft and issued invoices can be edited.',
+    effect: () => editStore.initEdit(),
+    icon: PencilSquareIcon,
+  },
+  {
+    id: 2,
+    name: 'Delete invoice',
+    disabled: !canRemoveInvoice.value,
+    disabledReason: 'Void invoices are final records and cannot be deleted.',
+    effect: confirmDeleteInvoice,
+    icon: TrashIcon,
+  },
+  {
+    id: 3,
+    name: isReceiptNode.value ? 'Generate receipt PDF' : 'Generate PDF',
+    disabled: isGeneratingExport.value,
+    disabledReason: 'Processing invoice generation please try again later. ',
+    effect: generatePdfOnly,
+    icon: DocumentArrowDownIcon,
+  },
+  {
+    id: 4,
+    name: isReceiptNode.value ? 'Generate receipt Docx' : 'Generate Docx',
+    disabled: isGeneratingExport.value,
+    disabledReason: 'Processing invoice generation please try again later. ',
+    effect: generateDocxOnly,
+    icon: DocumentArrowDownIcon,
+  },
 ])
 </script>
 
 <template>
-    <Transition
-        name="fade-down-up"
-        mode="out-in"
+  <Transition
+    name="fade-down-up"
+    mode="out-in"
+  >
+    <div
+      v-if="editStore.isLoadingInvoice"
+      class="flex min-h-60 items-center justify-center"
     >
+      <div class="text-sm text-zinc-600 dark:text-zinc-400">Loading invoice...</div>
+    </div>
+
+    <div
+      v-else-if="!inv"
+      class="flex min-h-60 items-center justify-center"
+    >
+      <div class="text-sm text-zinc-600 dark:text-zinc-400">No invoice data available.</div>
+    </div>
+
+    <div
+      v-else
+      class="space-y-4"
+    >
+      <!-- Header -->
+      <header
+        class="rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+      >
         <div
-            v-if="editStore.isLoadingInvoice"
-            class="flex min-h-60 items-center justify-center"
+          class="hdr-grid rounded-t-2xl border-b border-zinc-300 px-4 py-3 sm:px-4 dark:border-zinc-800"
         >
-            <div class="text-sm text-zinc-600 dark:text-zinc-400">Loading invoice...</div>
+          <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div class="min-w-0">
+              <h2 class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+                {{ invoiceDisplayLabel }}
+              </h2>
+              <p class="mt-0.5 text-xs font-bold text-sky-600 dark:text-emerald-400">
+                Read-only preview
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <DetailsMenu
+                :pdf-disabled="isGeneratingExport"
+                @pdf="generatePdfOnly"
+                :options="menuOpts"
+              />
+            </div>
+          </div>
         </div>
 
-        <div
-            v-else-if="!inv"
-            class="flex min-h-60 items-center justify-center"
-        >
-            <div class="text-sm text-zinc-600 dark:text-zinc-400">No invoice data available.</div>
-        </div>
-
-        <div
-            v-else
-            class="space-y-4"
-        >
-            <!-- Header -->
-            <header
-                class="rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
-            >
+        <div class="px-4 py-4 md:px-4 md:py-5">
+          <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
+            <!-- Left: invoice details -->
+            <section class="min-w-0">
+              <div class="grid gap-4 sm:grid-cols-2">
                 <div
-                    class="hdr-grid rounded-t-2xl border-b border-zinc-300 px-4 py-3 sm:px-4 dark:border-zinc-800"
+                  class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
                 >
-                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                        <div class="min-w-0">
-                            <h2 class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-                                {{ invoiceDisplayLabel }}
-                            </h2>
-                            <p class="mt-0.5 text-xs font-bold text-sky-600 dark:text-emerald-400">
-                                Read-only preview
-                            </p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <DetailsMenu
-                                :pdf-disabled="isGeneratingExport"
-                                @pdf="generatePdfOnly"
-                                :options="menuOpts"
-                            />
-                        </div>
-                    </div>
+                  <div class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400">
+                    Issue date
+                  </div>
+                  <div class="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    {{ fmtStrDate(inv.issueDate, dateFormat) }}
+                  </div>
                 </div>
 
-                <div class="px-4 py-4 md:px-4 md:py-5">
-                    <div
-                        class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start"
-                    >
-                        <!-- Left: invoice details -->
-                        <section class="min-w-0">
-                            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                <div
-                                    class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
-                                >
-                                    <div
-                                        class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
-                                    >
-                                        Issue date
-                                    </div>
-                                    <div
-                                        class="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100"
-                                    >
-                                        {{ fmtStrDate(inv.issueDate, dateFormat) }}
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
-                                >
-                                    <div
-                                        class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400"
-                                    >
-                                        Due by
-                                    </div>
-                                    <div
-                                        class="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100"
-                                    >
-                                        {{
-                                            inv.dueByDate
-                                                ? fmtStrDate(inv.dueByDate, dateFormat)
-                                                : '—'
-                                        }}
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 sm:col-span-2 xl:col-span-1 dark:border-zinc-800 dark:bg-zinc-900/40"
-                                >
-                                    <div
-                                        class="mb-2 flex items-center justify-between gap-1 text-xs font-medium tracking-wide text-zinc-700 dark:text-zinc-400"
-                                    >
-                                        <span>Status</span>
-                                        <InvoiceStatusTooltip />
-                                    </div>
-                                    <TheDropdown
-                                        v-model="selectedStatus"
-                                        :right-icon="ChevronUpDownIcon"
-                                        :options="statusOptions"
-                                        input-class="py-1.5 capitalize"
-                                        placeholder="Status"
-                                        :disabled="statusOptions.length <= 1"
-                                    />
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Right: client card -->
-                        <section
-                            class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
-                        >
-                            <div class="mb-2 flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="text-base font-semibold">To</div>
-                                </div>
-
-                                <span
-                                    class="inline-flex rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400"
-                                >
-                                    Client details
-                                </span>
-                            </div>
-
-                            <div class="space-y-2 text-sm">
-                                <div class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3">
-                                    <div class="text-zinc-500 dark:text-zinc-400">Name</div>
-                                    <div
-                                        class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100"
-                                    >
-                                        {{ inv.clientSnapshot.name || '—' }}
-                                    </div>
-                                </div>
-
-                                <div
-                                    v-if="inv.clientSnapshot.companyName"
-                                    class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
-                                >
-                                    <div class="text-zinc-500 dark:text-zinc-400">Company</div>
-                                    <div
-                                        class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100"
-                                    >
-                                        {{ inv.clientSnapshot.companyName }}
-                                    </div>
-                                </div>
-
-                                <div
-                                    v-if="inv.clientSnapshot.address"
-                                    class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
-                                >
-                                    <div class="text-zinc-500 dark:text-zinc-400">Address</div>
-                                    <div
-                                        class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100"
-                                    >
-                                        {{ inv.clientSnapshot.address }}
-                                    </div>
-                                </div>
-
-                                <div
-                                    v-if="inv.clientSnapshot.email"
-                                    class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
-                                >
-                                    <div class="text-zinc-500 dark:text-zinc-400">Email</div>
-                                    <div
-                                        class="min-w-0 font-medium wrap-break-word text-zinc-800 dark:text-zinc-100"
-                                    >
-                                        {{ inv.clientSnapshot.email }}
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                    </div>
+                <div
+                  class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+                >
+                  <div class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400">
+                    Due by
+                  </div>
+                  <div class="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    {{ inv.dueByDate ? fmtStrDate(inv.dueByDate, dateFormat) : '—' }}
+                  </div>
                 </div>
-            </header>
 
-            <!-- Items card -->
+                <div
+                  class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+                >
+                  <div class="text-xs font-medium tracking-wide text-zinc-600 dark:text-zinc-400">
+                    Supply date
+                  </div>
+                  <div class="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    {{ inv.supplyDate ? fmtStrDate(inv.supplyDate, dateFormat) : '—' }}
+                  </div>
+                </div>
+
+                <div
+                  class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+                >
+                  <div
+                    class="mb-2 flex items-center justify-between gap-1 text-xs font-medium tracking-wide text-zinc-700 dark:text-zinc-400"
+                  >
+                    <span>Status</span>
+                    <InvoiceStatusTooltip />
+                  </div>
+                  <TheDropdown
+                    v-model="selectedStatus"
+                    :right-icon="ChevronUpDownIcon"
+                    :options="statusOptions"
+                    input-class="py-1.5 capitalize"
+                    placeholder="Status"
+                    :disabled="statusOptions.length <= 1"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <!-- Right: client card -->
             <section
-                class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+              class="min-w-0 rounded-2xl border border-zinc-300 bg-zinc-50/40 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
             >
+              <div class="mb-2 flex items-start justify-between gap-3">
+                <div>
+                  <div class="text-base font-semibold">To</div>
+                </div>
+
+                <span
+                  class="inline-flex rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400"
+                >
+                  Client details
+                </span>
+              </div>
+
+              <div class="space-y-2 text-sm">
+                <div class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3">
+                  <div class="text-zinc-500 dark:text-zinc-400">Name</div>
+                  <div class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100">
+                    {{ inv.clientSnapshot.name || '—' }}
+                  </div>
+                </div>
+
                 <div
-                    class="hdr-grid flex items-start justify-between gap-3 border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
+                  v-if="inv.clientSnapshot.companyName"
+                  class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
                 >
-                    <div class="min-w-0">
-                        <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-                            Invoice items
-                        </div>
-                        <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
-                            Saved line items for the current invoice
-                        </div>
-                    </div>
+                  <div class="text-zinc-500 dark:text-zinc-400">Company</div>
+                  <div class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100">
+                    {{ inv.clientSnapshot.companyName }}
+                  </div>
                 </div>
 
-                <div class="p-2.5 md:p-3">
-                    <div class="overflow-x-auto">
-                        <div class="min-w-180">
-                            <div
-                                class="grid grid-cols-[minmax(240px,1fr)_64px_110px_120px] items-center gap-3 px-2 py-2 text-sm font-semibold text-zinc-600 dark:text-zinc-200"
-                            >
-                                <div>Product name</div>
-                                <div class="text-right">Qty</div>
-                                <div class="text-right">Unit</div>
-                                <div class="text-right">Total</div>
-                            </div>
-
-                            <div class="h-px bg-zinc-200 dark:bg-zinc-800" />
-
-                            <div
-                                v-if="!inv.lines?.length"
-                                class="px-4 py-10 text-base text-zinc-600 dark:text-zinc-400"
-                            >
-                                No line items available.
-                            </div>
-
-                            <div
-                                v-else
-                                class="max-h-136 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-800"
-                            >
-                                <template
-                                    v-for="group in groupedLines"
-                                    :key="group.title"
-                                >
-                                    <div
-                                        v-if="showItemTypeHeaders"
-                                        class="px-2 py-2 text-xs font-semibold tracking-wide text-sky-600 uppercase dark:text-emerald-300"
-                                    >
-                                        {{ group.title }}
-                                    </div>
-
-                                    <div
-                                        v-for="line in group.lines"
-                                        :key="line.sortOrder"
-                                        class="grid grid-cols-[minmax(240px,1fr)_64px_110px_120px] items-start gap-3 px-2 py-3 text-sm"
-                                    >
-                                        <div class="min-w-0">
-                                            <div
-                                                class="truncate font-medium text-zinc-900 dark:text-zinc-100"
-                                            >
-                                                {{ line.name }}
-                                            </div>
-
-                                            <div
-                                                class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400"
-                                            >
-                                                {{ formatEditorPreviewLineMeta(line) }}
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            class="text-right text-zinc-700 tabular-nums dark:text-zinc-300"
-                                        >
-                                            {{ line.quantity }}
-                                        </div>
-
-                                        <div
-                                            class="text-right text-zinc-700 tabular-nums dark:text-zinc-300"
-                                        >
-                                            {{ fmtGBPMinor(line.unitPriceMinor) }}
-                                        </div>
-
-                                        <div
-                                            class="text-right font-medium text-zinc-900 tabular-nums dark:text-zinc-100"
-                                        >
-                                            {{ fmtGBPMinor(editorPreviewLineTotalMinor(line)) }}
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
+                <div
+                  v-if="inv.clientSnapshot.address"
+                  class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
+                >
+                  <div class="text-zinc-500 dark:text-zinc-400">Address</div>
+                  <div class="min-w-0 font-medium text-zinc-800 dark:text-zinc-100">
+                    {{ inv.clientSnapshot.address }}
+                  </div>
                 </div>
-            </section>
 
-            <!-- Totals  -->
-            <section class="grid gap-4 md:grid-cols-2">
-                <section
-                    class="overflow-clip rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+                <div
+                  v-if="inv.clientSnapshot.email"
+                  class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3"
                 >
-                    <div class="hdr-grid border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800">
-                        <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-                            Totals
-                        </div>
-                        <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
-                            Balance overview
-                        </div>
-                    </div>
-
-                    <div
-                        v-if="totals"
-                        class="space-y-3 p-3 text-sm md:p-4"
-                    >
-                        <div class="grid grid-cols-[1fr_auto] items-center gap-3">
-                            <div class="text-zinc-600 dark:text-zinc-400">Subtotal</div>
-                            <div
-                                class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100"
-                            >
-                                {{ fmtGBPMinor(totals.subtotalMinor) }}
-                            </div>
-                        </div>
-
-                        <div
-                            v-if="inv.discountType !== 'none'"
-                            class="grid grid-cols-[1fr_auto] items-center gap-3"
-                        >
-                            <div class="text-zinc-600 dark:text-zinc-400">Discount</div>
-                            <div
-                                class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100"
-                            >
-                                -{{ fmtGBPMinor(totals.discountMinor) }}
-                            </div>
-                        </div>
-
-                        <div
-                            v-if="inv.vatRate > 0"
-                            class="grid grid-cols-[1fr_auto] items-center gap-3"
-                        >
-                            <div class="text-zinc-600 dark:text-zinc-400">VAT</div>
-                            <div
-                                class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100"
-                            >
-                                {{ fmtGBPMinor(totals.vatMinor) }}
-                            </div>
-                        </div>
-
-                        <div class="h-px bg-zinc-200 dark:bg-zinc-800" />
-
-                        <div class="grid grid-cols-[1fr_auto] items-center gap-3">
-                            <div class="font-semibold text-zinc-800 dark:text-zinc-100">Total</div>
-                            <div
-                                class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100"
-                            >
-                                {{ fmtGBPMinor(totals.totalMinor) }}
-                            </div>
-                        </div>
-
-                        <div
-                            v-if="inv.depositType !== 'none'"
-                            class="grid grid-cols-[1fr_auto] items-center gap-3"
-                        >
-                            <div class="text-zinc-600 dark:text-zinc-400">Deposit</div>
-                            <div
-                                class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100"
-                            >
-                                -{{ fmtGBPMinor(depositMinor) }}
-                            </div>
-                        </div>
-
-                        <div
-                            v-if="inv.paidMinor > 0"
-                            class="grid grid-cols-[1fr_auto] items-center gap-3"
-                        >
-                            <div class="text-zinc-600 dark:text-zinc-400">Paid</div>
-                            <div
-                                class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100"
-                            >
-                                -{{ fmtGBPMinor(inv.paidMinor) }}
-                            </div>
-                        </div>
-
-                        <div class="rounded-xl bg-zinc-50 px-4 py-3 dark:bg-zinc-900/40">
-                            <div class="grid grid-cols-[1fr_auto] items-center gap-3">
-                                <div class="font-semibold text-zinc-800 dark:text-zinc-100">
-                                    Balance due
-                                </div>
-                                <div
-                                    class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100"
-                                >
-                                    {{ fmtGBPMinor(balanceDueMinor) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div
-                        v-else
-                        class="p-3 text-sm text-zinc-600 dark:text-zinc-400"
-                    >
-                        No totals available.
-                    </div>
-                </section>
-
-                <section
-                    class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
-                >
-                    <div class="hdr-grid border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800">
-                        <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-                            Note
-                        </div>
-                        <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
-                            Extra text shown on the invoice
-                        </div>
-                    </div>
-
-                    <div class="p-3 md:p-4">
-                        <div
-                            v-if="inv.note"
-                            class="rounded-xl border border-zinc-300 bg-zinc-50 p-3 text-sm text-zinc-700 italic dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300"
-                        >
-                            {{ inv.note }}
-                        </div>
-
-                        <div
-                            v-else
-                            class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/60 px-4 py-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
-                        >
-                            No note added to this invoice.
-                        </div>
-                    </div>
-                </section>
+                  <div class="text-zinc-500 dark:text-zinc-400">Email</div>
+                  <div class="min-w-0 font-medium wrap-break-word text-zinc-800 dark:text-zinc-100">
+                    {{ inv.clientSnapshot.email }}
+                  </div>
+                </div>
+              </div>
             </section>
+          </div>
         </div>
-    </Transition>
+      </header>
+
+      <!-- Items card -->
+      <section
+        class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+      >
+        <div
+          class="hdr-grid flex items-start justify-between gap-3 border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
+        >
+          <div class="min-w-0">
+            <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+              Invoice items
+            </div>
+            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
+              Saved line items for the current invoice
+            </div>
+          </div>
+        </div>
+
+        <div class="p-2.5 md:p-3">
+          <div class="overflow-x-auto">
+            <div class="min-w-180">
+              <div
+                class="grid grid-cols-[minmax(240px,1fr)_64px_110px_120px] items-center gap-3 px-2 py-2 text-sm font-semibold text-zinc-600 dark:text-zinc-200"
+              >
+                <div>Product name</div>
+                <div class="text-right">Qty</div>
+                <div class="text-right">Unit</div>
+                <div class="text-right">Total</div>
+              </div>
+
+              <div class="h-px bg-zinc-200 dark:bg-zinc-800" />
+
+              <div
+                v-if="!inv.lines?.length"
+                class="px-4 py-10 text-base text-zinc-600 dark:text-zinc-400"
+              >
+                No line items available.
+              </div>
+
+              <div
+                v-else
+                class="max-h-136 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-800"
+              >
+                <template
+                  v-for="group in groupedLines"
+                  :key="group.title"
+                >
+                  <div
+                    v-if="showItemTypeHeaders"
+                    class="px-2 py-2 text-xs font-semibold tracking-wide text-sky-600 uppercase dark:text-emerald-300"
+                  >
+                    {{ group.title }}
+                  </div>
+
+                  <div
+                    v-for="line in group.lines"
+                    :key="line.sortOrder"
+                    class="grid grid-cols-[minmax(240px,1fr)_64px_110px_120px] items-start gap-3 px-2 py-3 text-sm"
+                  >
+                    <div class="min-w-0">
+                      <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
+                        {{ line.name }}
+                      </div>
+
+                      <div class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">
+                        {{ formatEditorPreviewLineMeta(line) }}
+                      </div>
+                    </div>
+
+                    <div class="text-right text-zinc-700 tabular-nums dark:text-zinc-300">
+                      {{ line.quantity }}
+                    </div>
+
+                    <div class="text-right text-zinc-700 tabular-nums dark:text-zinc-300">
+                      {{ fmtGBPMinor(line.unitPriceMinor) }}
+                    </div>
+
+                    <div
+                      class="text-right font-medium text-zinc-900 tabular-nums dark:text-zinc-100"
+                    >
+                      {{ fmtGBPMinor(editorPreviewLineTotalMinor(line)) }}
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Totals  -->
+      <section class="grid gap-4 md:grid-cols-2">
+        <section
+          class="overflow-clip rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+        >
+          <div class="hdr-grid border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800">
+            <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
+            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">Balance overview</div>
+          </div>
+
+          <div
+            v-if="totals"
+            class="space-y-3 p-3 text-sm md:p-4"
+          >
+            <div class="grid grid-cols-[1fr_auto] items-center gap-3">
+              <div class="text-zinc-600 dark:text-zinc-400">Subtotal</div>
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                {{ fmtGBPMinor(totals.subtotalMinor) }}
+              </div>
+            </div>
+
+            <div
+              v-if="inv.discountType !== 'none'"
+              class="grid grid-cols-[1fr_auto] items-center gap-3"
+            >
+              <div class="text-zinc-600 dark:text-zinc-400">Discount</div>
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                -{{ fmtGBPMinor(totals.discountMinor) }}
+              </div>
+            </div>
+
+            <div
+              v-if="inv.vatRate > 0"
+              class="grid grid-cols-[1fr_auto] items-center gap-3"
+            >
+              <div class="text-zinc-600 dark:text-zinc-400">VAT</div>
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                {{ fmtGBPMinor(totals.vatMinor) }}
+              </div>
+            </div>
+
+            <div class="h-px bg-zinc-200 dark:bg-zinc-800" />
+
+            <div class="grid grid-cols-[1fr_auto] items-center gap-3">
+              <div class="font-semibold text-zinc-800 dark:text-zinc-100">Total</div>
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                {{ fmtGBPMinor(totals.totalMinor) }}
+              </div>
+            </div>
+
+            <div
+              v-if="inv.depositType !== 'none'"
+              class="grid grid-cols-[1fr_auto] items-center gap-3"
+            >
+              <div class="text-zinc-600 dark:text-zinc-400">Requested upfront</div>
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                {{ fmtGBPMinor(depositMinor) }}
+              </div>
+            </div>
+
+            <div
+              v-if="inv.paidMinor > 0"
+              class="grid grid-cols-[1fr_auto] items-center gap-3"
+            >
+              <div class="text-zinc-600 dark:text-zinc-400">Paid</div>
+              <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                -{{ fmtGBPMinor(inv.paidMinor) }}
+              </div>
+            </div>
+
+            <div class="rounded-xl bg-zinc-50 px-4 py-3 dark:bg-zinc-900/40">
+              <div class="grid grid-cols-[1fr_auto] items-center gap-3">
+                <div class="font-semibold text-zinc-800 dark:text-zinc-100">Balance due</div>
+                <div class="font-semibold text-zinc-800 tabular-nums dark:text-zinc-100">
+                  {{ fmtGBPMinor(balanceDueMinor) }}
+                </div>
+              </div>
+              <p class="mt-2 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                Deposits stay informational. Saved payment receipts reduce the balance.
+              </p>
+            </div>
+          </div>
+
+          <div
+            v-else
+            class="p-3 text-sm text-zinc-600 dark:text-zinc-400"
+          >
+            No totals available.
+          </div>
+        </section>
+
+        <div class="space-y-4">
+          <section
+            v-if="lifecycleStatus !== 'void'"
+            class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+          >
+            <div class="hdr-grid border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800">
+              <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+                Payment receipts
+              </div>
+              <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
+                {{
+                  isReceiptNode
+                    ? 'Receipt details and metadata'
+                    : 'Saved payments live separately from revisions'
+                }}
+              </div>
+            </div>
+
+            <div class="space-y-3 p-3 md:p-4">
+              <template v-if="isReceiptNode && selectedReceipt">
+                <div
+                  class="rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/40"
+                >
+                  <div class="font-semibold text-zinc-900 dark:text-zinc-100">
+                    {{ receiptDisplayLabel }}
+                  </div>
+                  <div class="mt-2 grid gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                    <div>
+                      Amount:
+                      <span class="font-medium text-zinc-900 dark:text-zinc-100">
+                        {{ fmtGBPMinor(selectedReceipt.amountMinor) }}
+                      </span>
+                    </div>
+                    <div>
+                      Applied revision:
+                      <span class="font-medium text-zinc-900 dark:text-zinc-100">
+                        {{
+                          formatInvoiceDisplayLabel(
+                            invoicePrefix,
+                            inv.baseNumber,
+                            selectedReceipt.appliedRevisionNo,
+                          )
+                        }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid gap-3">
+                  <div>
+                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Payment date
+                    </div>
+                    <DateField v-model="receiptMetaDate" />
+                  </div>
+
+                  <div>
+                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Payment Note
+                    </div>
+                    <TheInput
+                      v-model="receiptMetaLabel"
+                      placeholder="Optional receipt note"
+                      inputClass="w-full py-1.5"
+                    />
+                  </div>
+
+                  <TheButton
+                    class="w-full"
+                    :disabled="!canEditReceiptMetadata || isSavingReceipt"
+                    @click="saveReceiptMetadata"
+                  >
+                    {{ isSavingReceipt ? 'Saving...' : 'Save receipt details' }}
+                  </TheButton>
+                </div>
+              </template>
+
+              <template
+                v-else-if="editStore.activeNode?.type === 'invoice' && lifecycleStatus === 'issued'"
+              >
+                <div class="grid gap-3">
+                  <div>
+                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Receipt amount
+                    </div>
+                    <TheInput
+                      v-model="receiptAmount"
+                      type="number"
+                      placeholder="0"
+                      inputClass="w-full py-1.5"
+                    />
+                  </div>
+
+                  <div>
+                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Payment date
+                    </div>
+                    <DateField v-model="receiptDate" />
+                  </div>
+
+                  <div>
+                    <div class="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Payment Note
+                    </div>
+                    <TheInput
+                      v-model="receiptLabel"
+                      placeholder="Optional receipt note"
+                      inputClass="w-full py-1.5"
+                    />
+                  </div>
+
+                  <TheButton
+                    class="w-full"
+                    :disabled="!canCreateReceipt || isSavingReceipt"
+                    @click="createReceipt"
+                  >
+                    {{ isSavingReceipt ? 'Saving...' : 'Record payment receipt' }}
+                  </TheButton>
+                </div>
+              </template>
+
+              <div
+                v-else-if="lifecycleStatus === 'issued'"
+                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
+              >
+                Select the current invoice row in the invoice book to record a new payment receipt.
+                Historical revision views stay read-only.
+              </div>
+
+              <div
+                v-else-if="lifecycleStatus === 'paid'"
+                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
+              >
+                This invoice is already fully paid. Select a receipt in the invoice book to edit its
+                metadata or export it again.
+              </div>
+
+              <div
+                v-else
+                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
+              >
+                Issue the invoice before recording payments.
+              </div>
+
+              <p
+                v-if="receiptError"
+                class="text-xs text-rose-600 dark:text-rose-400"
+              >
+                {{ receiptError }}
+              </p>
+            </div>
+          </section>
+
+          <section
+            class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+          >
+            <div class="hdr-grid border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800">
+              <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Note</div>
+              <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
+                Extra text shown on the invoice
+              </div>
+            </div>
+
+            <div class="p-3 md:p-4">
+              <div
+                v-if="inv.note"
+                class="rounded-xl border border-zinc-300 bg-zinc-50 p-3 text-sm text-zinc-700 italic dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300"
+              >
+                {{ inv.note }}
+              </div>
+
+              <div
+                v-else
+                class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/60 px-4 py-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
+              >
+                No note added to this invoice.
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+  </Transition>
 </template>

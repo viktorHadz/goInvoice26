@@ -41,12 +41,6 @@ func ValidateInvoiceCreate(inv models.FEInvoiceIn) (models.FEInvoiceIn, []res.Fi
 	}
 	validated.Totals = totals
 
-	payments, errs := validatePayments(inv.Payments)
-	if len(errs) > 0 {
-		errors = append(errors, errs...)
-	}
-	validated.Payments = payments
-
 	if len(errors) > 0 {
 		return models.FEInvoiceIn{}, errors
 	}
@@ -83,6 +77,13 @@ func validateOverview(o models.InvoiceCreateIn) (models.InvoiceCreateIn, []res.F
 	issueDate, dateErrs := validateISODateRequired("issueDate", o.IssueDate)
 	errs = append(errs, dateErrs...)
 	out.IssueDate = issueDate
+	if o.SupplyDate != nil {
+		supply, dateErrs := validateISODateOptional("supplyDate", o.SupplyDate)
+		errs = append(errs, dateErrs...)
+		if supply != nil && *supply != issueDate {
+			out.SupplyDate = supply
+		}
+	}
 
 	if o.DueByDate != nil {
 		due, dateErrs := validateISODateOptional("dueByDate", o.DueByDate)
@@ -362,53 +363,69 @@ func validateTotals(t models.TotalsCreateIn) (models.TotalsCreateIn, []res.Field
 	return out, errs
 }
 
-// ValidatePaidVsDepositTotal ensures paidMinor does not exceed totalMinor - depositMinor (post-recalc canonical totals).
+// ValidatePaidVsDepositTotal ensures paidMinor does not exceed totalMinor (post-recalc canonical totals).
 func ValidatePaidVsDepositTotal(t models.TotalsCreateIn) []res.FieldError {
-	maxPaid := max(t.TotalMinor-t.DepositMinor, 0)
+	maxPaid := max(t.TotalMinor, 0)
 	if t.PaidMinor > maxPaid {
-		return []res.FieldError{res.Invalid("totals.paidMinor", "cannot exceed amount owing after deposit")}
+		return []res.FieldError{res.Invalid("totals.paidMinor", "cannot exceed invoice total")}
 	}
 	return nil
 }
 
-func validatePayments(in []models.PaymentCreateIn) ([]models.PaymentCreateIn, []res.FieldError) {
-	out := make([]models.PaymentCreateIn, 0, len(in))
+func ValidatePaymentReceiptCreate(in models.PaymentReceiptCreateIn) (models.PaymentReceiptCreateIn, []res.FieldError) {
+	var out models.PaymentReceiptCreateIn
 	var errs []res.FieldError
 
-	for i, p := range in {
-		var clean models.PaymentCreateIn
-		prefix := func(field string) string { return fmt.Sprintf("payments[%d].%s", i, field) }
-
-		if p.AmountMinor <= 0 {
-			errs = append(errs, res.Invalid(prefix("amountMinor"), "must be greater than 0"))
-		} else {
-			clean.AmountMinor = p.AmountMinor
-		}
-
-		dt, dtErrs := validateISODateRequired(prefix("paymentDate"), p.PaymentDate)
-		if len(dtErrs) > 0 {
-			errs = append(errs, dtErrs...)
-		} else {
-			clean.PaymentDate = dt
-		}
-
-		if p.Label != nil {
-			label, textErrs := validate.Text(*p.Label, validate.TextRules{
-				Field:      prefix("label"),
-				Required:   false,
-				Min:        0,
-				Max:        120,
-				SingleLine: true,
-				Trim:       true,
-			})
-			errs = append(errs, textErrs...)
-			clean.Label = &label
-		}
-
-		out = append(out, clean)
+	if in.AmountMinor <= 0 {
+		errs = append(errs, res.Invalid("amountMinor", "must be greater than 0"))
+	} else {
+		out.AmountMinor = in.AmountMinor
 	}
 
+	paymentDate, dateErrs := validateISODateRequired("paymentDate", in.PaymentDate)
+	errs = append(errs, dateErrs...)
+	out.PaymentDate = paymentDate
+
+	label, labelErrs := validateOptionalPaymentReceiptLabel(in.Label, "label")
+	errs = append(errs, labelErrs...)
+	out.Label = label
+
 	return out, errs
+}
+
+func ValidatePaymentReceiptUpdate(in models.PaymentReceiptUpdateIn) (models.PaymentReceiptUpdateIn, []res.FieldError) {
+	var out models.PaymentReceiptUpdateIn
+	var errs []res.FieldError
+
+	paymentDate, dateErrs := validateISODateRequired("paymentDate", in.PaymentDate)
+	errs = append(errs, dateErrs...)
+	out.PaymentDate = paymentDate
+
+	label, labelErrs := validateOptionalPaymentReceiptLabel(in.Label, "label")
+	errs = append(errs, labelErrs...)
+	out.Label = label
+
+	return out, errs
+}
+
+func validateOptionalPaymentReceiptLabel(value *string, field string) (*string, []res.FieldError) {
+	if value == nil {
+		return nil, nil
+	}
+
+	label, textErrs := validate.Text(*value, validate.TextRules{
+		Field:      field,
+		Required:   false,
+		Min:        0,
+		Max:        120,
+		SingleLine: true,
+		Trim:       true,
+	})
+	if len(textErrs) > 0 {
+		return nil, textErrs
+	}
+
+	return &label, nil
 }
 
 func validateISODateRequired(field, value string) (string, []res.FieldError) {

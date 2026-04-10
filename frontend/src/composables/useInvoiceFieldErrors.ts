@@ -38,7 +38,7 @@ export function useInvoiceFieldErrors(
         const inv = invoice.value
         if (!inv) return {}
 
-        const dto = apiDTO(inv, [], { pricing: pricing?.value ?? undefined })
+        const dto = apiDTO(inv, { pricing: pricing?.value ?? undefined })
         return validateInvoicePayload(dto)
     })
 

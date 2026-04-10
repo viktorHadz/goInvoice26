@@ -12,7 +12,7 @@ import {
     setInvoiceDueByDate,
     setInvoiceIssueDate,
     setInvoiceNote,
-    setInvoicePayment,
+    setInvoiceSupplyDate,
     setInvoiceVatRateBps,
     updateInvoiceLine,
 } from '@/utils/invoiceMutations'
@@ -54,11 +54,14 @@ function minimalInvoice(overrides: Partial<Invoice> = {}): Invoice {
     }
 }
 
-describe('setInvoicePayment', () => {
-    it('sets absolute paid amount from GBP', () => {
-        const inv = minimalInvoice({ paidMinor: 999 })
-        setInvoicePayment(inv, 12.34)
-        expect(inv.paidMinor).toBe(1234)
+describe('setInvoiceSupplyDate', () => {
+    it('stores a trimmed value and clears blank input', () => {
+        const inv = minimalInvoice()
+        setInvoiceSupplyDate(inv, ' 2026-04-10 ')
+        expect(inv.supplyDate).toBe('2026-04-10')
+
+        setInvoiceSupplyDate(inv, '   ')
+        expect(inv.supplyDate).toBeUndefined()
     })
 })
 

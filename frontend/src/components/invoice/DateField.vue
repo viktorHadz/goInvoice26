@@ -62,28 +62,13 @@ function onBlur() {
 
 <template>
     <div class="min-w-0">
-        <input
-            :id="inputId"
-            :name="name"
-            v-model="valueProxy"
-            type="date"
-            class="input w-full min-w-0 px-3 py-1"
-            :class="showError ? 'input-error' : 'input-accent'"
-            :placeholder="placeholder"
-            pattern="\d{4}-\d{2}-\d{2}"
-            inputmode="numeric"
-            :min="minDate"
-            :max="maxDate"
-            :disabled="disabled"
-            :aria-invalid="showError ? 'true' : 'false'"
-            :aria-describedby="showError ? errId : undefined"
-            @blur="onBlur"
-        />
-        <p
-            :id="errId"
-            class="mt-1 min-h-5 text-xs"
-            :class="showError ? 'text-rose-600 dark:text-rose-300' : 'text-transparent'"
-        >
+        <input :id="inputId" :name="name" v-model="valueProxy" type="date" class="input w-full min-w-0 px-3 py-1"
+            :class="showError ? 'input-error' : 'input-accent'" :placeholder="placeholder" pattern="\d{4}-\d{2}-\d{2}"
+            inputmode="numeric" :min="minDate" :max="maxDate" :disabled="disabled"
+            :aria-invalid="showError ? 'true' : 'false'" :aria-describedby="showError ? errId : undefined"
+            @blur="onBlur" />
+        <p :id="errId" class="mt-1 min-h-5 text-xs"
+            :class="showError ? 'text-rose-600 dark:text-rose-300' : 'text-transparent'">
             {{ showError ? error : '•' }}
         </p>
     </div>

@@ -16,5 +16,5 @@ export const multiplyAndRoundBps = (baseMinor: MoneyMinor, bps: number): MoneyMi
 export function fmtPrettyInvoiceNumber(prefix: string, baseNumber?: number): string {
     if (!baseNumber || baseNumber <= 0) return ''
     const cleanPrefix = prefix.replace(/-\s*$/, '').trim()
-    return cleanPrefix ? `${cleanPrefix} - ${baseNumber}` : `${baseNumber}`
+    return cleanPrefix ? `${cleanPrefix}-${baseNumber}` : `${baseNumber}`
 }

@@ -86,10 +86,6 @@ func CreateInvoice(a *app.App) http.HandlerFunc {
 				res.Validation(w, res.Invalid("baseNumber", "invoice number already in use. Refresh page and try again."))
 				return
 			}
-			if errors.Is(err, invoiceTx.ErrPaymentTotalsMismatch) {
-				res.Validation(w, res.Invalid("totals.paidMinor", "must match visible payments plus staged payments"))
-				return
-			}
 
 			slog.ErrorContext(r.Context(),
 				"create invoice failed",
@@ -190,8 +186,8 @@ func CreateRevision(a *app.App) http.HandlerFunc {
 				res.Validation(w, res.Invalid("sourceRevisionNo", "must reference an existing revision before the new revision"))
 				return
 			}
-			if errors.Is(err, invoiceTx.ErrPaymentTotalsMismatch) {
-				res.Validation(w, res.Invalid("totals.paidMinor", "must match payments visible at source revision plus staged payments"))
+			if errors.Is(err, invoiceTx.ErrPaymentStateMismatch) {
+				res.Validation(w, res.Invalid("totals.paidMinor", "saved payments changed; refresh invoice before saving"))
 				return
 			}
 

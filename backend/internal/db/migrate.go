@@ -46,6 +46,12 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 	if err := ensureProductsAccountIDColumn(ctx, tx); err != nil {
 		return err
 	}
+	if err := ensureInvoiceSupplyDateColumn(ctx, tx); err != nil {
+		return err
+	}
+	if err := ensurePaymentReceiptNumberColumn(ctx, tx); err != nil {
+		return err
+	}
 	if err := authTx.EnsureUsersGoogleSubColumn(ctx, tx); err != nil {
 		return err
 	}
@@ -107,6 +113,9 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	if err := settingsTx.MigrateLegacyUserSettings(ctx, tx); err != nil {
+		return err
+	}
+	if err := reconcileInvoiceStatusesToSavedPayments(ctx, tx); err != nil {
 		return err
 	}
 

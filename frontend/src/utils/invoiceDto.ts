@@ -3,22 +3,12 @@ import type { InvoicePricing } from '@/composables/useInvoicePricing'
 import { asNum } from '@/utils/numbers'
 import { calcBalanceDueMinor, calcDepositMinor, calcTotals, lineTotalMinor } from '@/utils/money'
 
-export type DraftPaymentInput = {
-    amountMinor: number
-    paymentDate: string
-    label?: string
-}
-
 export type InvoiceDtoOptions = {
     sourceRevisionNo?: number
     pricing?: InvoicePricing
 }
 
-export function apiDTO(
-    inv: Invoice,
-    payments: DraftPaymentInput[] = [],
-    options: InvoiceDtoOptions = {},
-) {
+export function apiDTO(inv: Invoice, options: InvoiceDtoOptions = {}) {
     const totals = options.pricing?.totals ?? calcTotals(inv)
     const depositMinor = options.pricing?.depositMinor ?? calcDepositMinor(inv, totals.totalMinor)
     const balanceDueMinor =
@@ -36,6 +26,7 @@ export function apiDTO(
             clientEmail: inv.clientSnapshot.email,
             note: inv.note,
             issueDate: inv.issueDate,
+            ...(inv.supplyDate ? { supplyDate: inv.supplyDate } : {}),
             ...(inv.dueByDate ? { dueByDate: inv.dueByDate } : {}),
         },
         lines: inv.lines.map((l) => ({
@@ -68,10 +59,5 @@ export function apiDTO(
             totalMinor: totals.totalMinor,
             balanceDueMinor,
         },
-        payments: payments.map((p) => ({
-            amountMinor: p.amountMinor,
-            paymentDate: p.paymentDate,
-            ...(p.label ? { label: p.label } : {}),
-        })),
     }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onActivated, onMounted, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useClientStore } from '@/stores/clients'
 import { useInvoiceStore } from '@/stores/invoice'
 import { handleActionError } from '@/utils/errors/handleActionError'
@@ -11,145 +11,245 @@ import InvoiceAdjustments from '@/components/invoice/InvoiceAdjustments.vue'
 import InvoiceTotals from '@/components/invoice/InvoiceTotals.vue'
 
 import TheTooltip from '@/components/UI/TheTooltip.vue'
-import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import {
+  DocumentArrowDownIcon,
+  DocumentIcon,
+  InformationCircleIcon,
+} from '@heroicons/vue/24/outline'
 import InvoiceNote from '@/components/invoice/InvoiceNote.vue'
+import TheButton from '@/components/UI/TheButton.vue'
+import { usePdfStore } from '@/stores/pdf'
+import { useShortcuts, type ShortcutDefinition } from '@/composables/keyHandlers'
+
+const isCreatingDraft = ref(false)
+const isGeneratingExport = ref(false)
 
 const clients = useClientStore()
 const invStore = useInvoiceStore()
+const pdfStore = usePdfStore()
 
 const selected = computed(() => clients.selectedClient)
 
 function refreshInvoiceClientSnapshot() {
-    const c = clients.selectedClient
-    const inv = invStore.invoice
+  const c = clients.selectedClient
+  const inv = invStore.invoice
 
-    if (!c?.id) return
-    if (!inv) return
-    if (inv.clientId !== c.id) return
+  if (!c?.id) return
+  if (!inv) return
+  if (inv.clientId !== c.id) return
 
-    invStore.setClientSnapshot(c)
+  invStore.setClientSnapshot(c)
 }
+async function createDraft() {
+  const inv = invStore.invoice
+  if (!inv || isCreatingDraft.value) return
+
+  isCreatingDraft.value = true
+  try {
+    const ok = await invStore.newDraftInvoice(inv)
+    if (!ok) return
+
+    await pdfStore.generateAndPersistPdf(inv.clientId, inv.baseNumber, 1)
+  } finally {
+    isCreatingDraft.value = false
+  }
+}
+
+async function generatePdfOnly() {
+  const inv = invStore.invoice
+  if (!inv || isGeneratingExport.value) return
+
+  isGeneratingExport.value = true
+  try {
+    await pdfStore.quickGeneratePDF(inv)
+  } finally {
+    isGeneratingExport.value = false
+  }
+}
+
+async function generateDocxOnly() {
+  const inv = invStore.invoice
+  if (!inv || isGeneratingExport.value) return
+
+  isGeneratingExport.value = true
+  try {
+    await pdfStore.quickGenerateDocx(inv)
+  } finally {
+    isGeneratingExport.value = false
+  }
+}
+
+const shortcuts: ShortcutDefinition[] = [
+  { key: 'd', modifiers: ['alt', 'shift'], action: createDraft },
+  {
+    key: 'x',
+    modifiers: ['alt', 'shift'],
+    action: generateDocxOnly,
+  },
+  {
+    key: 'f',
+    modifiers: ['alt', 'shift'],
+    action: generatePdfOnly,
+  },
+]
+useShortcuts(shortcuts)
 
 // Initialises or resets the invoice whenever the selected client changes
 watch(
-    selected,
-    async (c, _prev, onCleanup) => {
-        if (!c?.id) return
+  selected,
+  async (c, _prev, onCleanup) => {
+    if (!c?.id) return
 
-        if (invStore.invoice?.clientId === c.id) return
+    if (invStore.invoice?.clientId === c.id) return
 
-        let cancelled = false
-        onCleanup(() => {
-            cancelled = true
-        })
+    let cancelled = false
+    onCleanup(() => {
+      cancelled = true
+    })
 
-        try {
-            const template = invStore.buildFreshInvoiceTemplate(c)
-            await invStore.initInvoiceFromServer(template)
+    try {
+      const template = invStore.buildFreshInvoiceTemplate(c)
+      await invStore.initInvoiceFromServer(template)
 
-            if (cancelled) return
-        } catch (err) {
-            if (cancelled) return
-            handleActionError(err, {
-                toastTitle: 'Could not start invoice',
-                mapFields: false,
-            })
-        }
-    },
-    { immediate: true },
+      if (cancelled) return
+    } catch (err) {
+      if (cancelled) return
+      handleActionError(err, {
+        toastTitle: 'Could not start invoice',
+        mapFields: false,
+      })
+    }
+  },
+  { immediate: true },
 )
 onMounted(refreshInvoiceClientSnapshot)
 onActivated(refreshInvoiceClientSnapshot)
 </script>
 
 <template>
-    <main class="mx-auto w-full max-w-4xl pb-16 sm:pb-0">
-        <InvoiceHeader />
-        <div class="">
-            <InvoiceItemPicker />
+  <main class="mx-auto w-full max-w-4xl pb-16 sm:pb-0">
+    <InvoiceHeader />
+    <div class="">
+      <InvoiceItemPicker />
+    </div>
+
+    <section
+      class="mt-4 overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+    >
+      <div
+        class="hdr-grid flex items-start justify-between gap-3 border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
+      >
+        <div class="min-w-0">
+          <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Invoice items</div>
+          <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
+            {{ invStore.prettyBaseNumber ? 'For ' + invStore.prettyBaseNumber : '' }}
+          </div>
         </div>
 
-        <section
-            class="mt-4 overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+        <span
+          class="hidden rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
         >
-            <div
-                class="hdr-grid flex items-start justify-between gap-3 border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
-            >
-                <div class="min-w-0">
-                    <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-                        Invoice items
-                    </div>
-                    <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
-                        {{ invStore.prettyBaseNumber ? 'For ' + invStore.prettyBaseNumber : '' }}
-                    </div>
-                </div>
+          Tip: you can edit items anytime
+        </span>
+      </div>
 
-                <span
-                    class="hidden rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
-                >
-                    Tip: you can edit items anytime
-                </span>
+      <div class="p-2.5 md:p-3">
+        <InvoiceItemsTable />
+      </div>
+    </section>
+
+    <section class="mt-4 grid gap-4 md:grid-cols-2">
+      <section
+        class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+      >
+        <div
+          class="hdr-grid flex justify-between border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
+        >
+          <div>
+            <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Adjustments</div>
+            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
+              Paid, deposit, discount, VAT and note
             </div>
+          </div>
+        </div>
 
-            <div class="p-2.5 md:p-3">
-                <InvoiceItemsTable />
+        <div class="p-3 md:p-4">
+          <InvoiceAdjustments />
+        </div>
+      </section>
+
+      <section
+        class="overflow-clip rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+      >
+        <div
+          class="hdr-grid flex items-center justify-between border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
+        >
+          <div>
+            <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">Totals</div>
+            <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
+              Invoice balance overview
             </div>
-        </section>
+          </div>
+        </div>
 
-        <section class="mt-4 grid gap-4 md:grid-cols-2">
-            <section
-                class="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
-            >
-                <div
-                    class="hdr-grid flex justify-between border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
-                >
-                    <div>
-                        <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-                            Adjustments
-                        </div>
-                        <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
-                            Paid, deposit, discount, VAT and note
-                        </div>
-                    </div>
-                </div>
+        <div class="p-3 md:p-4">
+          <InvoiceTotals />
+        </div>
+      </section>
+    </section>
 
-                <div class="p-3 md:p-4">
-                    <InvoiceAdjustments />
-                </div>
-            </section>
+    <InvoiceNote />
 
-            <section
-                class="overflow-clip rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
-            >
-                <div
-                    class="hdr-grid flex items-center justify-between border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-800"
-                >
-                    <div>
-                        <div class="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-                            Totals
-                        </div>
-                        <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
-                            Balance overview
-                        </div>
-                    </div>
+    <div
+      class="mt-4 flex flex-col justify-between gap-6 overflow-hidden rounded-2xl border border-zinc-300 bg-white p-3 shadow-sm sm:mb-12 sm:flex-row dark:border-zinc-800 dark:bg-zinc-950/30"
+    >
+      <TheTooltip
+        text="Shortcut: Alt+Shift+D"
+        class="flex-1"
+      >
+        <TheButton
+          type="button"
+          variant="primary"
+          :disabled="isGeneratingExport || isCreatingDraft"
+          class="flex-1 cursor-pointer"
+          @click="generatePdfOnly"
+        >
+          <DocumentArrowDownIcon class="size-5" />
+          Generate PDF
+        </TheButton>
+      </TheTooltip>
 
-                    <div class="flex flex-col items-end gap-y-2">
-                        <TheTooltip
-                            text="Save a draft to keep this invoice in your book and continue editing later."
-                            side="top"
-                            align="center"
-                            class="hover:text-sky-600 dark:hover:text-emerald-400"
-                        >
-                            <InformationCircleIcon class="size-5 cursor-help" />
-                        </TheTooltip>
-                    </div>
-                </div>
+      <TheTooltip
+        text="Shortcut: Alt+Shift+X"
+        class="flex-1"
+      >
+        <TheButton
+          type="button"
+          variant="primary"
+          :disabled="isGeneratingExport || isCreatingDraft"
+          class="flex-1 cursor-pointer"
+          @click="generateDocxOnly"
+        >
+          <DocumentArrowDownIcon class="size-5" />
+          Generate DOCX
+        </TheButton>
+      </TheTooltip>
 
-                <div class="p-3 md:p-4">
-                    <InvoiceTotals />
-                </div>
-            </section>
-        </section>
-        <InvoiceNote />
-    </main>
+      <TheTooltip
+        text="Shortcut: Alt+Shift+F"
+        class="flex-1"
+      >
+        <TheButton
+          type="button"
+          variant="primary"
+          :disabled="isCreatingDraft || isGeneratingExport"
+          class="flex-1 cursor-pointer"
+          @click="createDraft"
+        >
+          <DocumentIcon class="size-5" />
+          Create Draft
+        </TheButton>
+      </TheTooltip>
+    </div>
+  </main>
 </template>

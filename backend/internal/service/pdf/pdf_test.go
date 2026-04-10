@@ -28,14 +28,14 @@ func TestBuildInvoicePDFData_InvoiceNumberLabelUsesDisplayMapping(t *testing.T) 
 	}
 
 	baseDoc := buildInvoicePDFData(overview, nil, settings)
-	if baseDoc.InvoiceNumberLabel != "INV - 7" {
-		t.Fatalf("base invoice label = %q, want %q", baseDoc.InvoiceNumberLabel, "INV - 7")
+	if baseDoc.InvoiceNumberLabel != "INV-7" {
+		t.Fatalf("base invoice label = %q, want %q", baseDoc.InvoiceNumberLabel, "INV-7")
 	}
 
 	overview.RevisionNo = 2
 	firstRevisionDoc := buildInvoicePDFData(overview, nil, settings)
-	if firstRevisionDoc.InvoiceNumberLabel != "INV - 7.1" {
-		t.Fatalf("first revision label = %q, want %q", firstRevisionDoc.InvoiceNumberLabel, "INV - 7.1")
+	if firstRevisionDoc.InvoiceNumberLabel != "INV-7-Rev-1" {
+		t.Fatalf("first revision label = %q, want %q", firstRevisionDoc.InvoiceNumberLabel, "INV-7-Rev-1")
 	}
 }
 
@@ -93,9 +93,9 @@ func TestBuildTotalRows_UsesASCIIHyphenForNegativeSummaryValues(t *testing.T) {
 	}
 
 	for label, want := range map[string]string{
-		"Discount": "-£5.00",
-		"Deposit":  "-£15.00",
-		"Paid":     "-£20.00",
+		"Discount":          "-£5.00",
+		"Requested Deposit": "£15.00",
+		"Paid":              "-£20.00",
 	} {
 		if got := valuesByLabel[label]; got != want {
 			t.Fatalf("%s value = %q, want %q", label, got, want)
@@ -237,7 +237,7 @@ func TestMarotoRenderer_RenderPDF(t *testing.T) {
 			name: "full invoice",
 			doc: models.InvoicePDFData{
 				Title:               "Invoice",
-				InvoiceNumberLabel:  "INV - 42",
+				InvoiceNumberLabel:  "INV-42",
 				Currency:            "GBP",
 				ShowItemTypeHeaders: true,
 				IssueAt:             "26/03/2026",
@@ -275,7 +275,7 @@ func TestMarotoRenderer_RenderPDF(t *testing.T) {
 			name: "minimal invoice",
 			doc: models.InvoicePDFData{
 				Title:              "Invoice",
-				InvoiceNumberLabel: "INV - 7",
+				InvoiceNumberLabel: "INV-7",
 				Currency:           "GBP",
 				IssueAt:            "26/03/2026",
 				Issuer: models.InvoicePDFIssuer{
@@ -298,7 +298,7 @@ func TestMarotoRenderer_RenderPDF(t *testing.T) {
 			name: "empty line items",
 			doc: models.InvoicePDFData{
 				Title:              "Invoice",
-				InvoiceNumberLabel: "INV - 8",
+				InvoiceNumberLabel: "INV-8",
 				Currency:           "GBP",
 				IssueAt:            "26/03/2026",
 				Issuer: models.InvoicePDFIssuer{
@@ -319,7 +319,7 @@ func TestMarotoRenderer_RenderPDF(t *testing.T) {
 			doc: func() models.InvoicePDFData {
 				doc := models.InvoicePDFData{
 					Title:               "Invoice",
-					InvoiceNumberLabel:  "INV - 99",
+					InvoiceNumberLabel:  "INV-99",
 					Currency:            "GBP",
 					ShowItemTypeHeaders: true,
 					IssueAt:             "26/03/2026",

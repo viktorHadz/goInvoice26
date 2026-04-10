@@ -180,7 +180,7 @@ const menuOpts = computed<MenuOption[]>(() => [
                             Adjustments
                         </div>
                         <div class="text-xs font-bold text-sky-600 dark:text-emerald-400">
-                            Paid, deposit, discount, VAT and note
+                            Deposit, discount, VAT and note
                         </div>
                     </div>
                 </div>

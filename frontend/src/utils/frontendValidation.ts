@@ -21,6 +21,7 @@ type InvoicePayload = {
     overview: {
         sourceRevisionNo?: number
         issueDate: string
+        supplyDate?: string
         dueByDate?: string
         clientName: string
         clientCompanyName: string
@@ -54,11 +55,6 @@ type InvoicePayload = {
         totalMinor: number
         balanceDueMinor: number
     }
-    payments: Array<{
-        amountMinor: number
-        paymentDate: string
-        label?: string
-    }>
 }
 
 const runeLen = (s: string) => Array.from(s).length
@@ -226,6 +222,13 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
         errors.issueDate = 'Use a valid date in YYYY-MM-DD format.'
     }
 
+    if (
+        payload.overview.supplyDate?.trim() &&
+        !isValidISODate(payload.overview.supplyDate.trim())
+    ) {
+        errors.supplyDate = 'Use a valid date in YYYY-MM-DD format.'
+    }
+
     if (payload.overview.dueByDate?.trim() && !isValidISODate(payload.overview.dueByDate.trim())) {
         errors.dueByDate = 'Use a valid date in YYYY-MM-DD format.'
     }
@@ -326,7 +329,6 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     })
 
     const totals = payload.totals
-    const paymentSumMinor = payload.payments.reduce((sum, p) => sum + Math.max(0, p.amountMinor), 0)
 
     if (totals.vatRate < 0 || totals.vatRate > 10000) {
         errors['totals.vatRate'] = 'Enter a VAT rate between 0% and 100%.'
@@ -361,9 +363,8 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
 
     if (totals.paidMinor < 0) errors['totals.paidMinor'] = 'Paid amount must be 0 or more.'
 
-    const maxPaidMinor = Math.max(0, totals.totalMinor - totals.depositMinor)
-    if (totals.paidMinor > maxPaidMinor) {
-        errors['totals.paidMinor'] = 'Paid amount cannot exceed the balance after deposit.'
+    if (totals.paidMinor > totals.totalMinor) {
+        errors['totals.paidMinor'] = 'Paid amount cannot exceed the invoice total.'
     }
 
     if (totals.subtotalAfterDiscountMinor < 0) {
@@ -374,31 +375,6 @@ export function validateInvoicePayload(payload: InvoicePayload): Record<string, 
     if (totals.totalMinor < 0) errors['totals.totalMinor'] = 'Total must be 0 or more.'
     if (totals.balanceDueMinor < 0)
         errors['totals.balanceDueMinor'] = 'Balance due must be 0 or more.'
-
-    payload.payments.forEach((payment, i) => {
-        const prefix = (f: string) => `payments[${i}].${f}`
-        if (!Number.isFinite(payment.amountMinor) || payment.amountMinor <= 0) {
-            errors[prefix('amountMinor')] = 'Payment amount must be greater than 0.'
-        }
-        const paymentDate = payment.paymentDate?.trim() ?? ''
-        if (!paymentDate) {
-            errors[prefix('paymentDate')] = 'Choose a payment date.'
-        } else if (!isValidISODate(paymentDate)) {
-            errors[prefix('paymentDate')] = 'Use a valid date in YYYY-MM-DD format.'
-        }
-        if (payment.label != null) {
-            const labelErr = validateText(payment.label, {
-                max: 120,
-                singleLine: true,
-                trim: true,
-            })
-            if (labelErr) errors[prefix('label')] = labelErr
-        }
-    })
-
-    if (paymentSumMinor > totals.paidMinor) {
-        errors['totals.paidMinor'] = 'Paid amount must include all staged payments.'
-    }
 
     return errors
 }

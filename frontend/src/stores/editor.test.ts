@@ -8,8 +8,11 @@ const {
     deleteInvoiceMock,
     getInvAndRevNumsMock,
     getInvoiceMock,
+    getPaymentReceiptMock,
     newRevisionHandlerMock,
+    createPaymentReceiptHandlerMock,
     updateDraftInvoiceHandlerMock,
+    updatePaymentReceiptHandlerMock,
     emitToastErrorMock,
     emitToastInfoMock,
     emitToastSuccessMock,
@@ -61,16 +64,21 @@ const {
             },
         ],
         payments: [],
+        history: [],
+        selectedReceipt: undefined,
     })),
+    getPaymentReceiptMock: vi.fn(),
     newRevisionHandlerMock: vi.fn(async () => ({
         invoiceId: 7,
         revisionId: 70,
         revisionNo: 2,
     })),
+    createPaymentReceiptHandlerMock: vi.fn(),
     updateDraftInvoiceHandlerMock: vi.fn(async () => ({
         invoiceId: 7,
         revisionId: 7,
     })),
+    updatePaymentReceiptHandlerMock: vi.fn(),
     emitToastErrorMock: vi.fn(),
     emitToastInfoMock: vi.fn(),
     emitToastSuccessMock: vi.fn(),
@@ -98,12 +106,15 @@ vi.mock('@/utils/editorHttpHandler', () => ({
     deleteInvoice: deleteInvoiceMock,
     getInvAndRevNums: getInvAndRevNumsMock,
     getInvoice: getInvoiceMock,
+    getPaymentReceipt: getPaymentReceiptMock,
     patchInvoiceStatus: vi.fn(),
 }))
 
 vi.mock('@/utils/invoiceHttpHandler', () => ({
+    createPaymentReceiptHandler: createPaymentReceiptHandlerMock,
     newRevisionHandler: newRevisionHandlerMock,
     updateDraftInvoiceHandler: updateDraftInvoiceHandlerMock,
+    updatePaymentReceiptHandler: updatePaymentReceiptHandlerMock,
 }))
 
 vi.mock('@/utils/frontendValidation', () => ({
@@ -197,6 +208,7 @@ function makeBookInvoice(status: 'draft' | 'issued' | 'paid' | 'void' = 'issued'
         paidMinor: 0,
         balanceDueMinor: 10000,
         revisions: [],
+        history: [],
     }
 }
 
@@ -285,6 +297,8 @@ describe('editor store no-change save guard', () => {
                 },
             ],
             payments: [],
+            history: [],
+            selectedReceipt: undefined,
         })
         store.initEdit()
 
@@ -295,7 +309,7 @@ describe('editor store no-change save guard', () => {
         expect(updateDraftInvoiceHandlerMock).toHaveBeenCalledTimes(1)
         expect(newRevisionHandlerMock).not.toHaveBeenCalled()
         expect(store.activeNode).toEqual({ type: 'invoice', clientId: 42, id: 7, baseNo: 101 })
-        expect(emitToastSuccessMock).toHaveBeenCalledWith('Draft INV - 101 saved.')
+        expect(emitToastSuccessMock).toHaveBeenCalledWith('Draft INV-101 saved.')
     })
 
     it('resets baseline after cancel and reopen edit session', async () => {
@@ -329,7 +343,7 @@ describe('editor store no-change save guard', () => {
         expect(store.activeInvoice).toBe(null)
         expect(store.draftInvoice).toBe(null)
         expect(getInvAndRevNumsMock).toHaveBeenCalled()
-        expect(emitToastSuccessMock).toHaveBeenCalledWith('INV - 101 deleted.')
+        expect(emitToastSuccessMock).toHaveBeenCalledWith('INV-101 deleted.')
     })
 
     it('stores invoice-book filters and refetches with them', async () => {

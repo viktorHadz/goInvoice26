@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { DocumentTextIcon } from '@heroicons/vue/24/outline'
+import { DocumentTextIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import DateField from '@/components/invoice/DateField.vue'
 import { useClientStore } from '@/stores/clients'
 import { useInvoiceStore } from '@/stores/invoice'
 import DecorGradient from '../UI/DecorGradient.vue'
+import TheTooltip from '../UI/TheTooltip.vue'
 
 const clients = useClientStore()
 const invStore = useInvoiceStore()
@@ -13,146 +14,147 @@ const client = computed(() => clients.selectedClient)
 
 // Computed proxies so DateField can use v-model without touching store state directly
 const issueDate = computed<string | null>({
-    get: () => invStore.invoice?.issueDate ?? null,
-    set: (v) => invStore.setIssueDate(v ?? ''),
+  get: () => invStore.invoice?.issueDate ?? null,
+  set: (v) => invStore.setIssueDate(v ?? ''),
+})
+
+const supplyDate = computed<string | null>({
+  get: () => invStore.invoice?.supplyDate ?? null,
+  set: (v) => invStore.setSupplyDate(v ?? ''),
 })
 
 const dueByDate = computed<string | null>({
-    get: () => invStore.invoice?.dueByDate ?? null,
-    set: (v) => invStore.setDueByDate(v ?? ''),
+  get: () => invStore.invoice?.dueByDate ?? null,
+  set: (v) => invStore.setDueByDate(v ?? ''),
 })
 </script>
 
 <template>
-    <header>
-        <div class="mb-4 flex items-center gap-3">
-            <div
-                class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
-            >
-                <DocumentTextIcon class="size-7 text-sky-600 dark:text-emerald-400" />
-            </div>
+  <header>
+    <div class="mb-4 flex items-center gap-3">
+      <div
+        class="grid size-12 shrink-0 place-items-center rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+      >
+        <DocumentTextIcon class="size-7 text-sky-600 dark:text-emerald-400" />
+      </div>
 
-            <div class="min-w-0">
-                <div class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-200">
-                    Invoice
-                </div>
-                <div class="text-sm text-zinc-600 dark:text-zinc-400">
-                    Create and export invoices
-                </div>
-            </div>
+      <div class="min-w-0">
+        <div class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-200">
+          Invoice Draft
         </div>
+        <div class="text-sm text-zinc-600 dark:text-zinc-400">Create and export invoices</div>
+      </div>
+    </div>
 
-        <section
-            class="relative overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+    <section
+      class="relative overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30"
+    >
+      <div class="relative z-10 space-y-4 p-3 md:p-4">
+        <div
+          class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start"
+          v-if="invStore.invoice"
         >
-            <div class="relative z-10 space-y-4 p-3 md:p-4">
-                <div
-                    class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start"
-                    v-if="invStore.invoice"
-                >
-                    <div class="min-w-0">
-                        <h2 class="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                            Invoice details
-                        </h2>
-                        <div class="mb-4 flex gap-x-4 font-medium">
-                            <span>Invoice number:</span>
-                            <span class="font-bold text-sky-600 dark:text-emerald-400">
-                                {{ invStore.prettyBaseNumber }}
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
-                            <div>
-                                <div
-                                    class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300"
-                                >
-                                    Issue date
-                                </div>
-                                <DateField
-                                    v-model="issueDate"
-                                    placeholder="Select issue date"
-                                    :error="invStore.getFieldError('issueDate')"
-                                    :forceShowError="invStore.showAllValidation"
-                                />
-                            </div>
-
-                            <div>
-                                <div
-                                    class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300"
-                                >
-                                    Due by
-                                </div>
-                                <DateField
-                                    v-model="dueByDate"
-                                    placeholder="Select due date"
-                                    :error="invStore.getFieldError('dueByDate')"
-                                    :forceShowError="invStore.showAllValidation"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div
-                        class="min-w-0 rounded-2xl border border-zinc-300 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
-                    >
-                        <div class="mb-2 flex items-center justify-between">
-                            <div class="font-semibold">To</div>
-                            <div
-                                class="hidden rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
-                            >
-                                client details
-                            </div>
-                        </div>
-
-                        <div class="space-y-2 text-sm">
-                            <div class="grid grid-cols-[84px_1fr] items-start gap-2">
-                                <div class="text-zinc-500 dark:text-zinc-400">Name</div>
-                                <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                                    {{
-                                        client?.name || invStore.invoice?.clientSnapshot.name || '—'
-                                    }}
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-[84px_1fr] items-start gap-2">
-                                <div class="text-zinc-500 dark:text-zinc-400">Company</div>
-                                <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                                    {{
-                                        client?.companyName ||
-                                        invStore.invoice?.clientSnapshot.companyName ||
-                                        '—'
-                                    }}
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-[84px_1fr] items-start gap-2">
-                                <div class="text-zinc-500 dark:text-zinc-400">Address</div>
-                                <div
-                                    class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100"
-                                >
-                                    {{
-                                        client?.address ||
-                                        invStore.invoice?.clientSnapshot.address ||
-                                        '—'
-                                    }}
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-[84px_1fr] items-start gap-2">
-                                <div class="text-zinc-500 dark:text-zinc-400">Email</div>
-                                <div
-                                    class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100"
-                                >
-                                    {{
-                                        client?.email ||
-                                        invStore.invoice?.clientSnapshot.email ||
-                                        '—'
-                                    }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+          <div class="min-w-0">
+            <section class="items-center">
+              <h2 class="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                Invoice details
+              </h2>
+              <div class="mb-4 flex gap-x-4 font-medium">
+                <span>Invoice number:</span>
+                <span class="font-bold text-sky-600 dark:text-emerald-400">
+                  {{ invStore.prettyBaseNumber }}
+                </span>
+              </div>
+            </section>
+            <section class="grid grid-cols-1 items-start gap-x-6 gap-y-2 sm:grid-cols-2">
+              <div>
+                <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Issue date
                 </div>
+                <DateField
+                  v-model="issueDate"
+                  placeholder="Select issue date"
+                  :error="invStore.getFieldError('issueDate')"
+                  :forceShowError="invStore.showAllValidation"
+                />
+              </div>
+
+              <div>
+                <div class="mb-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">Due by</div>
+                <DateField
+                  v-model="dueByDate"
+                  placeholder="Select due date"
+                  :error="invStore.getFieldError('dueByDate')"
+                  :forceShowError="invStore.showAllValidation"
+                />
+              </div>
+
+              <div>
+                <div
+                  class="mb-1 flex justify-between text-xs font-medium text-zinc-700 dark:text-zinc-300"
+                >
+                  Supply date
+                  <TheTooltip text="Optional date. Used when the goods are issued to a client.">
+                    <InformationCircleIcon
+                      class="relative inline-flex size-4 cursor-help hover:text-sky-600 dark:hover:text-emerald-400"
+                    />
+                  </TheTooltip>
+                </div>
+                <DateField
+                  v-model="supplyDate"
+                  placeholder="Only if different"
+                  :error="invStore.getFieldError('supplyDate')"
+                  :forceShowError="invStore.showAllValidation"
+                />
+              </div>
+            </section>
+          </div>
+
+          <div
+            class="min-w-0 rounded-2xl border border-zinc-300 bg-white p-3 sm:mt-2 dark:border-zinc-800 dark:bg-zinc-900/40"
+          >
+            <div class="mb-2 flex items-center justify-between">
+              <div class="font-semibold">To</div>
+              <div
+                class="hidden rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600 backdrop-blur-sm sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400"
+              >
+                client details
+              </div>
             </div>
-            <DecorGradient />
-        </section>
-    </header>
+
+            <div class="space-y-4 text-sm">
+              <div class="grid grid-cols-[84px_1fr] items-start gap-2">
+                <div class="text-zinc-500 dark:text-zinc-400">Name</div>
+                <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
+                  {{ client?.name || invStore.invoice?.clientSnapshot.name || '—' }}
+                </div>
+              </div>
+
+              <div class="grid grid-cols-[84px_1fr] items-start gap-2">
+                <div class="text-zinc-500 dark:text-zinc-400">Company</div>
+                <div class="truncate font-medium text-zinc-900 dark:text-zinc-100">
+                  {{ client?.companyName || invStore.invoice?.clientSnapshot.companyName || '—' }}
+                </div>
+              </div>
+
+              <div class="grid grid-cols-[84px_1fr] items-start gap-2">
+                <div class="text-zinc-500 dark:text-zinc-400">Address</div>
+                <div class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100">
+                  {{ client?.address || invStore.invoice?.clientSnapshot.address || '—' }}
+                </div>
+              </div>
+
+              <div class="grid grid-cols-[84px_1fr] items-start gap-2">
+                <div class="text-zinc-500 dark:text-zinc-400">Email</div>
+                <div class="line-clamp-2 font-medium text-zinc-900 dark:text-zinc-100">
+                  {{ client?.email || invStore.invoice?.clientSnapshot.email || '—' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <DecorGradient />
+    </section>
+  </header>
 </template>

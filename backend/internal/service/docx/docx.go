@@ -378,6 +378,7 @@ func headerTextParagraphs(doc models.InvoicePDFData) []string {
 
 	for _, row := range []string{
 		metaLine("Issued", doc.IssueAt),
+		metaLine("Supply", cleanPtr(doc.SupplyDate)),
 		metaLine("Due", cleanPtr(doc.DueDate)),
 	} {
 		if row == "" {
@@ -692,6 +693,23 @@ func tableCellMarginsXML() string {
 }
 
 func buildSummaryRows(doc models.InvoicePDFData) []summaryRow {
+	if doc.DocumentKind == "payment_receipt" {
+		rows := []summaryRow{
+			{label: "Payment Amount", value: formatMoney(doc.ReceiptAmountMinor, doc.Currency)},
+			{label: "Invoice Total", value: formatMoney(doc.Totals.TotalMinor, doc.Currency)},
+		}
+		if doc.Totals.DepositMinor > 0 {
+			rows = append(rows, summaryRow{label: "Requested Deposit", value: formatMoney(doc.Totals.DepositMinor, doc.Currency)})
+		}
+		rows = append(rows, summaryRow{label: "Total Paid", value: formatMoney(doc.Totals.PaidMinor, doc.Currency)})
+		rows = append(rows, summaryRow{
+			label:     "Balance Due",
+			value:     formatMoney(doc.Totals.BalanceDue, doc.Currency),
+			highlight: true,
+		})
+		return rows
+	}
+
 	rows := []summaryRow{
 		{label: "Subtotal", value: formatMoney(doc.Totals.SubtotalMinor, doc.Currency)},
 		{label: "VAT", value: formatMoney(doc.Totals.VatAmountMinor, doc.Currency)},
@@ -704,7 +722,7 @@ func buildSummaryRows(doc models.InvoicePDFData) []summaryRow {
 		}, rows[1:]...)...)
 	}
 	if doc.Totals.DepositMinor > 0 {
-		rows = append(rows, summaryRow{label: "Deposit", value: formatMoney(-doc.Totals.DepositMinor, doc.Currency)})
+		rows = append(rows, summaryRow{label: "Requested Deposit", value: formatMoney(doc.Totals.DepositMinor, doc.Currency)})
 	}
 	if doc.Totals.PaidMinor > 0 {
 		rows = append(rows, summaryRow{label: "Paid", value: formatMoney(-doc.Totals.PaidMinor, doc.Currency)})

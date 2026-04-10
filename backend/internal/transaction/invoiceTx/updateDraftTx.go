@@ -67,9 +67,8 @@ func UpdateDraft(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn)
 	if err != nil {
 		return 0, 0, err
 	}
-	expectedPaid := existingPaid + sumStagedPayments(canonical.Payments)
-	if canonical.Totals.PaidMinor != expectedPaid {
-		return 0, 0, ErrPaymentTotalsMismatch
+	if canonical.Totals.PaidMinor != existingPaid {
+		return 0, 0, ErrPaymentStateMismatch
 	}
 
 	var dueBy any
@@ -86,6 +85,7 @@ func UpdateDraft(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn)
 		UPDATE invoice_revisions
 		SET
 			issue_date = ?,
+			supply_date = ?,
 			due_by_date = ?,
 			updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'),
 			client_name = ?,
@@ -106,6 +106,7 @@ func UpdateDraft(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn)
 		WHERE id = ?;
 	`,
 		ov.IssueDate,
+		normalizedOptionalString(ov.SupplyDate),
 		dueBy,
 		ov.ClientName,
 		ov.ClientCompanyName,
@@ -146,11 +147,7 @@ func UpdateDraft(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn)
 		return 0, 0, fmt.Errorf("update current draft revision: %w", err)
 	}
 
-	if err := insertRevisionPayments(ctx, tx, invoiceID, revisionID, canonical.Payments); err != nil {
-		return 0, 0, err
-	}
-
-	if err := applyAutoPaidIfSettled(ctx, tx, invoiceID, canonical.Totals.TotalMinor, canonical.Totals.DepositMinor); err != nil {
+	if err := applyAutoPaidIfSettled(ctx, tx, invoiceID, canonical.Totals.TotalMinor); err != nil {
 		return 0, 0, err
 	}
 
@@ -159,4 +156,12 @@ func UpdateDraft(ctx context.Context, a *app.App, canonical *models.FEInvoiceIn)
 	}
 
 	return invoiceID, revisionID, nil
+}
+
+func normalizedOptionalString(value *string) any {
+	if value == nil {
+		return nil
+	}
+
+	return *value
 }

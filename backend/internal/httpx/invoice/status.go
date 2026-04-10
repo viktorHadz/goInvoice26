@@ -57,7 +57,6 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 			rules         statusTransitionRules
 			revisionCount int64
 			totalMinor    int64
-			depositMinor  int64
 			paidMinor     int64
 		)
 		err = a.DB.QueryRowContext(r.Context(), `
@@ -65,16 +64,15 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 				i.status,
 				COUNT(DISTINCT rev.id) AS revision_count,
 				cur.total_minor,
-				cur.deposit_minor,
-				COALESCE((SELECT SUM(p.amount_minor) FROM payments p WHERE p.invoice_id = i.id), 0) AS paid_minor
+				COALESCE((SELECT SUM(p.amount_minor) FROM payments p WHERE p.invoice_id = i.id AND p.payment_type = 'payment'), 0) AS paid_minor
 			FROM invoices i
 			JOIN invoice_revisions cur
 				ON cur.id = i.current_revision_id
 			LEFT JOIN invoice_revisions rev
 				ON rev.invoice_id = i.id
 			WHERE i.account_id = ? AND i.client_id = ? AND i.base_number = ?
-			GROUP BY i.id, i.status, cur.total_minor, cur.deposit_minor
-		`, accountID, clientID, baseNumber).Scan(&current, &revisionCount, &totalMinor, &depositMinor, &paidMinor)
+			GROUP BY i.id, i.status, cur.total_minor
+		`, accountID, clientID, baseNumber).Scan(&current, &revisionCount, &totalMinor, &paidMinor)
 		if errors.Is(err, sql.ErrNoRows) {
 			res.Error(w, http.StatusNotFound, "NOT_FOUND", "Invoice not found")
 			return
@@ -87,8 +85,8 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 
 		current = strings.TrimSpace(strings.ToLower(current))
 		rules = statusTransitionRules{
-			CanReturnIssuedToDraft: revisionCount <= 1,
-			CanReopenPaidToIssued:  paidMinor != expectedPaidMinor(totalMinor, depositMinor),
+			CanReturnIssuedToDraft: revisionCount <= 1 && paidMinor == 0,
+			CanReopenPaidToIssued:  paidMinor != expectedPaidMinor(totalMinor),
 		}
 		if !allowedStatusTransition(current, next, rules) {
 			res.Validation(w, res.Invalid("status", invalidStatusTransitionMessage(current, next, rules)))
@@ -115,8 +113,8 @@ func PatchInvoiceStatus(a *app.App) http.HandlerFunc {
 	}
 }
 
-func expectedPaidMinor(totalMinor, depositMinor int64) int64 {
-	expected := totalMinor - depositMinor
+func expectedPaidMinor(totalMinor int64) int64 {
+	expected := totalMinor
 	if expected < 0 {
 		return 0
 	}
@@ -128,7 +126,7 @@ func invalidStatusTransitionMessage(from, to string, rules statusTransitionRules
 	case from == to:
 		return "status is already set to " + to
 	case from == "issued" && to == "draft" && !rules.CanReturnIssuedToDraft:
-		return "issued invoices with saved revisions cannot return to draft"
+		return "issued invoices with saved revisions or payment receipts cannot return to draft"
 	case from == "paid" && to == "issued" && !rules.CanReopenPaidToIssued:
 		return "fully paid invoices cannot return to issued"
 	default:

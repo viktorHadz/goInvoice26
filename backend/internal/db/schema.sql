@@ -179,6 +179,7 @@ CREATE TABLE IF NOT EXISTS invoice_revisions (
   invoice_id INTEGER NOT NULL,
   revision_no INTEGER NOT NULL CHECK (revision_no >= 1),
   issue_date TEXT NOT NULL,
+  supply_date TEXT,
   due_by_date TEXT,
   updated_at TEXT,
   client_name TEXT NOT NULL,
@@ -240,6 +241,7 @@ CREATE TABLE IF NOT EXISTS invoice_items (
 CREATE TABLE IF NOT EXISTS payments (
   id INTEGER PRIMARY KEY,
   invoice_id INTEGER NOT NULL,
+  receipt_no INTEGER NOT NULL DEFAULT 0 CHECK (receipt_no >= 0),
   payment_type TEXT NOT NULL DEFAULT 'payment'
     CHECK (payment_type IN ('deposit','payment')),
   amount_minor INTEGER NOT NULL CHECK (amount_minor > 0),
@@ -526,6 +528,7 @@ CREATE INDEX IF NOT EXISTS idx_products_account_client ON products(account_id, c
 CREATE UNIQUE INDEX IF NOT EXISTS idx_products_account_client_id ON products(account_id, client_id, id);
 CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_payments_invoice_revision ON payments(invoice_id, applied_in_revision_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_invoice_receipt_no ON payments(invoice_id, receipt_no);
 CREATE INDEX IF NOT EXISTS idx_stored_files_account_id ON stored_files(account_id);
 CREATE INDEX IF NOT EXISTS idx_stored_files_delete_pending ON stored_files(delete_pending_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL AND google_sub <> '';

@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/viktorHadz/goInvoice26/internal/accountscope"
-	"github.com/viktorHadz/goInvoice26/internal/models"
 )
 
 var (
@@ -17,16 +16,19 @@ var (
 	ErrInvoiceVoidForRevision = errors.New("invoice is void; revisions are not allowed")
 	// ErrInvoicePaidForRevision is returned when appending a revision while status is paid (reopen to issued first).
 	ErrInvoicePaidForRevision = errors.New("invoice is paid; reopen to issued before revising")
-	// ErrPaymentTotalsMismatch is returned when totals.paidMinor does not match visible + staged payments.
-	ErrPaymentTotalsMismatch = errors.New("paid total does not match staged payments for this revision")
 	// ErrSourceRevisionInvalid is returned when source revision is outside valid range.
 	ErrSourceRevisionInvalid = errors.New("source revision is invalid for this invoice")
+	// ErrPaymentStateMismatch is returned when saved payment receipts changed while the invoice was being edited.
+	ErrPaymentStateMismatch = errors.New("saved payment receipts changed; refresh invoice before saving")
 )
 
 func sumPaymentsByInvoice(ctx context.Context, tx *sql.Tx, invoiceID int64) (int64, error) {
 	var existing int64
 	if err := tx.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(amount_minor), 0) FROM payments WHERE invoice_id = ?
+		SELECT COALESCE(SUM(amount_minor), 0)
+		FROM payments
+		WHERE invoice_id = ?
+		  AND payment_type = 'payment'
 	`, invoiceID).Scan(&existing); err != nil {
 		return 0, fmt.Errorf("sum payments: %w", err)
 	}
@@ -45,6 +47,7 @@ func sumPaymentsVisibleUpToRevision(
 		FROM payments p
 		JOIN invoice_revisions ap ON ap.id = p.applied_in_revision_id
 		WHERE p.invoice_id = ?
+			AND p.payment_type = 'payment'
 			AND ap.revision_no <= ?
 	`, invoiceID, revisionNo).Scan(&existing); err != nil {
 		return 0, fmt.Errorf("sum visible payments by revision: %w", err)
@@ -52,64 +55,19 @@ func sumPaymentsVisibleUpToRevision(
 	return existing, nil
 }
 
-func sumStagedPayments(payments []models.PaymentCreateIn) int64 {
-	var out int64
-	for _, p := range payments {
-		out += p.AmountMinor
-	}
-	return out
-}
-
-func insertRevisionPayments(
-	ctx context.Context,
-	tx *sql.Tx,
-	invoiceID int64,
-	revisionID int64,
-	payments []models.PaymentCreateIn,
-) error {
-	if len(payments) == 0 {
-		return nil
-	}
-
-	stmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO payments (invoice_id, payment_type, amount_minor, payment_date, applied_in_revision_id, label)
-		VALUES (?, 'payment', ?, ?, ?, ?)
-	`)
-	if err != nil {
-		return fmt.Errorf("prepare payments insert: %w", err)
-	}
-	defer stmt.Close()
-
-	for _, p := range payments {
-		var label any
-		if p.Label != nil {
-			label = *p.Label
-		}
-		if _, err := stmt.ExecContext(
-			ctx,
-			invoiceID,
-			p.AmountMinor,
-			p.PaymentDate,
-			revisionID,
-			label,
-		); err != nil {
-			return fmt.Errorf("insert payment row: %w", err)
-		}
-	}
-
-	return nil
-}
-
 // applyAutoPaidIfSettled sets status to paid when balance due is zero and invoice is issued.
-func applyAutoPaidIfSettled(ctx context.Context, tx *sql.Tx, invoiceID int64, totalMinor, depositMinor int64) error {
+func applyAutoPaidIfSettled(ctx context.Context, tx *sql.Tx, invoiceID int64, totalMinor int64) error {
 	var paidSum int64
 	if err := tx.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(amount_minor), 0) FROM payments WHERE invoice_id = ?
+		SELECT COALESCE(SUM(amount_minor), 0)
+		FROM payments
+		WHERE invoice_id = ?
+		  AND payment_type = 'payment'
 	`, invoiceID).Scan(&paidSum); err != nil {
 		return fmt.Errorf("sum payments for auto-paid: %w", err)
 	}
 
-	balance := totalMinor - depositMinor - paidSum
+	balance := totalMinor - paidSum
 	if balance < 0 {
 		balance = 0
 	}

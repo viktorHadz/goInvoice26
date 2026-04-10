@@ -35,6 +35,7 @@ type InvoiceOverviewTotals struct {
 	BaseNumber        int64
 	RevisionNo        int64
 	IssueDate         string
+	SupplyDate        sql.NullString
 	DueByDate         sql.NullString
 	ClientName        string
 	ClientCompanyName string
@@ -87,6 +88,7 @@ func QueryInvoiceSummary(
 			i.base_number,
 			r.revision_no,
 			r.issue_date,
+			r.supply_date,
 			r.due_by_date,
 			r.client_name,
 			r.client_company_name,
@@ -109,6 +111,7 @@ func QueryInvoiceSummary(
 					FROM payments p
 					JOIN invoice_revisions ap ON ap.id = p.applied_in_revision_id
 					WHERE p.invoice_id = i.id
+						AND p.payment_type = 'payment'
 						AND ap.revision_no <= r.revision_no
 				), 0
 			) AS paid_minor
@@ -122,7 +125,7 @@ func QueryInvoiceSummary(
 	err = db.QueryRowContext(ctx, query, revisionNo, accountID, baseNumber, clientID).Scan(
 		&o.Status,
 		&o.BaseNumber, &o.RevisionNo,
-		&o.IssueDate, &o.DueByDate,
+		&o.IssueDate, &o.SupplyDate, &o.DueByDate,
 		&o.ClientName, &o.ClientCompanyName, &o.ClientAddress, &o.ClientEmail,
 		&o.Note,
 		&o.VATRate, &o.VATAmountMin,
@@ -165,6 +168,7 @@ func QueryInvoicePaymentsForRevision(
 			ON ap.id = p.applied_in_revision_id
 		WHERE i.base_number = ? AND i.client_id = ?
 			AND i.account_id = ?
+			AND p.payment_type = 'payment'
 			AND ap.revision_no <= r.revision_no
 		ORDER BY p.payment_date ASC, p.id ASC
 	`

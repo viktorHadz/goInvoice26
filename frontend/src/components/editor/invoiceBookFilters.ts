@@ -1,4 +1,8 @@
-import { formatInvoiceBaseLabel, formatInvoiceDisplayLabel } from '@/utils/invoiceLabels'
+import {
+    formatInvoiceBaseLabel,
+    formatInvoiceDisplayLabel,
+    formatPaymentReceiptLabel,
+} from '@/utils/invoiceLabels'
 import type { InvBookInvoice } from './invBookTypes'
 
 export type InvoiceBookSortBy = 'date' | 'balance'
@@ -125,17 +129,22 @@ export function filterInvoiceBookByQuery(
 
             if (invoiceLabel.includes(query) || clientLabel.includes(query)) return invoice
 
-            const matchingRevisions = invoice.revisions.filter((revision) =>
-                formatInvoiceDisplayLabel(prefix, invoice.baseNo, revision.revisionNo)
+            const matchingHistory = invoice.history.filter((entry) => {
+                if (entry.type === 'revision') {
+                    return formatInvoiceDisplayLabel(prefix, invoice.baseNo, entry.revisionNo)
+                        .toLowerCase()
+                        .includes(query)
+                }
+                return formatPaymentReceiptLabel(prefix, invoice.baseNo, entry.receiptNo)
                     .toLowerCase()
-                    .includes(query),
-            )
+                    .includes(query)
+            })
 
-            if (matchingRevisions.length === 0) return null
+            if (matchingHistory.length === 0) return null
 
             return {
                 ...invoice,
-                revisions: matchingRevisions,
+                history: matchingHistory,
             }
         })
         .filter((invoice): invoice is InvBookInvoice => invoice !== null)

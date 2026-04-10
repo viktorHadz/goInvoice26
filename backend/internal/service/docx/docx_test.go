@@ -22,7 +22,7 @@ func TestRenderDOCX_CreatesArchiveWithFooterAndEmbeddedLogo(t *testing.T) {
 
 	data, err := RenderDOCX(models.InvoicePDFData{
 		Title:               "Invoice",
-		InvoiceNumberLabel:  "INV - 42.1",
+		InvoiceNumberLabel:  "INV-42-Rev-1",
 		Currency:            "GBP",
 		ShowItemTypeHeaders: true,
 		IssueAt:             "28/03/2026",
@@ -87,7 +87,7 @@ func TestRenderDOCX_CreatesArchiveWithFooterAndEmbeddedLogo(t *testing.T) {
 	contentTypes := files["[Content_Types].xml"]
 
 	for _, want := range []string{
-		"INV - 42.1",
+		"INV-42-Rev-1",
 		"North Studio Ltd",
 		"Hart Retail",
 		"Sample production oversight",
@@ -146,7 +146,7 @@ func TestRenderDOCX_CreatesArchiveWithFooterAndEmbeddedLogo(t *testing.T) {
 func TestRenderDOCX_UsesNoLineItemsFallback(t *testing.T) {
 	data, err := RenderDOCX(models.InvoicePDFData{
 		Title:              "Invoice",
-		InvoiceNumberLabel: "INV - 7",
+		InvoiceNumberLabel: "INV-7",
 		Currency:           "USD",
 		IssueAt:            "28/03/2026",
 		Totals: models.TotalsCreateIn{
