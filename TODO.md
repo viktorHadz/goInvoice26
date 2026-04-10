@@ -11,12 +11,10 @@ invoiceandgo@gmail.com
 ## Behaviour By Invoice Status
 
 ### Draft
-
   - Full freedom
   - No revisions
 
 ### Issued
-
 #### 1. Creates revision
   - items / qty / price
   - discount
@@ -41,15 +39,38 @@ invoiceandgo@gmail.com
   - Represent requested upfront amount
   - Do not reduce balance
   - Do not create payment entries
-  - Editable after issue → creates revision
+  - Deposit allowed anytime
+  - But after issue → editing it creates a revision
 
 ### Discounts
   - Reduce total due
   - If added/edited after issue → creates revision
 
 ### Supply Date
-Optional field
-Only required if different from invoice date
+  - Optional field
+  - Only required if different from invoice date
+
+## Balance Logic
+  - balanceDue = invoice_total - sum(payments)
+  - Deposit does NOT affect this
+  - Only payments affect this
+
+## Numbering
+  - Invoice + revisions
+  - INV-3
+  - INV-3.1
+  - INV-3.2
+
+#### Used for:
+  - commercial edits only
+
+## Payment receipts
+  - INV-3-PR-1
+  - INV-3-PR-2
+
+#### Used for:
+  - payments only
+-----
 
 Implementation details:
  1) Overall 
