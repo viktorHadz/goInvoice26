@@ -152,7 +152,7 @@ const faqItems = computed(() => [
           </div>
         </section>
         <!-- FAQ -->
-        <section class="py-10 sm:py-14 lg:py-18 max-w-6xl place-self-center">
+        <section class="py-10 sm:py-14 lg:py-18 max-w-6xl place-self-center px-5 sm:px-8 lg:px-10">
           <div class="max-w-3xl">
             <p class="text-xs font-semibold tracking-[0.18em] text-sky-700 uppercase sm:text-sm dark:text-emerald-300">
               Questions
@@ -181,7 +181,7 @@ const faqItems = computed(() => [
           </div>
         </section>
 
-        <section class="pt-8 pb-14 sm:pt-10 sm:pb-20 max-w-6xl place-self-center">
+        <section class="pt-8 pb-14 sm:pt-10 sm:pb-20 max-w-6xl place-self-center px-5 sm:px-8 lg:px-10">
           <div
             class="overflow-hidden rounded-4xl border border-sky-200 bg-linear-to-br from-sky-950 via-sky-900 to-sky-700 p-6 text-white shadow-lg sm:p-8 lg:p-10 dark:border-emerald-400/15 dark:from-[#09110e] dark:via-[#0d1d18] dark:to-[#123128]">
             <div class="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
