@@ -528,7 +528,8 @@ CREATE INDEX IF NOT EXISTS idx_products_account_client ON products(account_id, c
 CREATE UNIQUE INDEX IF NOT EXISTS idx_products_account_client_id ON products(account_id, client_id, id);
 CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_payments_invoice_revision ON payments(invoice_id, applied_in_revision_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_revision_receipt_no ON payments(applied_in_revision_id, receipt_no);
+-- Keep indexes for newly introduced columns in targeted migrations so legacy DBs can
+-- add the column before bootstrap tries to reference it.
 CREATE INDEX IF NOT EXISTS idx_stored_files_account_id ON stored_files(account_id);
 CREATE INDEX IF NOT EXISTS idx_stored_files_delete_pending ON stored_files(delete_pending_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL AND google_sub <> '';

@@ -10,50 +10,50 @@ const operatingNotes = computed(() => [
   {
     label: 'Start with',
     value: props.trialLabel,
-    body: 'Set the basics once and begin invoicing without turning setup into a project of its own.',
+    body: 'Add business details, clients, and saved items as you go, then invoice with a clear structure from day one.',
   },
   {
-    label: 'Keep one workflow',
-    value: 'Solo to team',
-    body: 'The same clear workflow still makes sense when the work is shared with someone else.',
+    label: 'Keep continuity',
+    value: 'Solo first, team ready',
+    body: 'The same workflow works for one person today and shared work later, so your process does not need to be rebuilt.',
   },
   {
-    label: 'Grow carefully',
+    label: 'Scale with control',
     value: `Up to ${props.teamSeatLimit} people`,
-    body: 'Shared clients, invoices, and records stay together in one workspace instead of getting split up.',
+    body: 'Invite teammates into one shared workspace where clients, invoices, and revision history stay aligned.',
   },
 ])
 
 const pillars = computed(() => [
   {
     eyebrow: 'For the person doing the work',
-    title: 'Less admin drag at the end of the day',
-    body: 'You should not need spreadsheet habits or accountant energy to bill for straightforward work.',
+    title: 'Faster admin without cutting corners',
+    body: 'Create and revise invoices quickly while keeping records clear enough to trust when questions come back later.',
   },
   {
     eyebrow: 'For the business',
-    title: 'Professional enough to trust',
-    body: 'Clear invoices, proper records, sensible defaults, and a workflow that does not feel improvised.',
+    title: 'Records that hold up as you grow',
+    body: 'Consistent invoice history, clear totals, and structured revisions help your business stay professional under real workload.',
   },
   {
     eyebrow: 'For when work stops being solo',
-    title: 'The same workspace can become shared',
-    body: `Start alone, then invite the people you actually work with when you need a shared workspace for up to ${props.teamSeatLimit} people.`,
+    title: 'Team access without process chaos',
+    body: `When collaboration starts, invite up to ${props.teamSeatLimit} people into the same workspace with shared clients, invoices, and settings.`,
   },
 ])
 
 const transitionSteps = computed(() => [
   {
-    title: 'Set up once',
-    body: 'Add your business details, clients, and saved items while it is still simple.',
+    title: 'Set foundations',
+    body: 'Build business details, clients, and reusable items over time so every invoice starts from a reliable baseline.',
   },
   {
-    title: 'Invite later',
-    body: 'Bring teammates in when you need them instead of committing to a team setup from day one.',
+    title: 'Invite when needed',
+    body: 'Add teammates when collaboration begins, not before, and keep everyone working in the same system.',
   },
   {
-    title: 'Work from one place',
-    body: 'Everyone sees the same clients, invoices, and revision history in the same shared workspace.',
+    title: 'Stay in sync',
+    body: 'Clients, invoices, and revision history remain shared, so the whole team works from the same source of truth.',
   },
 ])
 </script>
@@ -74,15 +74,15 @@ const transitionSteps = computed(() => [
             </p>
 
             <h2 class="mt-3 text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl dark:text-white">
-              Enough structure to trust.
+              Enough structure to run confidently.
               <span class="block text-sky-700 dark:text-emerald-300">
-                Ready for the day it stops being solo.
+                Ready when invoicing becomes shared.
               </span>
             </h2>
 
             <p class="mt-5 max-w-2xl text-base leading-8 text-zinc-600 sm:text-lg dark:text-zinc-300">
-              The workflow stays simple when you are working alone, but it does not fall apart when
-              a second or third person needs to work from the same place.
+              Start with a straightforward solo workflow, then bring teammates into the same workspace
+              when needed without changing how work is tracked.
             </p>
 
             <dl class="mt-8 space-y-5">

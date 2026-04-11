@@ -7,7 +7,8 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
 Usage: bootstrap-invoiceandgo.sh
 
 Builds the frontend and backend, renders a production env from backend/.env,
-installs the service and Nginx scaffolding, and publishes a release to /srv/goinvoicer.
+installs the service and Nginx scaffolding, backs up the live database when present,
+and publishes a release to /srv/goinvoicer.
 
 Environment overrides:
   APP_URL       default: invoiceandgo.app
@@ -89,6 +90,17 @@ SERVICE_USER="$SERVICE_USER" \
 SITE_NAME="$SITE_NAME" \
 SUDO="$SUDO" \
     "$SCRIPT_DIR/install-server.sh"
+
+LIVE_ENV_PATH="$APP_ROOT/goinvoicer.env"
+LIVE_DB_PATH="$($SUDO sh -c "sed -n 's/^DB_PATH=//p' '$LIVE_ENV_PATH' | head -n1" 2>/dev/null || true)"
+if [ -z "$LIVE_DB_PATH" ]; then
+    LIVE_DB_PATH="$(sed -n 's/^DB_PATH=//p' "$PROD_ENV" | head -n1)"
+fi
+if [ -n "$LIVE_DB_PATH" ] && $SUDO test -f "$LIVE_DB_PATH"; then
+    DB_BACKUP_PATH="${LIVE_DB_PATH}.bak.$(date +%Y%m%d-%H%M%S)"
+    echo "Backing up live database to $DB_BACKUP_PATH"
+    $SUDO cp "$LIVE_DB_PATH" "$DB_BACKUP_PATH"
+fi
 
 $SUDO install -m 755 "$BACKEND_BIN" "$APP_ROOT/goinvoicer"
 $SUDO install -d -m 755 "$APP_ROOT/releases/$RELEASE_ID"
